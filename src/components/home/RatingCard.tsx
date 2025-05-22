@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Rating } from "@/types";
-import { Heart, MessageCircle, Coffee } from "lucide-react";
+import { Heart, MessageCircle, Coffee, User } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface RatingCardProps {
