@@ -8,9 +8,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -45,7 +47,7 @@ export default function LoginPage() {
       
       // For demo purposes, accept any email/password combination
       const mockUser = {
-        id: "1",
+        id: "demo_" + Date.now().toString(),
         username: "demo_user",
         email: formData.email,
         name: "Demo User",
@@ -61,9 +63,10 @@ export default function LoginPage() {
         }
       };
       
-      localStorage.setItem("currentUser", JSON.stringify(mockUser));
-      localStorage.setItem("isAuthenticated", "true");
+      // Use auth context login function
+      login(mockUser);
       
+      // Redirect to profile page
       router.push("/profile");
     } catch (error) {
       setError("Invalid email or password");

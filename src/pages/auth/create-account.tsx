@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, CheckCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreateAccountPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -21,6 +23,7 @@ export default function CreateAccountPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -72,37 +75,85 @@ export default function CreateAccountPage() {
     setErrors([]);
 
     try {
-      // Mock account creation - in real app, this would call your auth service
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Mock account creation and email sending
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Store user data in localStorage for mock authentication
-      const newUser = {
-        id: Date.now().toString(),
-        username: formData.username,
-        email: formData.email,
-        name: formData.username,
-        profileImage: null,
-        bio: null,
-        following: [],
-        followers: [],
-        preferences: {
-          coffeeTypes: [],
-          region: null,
-          firstName: null,
-          lastName: null
-        }
-      };
+      // Show email confirmation step
+      setEmailSent(true);
       
-      localStorage.setItem("currentUser", JSON.stringify(newUser));
-      localStorage.setItem("isAuthenticated", "true");
+      // Mock email confirmation delay
+      setTimeout(async () => {
+        // Create user object
+        const newUser = {
+          id: Date.now().toString(),
+          username: formData.username,
+          email: formData.email,
+          name: formData.username,
+          profileImage: null,
+          bio: null,
+          following: [],
+          followers: [],
+          preferences: {
+            coffeeTypes: [],
+            region: null,
+            firstName: null,
+            lastName: null
+          }
+        };
+        
+        // Use auth context login function
+        login(newUser);
+        
+        // Redirect to profile page
+        router.push("/profile");
+      }, 2000);
       
-      router.push("/profile");
     } catch (error) {
       setErrors(["Failed to create account. Please try again."]);
+      setEmailSent(false);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (emailSent) {
+    return (
+      <Layout title="BeanRate - Email Confirmation">
+        <div className="max-w-md mx-auto mt-8">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                <Mail className="h-8 w-8 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-gray-900">Check Your Email</CardTitle>
+              <p className="text-gray-600">We've sent a confirmation email to</p>
+              <p className="font-medium text-brown-600">{formData.email}</p>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="space-y-4">
+                <Alert className="border-blue-200 bg-blue-50">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-700">
+                    Confirming your email automatically... You'll be redirected to your profile shortly.
+                  </AlertDescription>
+                </Alert>
+                
+                <p className="text-sm text-gray-600">
+                  Didn't receive the email? Check your spam folder or{" "}
+                  <button 
+                    onClick={() => setEmailSent(false)}
+                    className="text-brown-600 hover:text-brown-700 font-medium"
+                  >
+                    try again
+                  </button>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="BeanRate - Create Account">
