@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,7 +7,7 @@ import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import { mockRatings } from "@/data/mockData";
 import { Rating } from "@/types";
-import { Settings, LogOut, User as UserIcon, Edit } from "lucide-react";
+import { Settings, LogOut, User as UserIcon, MapPin, Edit3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -70,6 +71,14 @@ export default function ProfilePage() {
     );
   }
 
+  const displayName = user.preferences?.firstName && user.preferences?.lastName 
+    ? `${user.preferences.firstName} ${user.preferences.lastName}`
+    : user.name;
+
+  const hasBio = user.bio && user.bio.trim().length > 0;
+  const hasRegion = user.preferences?.region && user.preferences.region.trim().length > 0;
+  const hasCoffeePreferences = user.preferences?.coffeeTypes && user.preferences.coffeeTypes.length > 0;
+
   return (
     <Layout title="BeanRate - My Profile">
       <div className="max-w-md mx-auto">
@@ -93,16 +102,11 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            <div className="mt-14 text-center">
+            <div className="pt-16 text-center">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1"></div>
                 <div className="flex-1 text-center">
-                  <h1 className="text-xl font-bold text-gray-900">
-                    {user.preferences?.firstName && user.preferences?.lastName 
-                      ? `${user.preferences.firstName} ${user.preferences.lastName}`
-                      : user.name
-                    }
-                  </h1>
+                  <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
                   <p className="text-gray-600">@{user.username}</p>
                 </div>
                 <div className="flex-1 flex justify-end space-x-2">
@@ -120,15 +124,32 @@ export default function ProfilePage() {
                 </div>
               </div>
               
-              {user.bio && (
+              {hasBio ? (
                 <p className="mt-2 text-gray-700 text-center">{user.bio}</p>
+              ) : (
+                <Link href="/profile/settings">
+                  <div className="mt-2 text-gray-400 text-center hover:text-gray-600 cursor-pointer flex items-center justify-center gap-1">
+                    <Edit3 className="h-3 w-3" />
+                    <span className="text-sm">Add bio</span>
+                  </div>
+                </Link>
               )}
 
-              {user.preferences?.region && (
-                <p className="mt-1 text-sm text-gray-500">📍 {user.preferences.region}</p>
+              {hasRegion ? (
+                <p className="mt-1 text-sm text-gray-500 flex items-center justify-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {user.preferences.region}
+                </p>
+              ) : (
+                <Link href="/profile/settings">
+                  <div className="mt-1 text-gray-400 text-sm hover:text-gray-600 cursor-pointer flex items-center justify-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>Add location</span>
+                  </div>
+                </Link>
               )}
 
-              {user.preferences?.coffeeTypes && user.preferences.coffeeTypes.length > 0 && (
+              {hasCoffeePreferences && (
                 <div className="mt-2 flex flex-wrap justify-center gap-1">
                   {user.preferences.coffeeTypes.map((type, index) => (
                     <span 

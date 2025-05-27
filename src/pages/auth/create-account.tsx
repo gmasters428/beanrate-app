@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -14,6 +15,8 @@ export default function CreateAccountPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     username: "",
     email: "",
     password: "",
@@ -36,6 +39,14 @@ export default function CreateAccountPage() {
 
   const validateForm = () => {
     const newErrors: string[] = [];
+
+    if (!formData.firstName.trim()) {
+      newErrors.push("First name is required");
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.push("Last name is required");
+    }
 
     if (!formData.username.trim()) {
       newErrors.push("Username is required");
@@ -75,20 +86,16 @@ export default function CreateAccountPage() {
     setErrors([]);
 
     try {
-      // Mock account creation and email sending
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Show email confirmation step
       setEmailSent(true);
       
-      // Mock email confirmation delay
       setTimeout(async () => {
-        // Create user object
         const newUser = {
           id: Date.now().toString(),
           username: formData.username,
           email: formData.email,
-          name: formData.username,
+          name: `${formData.firstName} ${formData.lastName}`,
           profileImage: null,
           bio: null,
           following: [],
@@ -96,15 +103,12 @@ export default function CreateAccountPage() {
           preferences: {
             coffeeTypes: [],
             region: null,
-            firstName: null,
-            lastName: null
+            firstName: formData.firstName,
+            lastName: formData.lastName
           }
         };
         
-        // Use auth context login function
         login(newUser);
-        
-        // Redirect to profile page
         router.push("/profile");
       }, 2000);
       
@@ -176,6 +180,33 @@ export default function CreateAccountPage() {
                   </AlertDescription>
                 </Alert>
               )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>

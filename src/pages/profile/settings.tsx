@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
@@ -97,17 +98,21 @@ export default function ProfileSettingsPage() {
     setSaveMessage("");
 
     try {
-      // Mock save - in real app, this would call your API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      const updatedPreferences = {
+        firstName: formData.firstName.trim() || null,
+        lastName: formData.lastName.trim() || null,
+        region: formData.region || null,
+        coffeeTypes: formData.coffeeTypes
+      };
+
       updateUser({
-        bio: formData.bio,
-        preferences: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          region: formData.region,
-          coffeeTypes: formData.coffeeTypes
-        }
+        bio: formData.bio.trim() || null,
+        name: updatedPreferences.firstName && updatedPreferences.lastName 
+          ? `${updatedPreferences.firstName} ${updatedPreferences.lastName}`
+          : user?.name,
+        preferences: updatedPreferences
       });
 
       setSaveMessage("Profile updated successfully!");
@@ -148,6 +153,7 @@ export default function ProfileSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Personal Information</CardTitle>
+            <p className="text-sm text-gray-600">All fields are optional. Only fill out what you're comfortable sharing.</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -194,13 +200,14 @@ export default function ProfileSettingsPage() {
                   onChange={handleInputChange}
                   rows={3}
                 />
+                <p className="text-xs text-gray-500">Share what makes your coffee experience unique</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
+                <Label htmlFor="region">General Location</Label>
                 <Select value={formData.region} onValueChange={handleRegionChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select your region" />
+                    <SelectValue placeholder="Select your general region" />
                   </SelectTrigger>
                   <SelectContent>
                     {regions.map((region) => (
@@ -210,10 +217,12 @@ export default function ProfileSettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500">We only show general regions to protect your privacy</p>
               </div>
 
               <div className="space-y-3">
                 <Label>Coffee Preferences</Label>
+                <p className="text-xs text-gray-500">Help others discover your coffee taste profile</p>
                 <div className="grid grid-cols-2 gap-2">
                   {coffeeTypes.map((type) => (
                     <div key={type} className="flex items-center space-x-2">
