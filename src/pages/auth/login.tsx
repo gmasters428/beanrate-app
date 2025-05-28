@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -42,31 +42,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // Mock login - in real app, this would call your auth service
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, accept any email/password combination
-      const mockUser = {
-        id: "demo_" + Date.now().toString(),
-        username: "demo_user",
-        email: formData.email,
-        name: "Demo User",
-        profileImage: null,
-        bio: "Coffee enthusiast and bean connoisseur",
-        following: [],
-        followers: [],
-        preferences: {
-          coffeeTypes: ["Arabica", "Single Origin"],
-          region: "West Coast",
-          firstName: "Demo",
-          lastName: "User"
-        }
-      };
-      
-      // Use auth context login function
-      login(mockUser);
-      
-      // Redirect to profile page
+      await signIn(formData.email, formData.password);
       router.push("/profile");
     } catch (error) {
       setError("Invalid email or password");

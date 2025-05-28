@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -13,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreateAccountPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -86,29 +85,10 @@ export default function CreateAccountPage() {
     setErrors([]);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await signUp(formData.email, formData.password, formData.username);
       setEmailSent(true);
       
-      setTimeout(async () => {
-        const newUser = {
-          id: Date.now().toString(),
-          username: formData.username,
-          email: formData.email,
-          name: `${formData.firstName} ${formData.lastName}`,
-          profileImage: null,
-          bio: null,
-          following: [],
-          followers: [],
-          preferences: {
-            coffeeTypes: [],
-            region: null,
-            firstName: formData.firstName,
-            lastName: formData.lastName
-          }
-        };
-        
-        login(newUser);
+      setTimeout(() => {
         router.push("/profile");
       }, 2000);
       
