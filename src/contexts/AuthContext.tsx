@@ -1,104 +1,118 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  name: string;
-  profileImage?: string | null;
-  bio?: string | null;
-  following: string[];
-  followers: string[];
-  preferences: {
-    coffeeTypes: string[];
-    region: string | null;
-    firstName: string | null;
-    lastName: string | null;
-  };
-}
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
+import { authService, AuthUser } from "@/services/authService";
 
 interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
+  user: AuthUser | null;
+  session: Session | null;
   loading: boolean;
-  login: (user: User) => void;
-  logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  loading: true,
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
+  refreshUser: async () => {}
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export default function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing authentication on mount
-    const checkAuth = () => {
-      try {
-        const storedAuth = localStorage.getItem("isAuthenticated");
-        const storedUser = localStorage.getItem("currentUser");
-        
-        if (storedAuth === "true" && storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error("Error checking authentication:", error);
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("currentUser");
-      } finally {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        loadUserProfile();
+      } else {
         setLoading(false);
       }
-    };
+    });
 
-    checkAuth();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          await loadUserProfile();
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (userData: User) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("currentUser");
-  };
-
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+  const loadUserProfile = async () => {
+    try {
+      const userProfile = await authService.getCurrentUser();
+      setUser(userProfile);
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const value = {
-    user,
-    isAuthenticated,
-    loading,
-    login,
-    logout,
-    updateUser
+  const signIn = async (email: string, password: string) => {
+    const { session } = await authService.signIn(email, password);
+    if (session?.user) {
+      await loadUserProfile();
+    }
+  };
+
+  const signUp = async (email: string, password: string, username: string) => {
+    await authService.signUp(email, password, username);
+  };
+
+  const signOut = async () => {
+    await authService.signOut();
+    setUser(null);
+    setSession(null);
+  };
+
+  const refreshUser = async () => {
+    if (session?.user) {
+      await loadUserProfile();
+    }
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      refreshUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}
+};

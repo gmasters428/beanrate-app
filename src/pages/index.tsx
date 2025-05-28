@@ -1,19 +1,46 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
-import { mockRatings } from "@/data/mockData";
-import { Rating } from "@/types";
+import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function HomePage() {
-  const [ratings, setRatings] = useState<Rating[]>(mockRatings);
-  const [activeTab, setActiveTab] = useState<"following" | "trending">("following");
+  const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"following" | "trending">("trending");
+  const { user } = useAuth();
+
+  useEffect(() => {
+    loadRatings();
+  }, [activeTab]);
+
+  const loadRatings = async () => {
+    try {
+      setLoading(true);
+      const data = await ratingsService.getRatings(20);
+      setRatings(data);
+    } catch (error) {
+      console.error("Error loading ratings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTabChange = (tab: "following" | "trending") => {
     setActiveTab(tab);
-    // In a real app, we would fetch different data based on the tab
-    // For now, we'll just use the same mock data
   };
+
+  if (loading) {
+    return (
+      <Layout title="BeanRate - Home">
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">Loading ratings...</div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="BeanRate - Home">
@@ -42,9 +69,48 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-4">
-          {ratings.map((rating) => (
-            <RatingCard key={rating.id} rating={rating} />
-          ))}
+          {ratings.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">No ratings yet!</p>
+              {user && (
+                <p className="text-sm text-gray-400">
+                  Be the first to rate a coffee bean.
+                </p>
+              )}
+            </div>
+          ) : (
+            ratings.map((rating) => (
+              <RatingCard 
+                key={rating.id} 
+                rating={{
+                  id: rating.id,
+                  user: {
+                    id: rating.user_id,
+                    username: rating.users?.username || "Unknown",
+                    name: rating.users?.display_name || rating.users?.username || "Unknown",
+                    profileImage: rating.users?.profile_image_url || null
+                  },
+                  coffee: {
+                    id: rating.coffee_bean_id,
+                    name: rating.coffee_beans?.name || "Unknown Coffee",
+                    brand: rating.coffee_beans?.brand || "Unknown Brand",
+                    origin: rating.coffee_beans?.origin || null,
+                    roastLevel: rating.coffee_beans?.roast_level || null,
+                    image: rating.coffee_beans?.image_url || null
+                  },
+                  overallRating: rating.overall_rating,
+                  aromaRating: rating.aroma_rating || 0,
+                  flavorRating: rating.flavor_rating || 0,
+                  aftertasteRating: rating.aftertaste_rating || 0,
+                  acidityRating: rating.acidity_rating || 0,
+                  bodyRating: rating.body_rating || 0,
+                  reviewText: rating.review_text || "",
+                  brewingMethod: rating.brewing_method || null,
+                  createdAt: rating.created_at
+                }}
+              />
+            ))
+          )}
         </div>
       </div>
     </Layout>
