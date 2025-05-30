@@ -12,13 +12,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, logout, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const router = useRouter();
   const [userRatings, setUserRatings] = useState<Rating[]>([]);
   const [activeTab, setActiveTab] = useState<"ratings" | "beans">("ratings");
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !user) {
       router.push("/auth/login");
       return;
     }
@@ -27,14 +27,14 @@ export default function ProfilePage() {
       const filteredRatings = mockRatings.filter((rating) => rating.userId === user.id);
       setUserRatings(filteredRatings);
     }
-  }, [user, isAuthenticated, loading, router]);
+  }, [user, loading, router]);
 
   const handleTabChange = (tab: "ratings" | "beans") => {
     setActiveTab(tab);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     router.push("/");
   };
 
@@ -48,7 +48,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <Layout title="BeanRate - Please Sign In">
         <div className="max-w-md mx-auto text-center mt-8">

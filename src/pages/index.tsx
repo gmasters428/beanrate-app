@@ -104,11 +104,12 @@ export default function HomePage() {
                     roaster: rating.coffee_beans?.brand || "Unknown Brand",
                     origin: rating.coffee_beans?.origin || "Unknown",
                     roastLevel: rating.coffee_beans?.roast_level || "Medium",
-                    description: rating.coffee_beans?.description || undefined,
+                    // Add default values for required CoffeeBean properties
+                    description: undefined,
                     imageUrl: rating.coffee_beans?.image_url || undefined,
                     averageRating: 0,
                     totalRatings: 0,
-                    createdAt: rating.coffee_beans?.created_at || new Date().toISOString()
+                    createdAt: new Date().toISOString()
                   },
                   rating: rating.overall_rating,
                   brewMethod: rating.brewing_method || "Unknown",
