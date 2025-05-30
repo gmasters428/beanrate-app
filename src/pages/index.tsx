@@ -89,12 +89,13 @@ export default function HomePage() {
                     id: rating.user_id,
                     username: rating.users?.username || "Unknown",
                     name: rating.users?.display_name || rating.users?.username || "Unknown",
-                    email: rating.users?.email || "",
+                    // Add default values for required User properties
+                    email: "",
                     profileImage: rating.users?.profile_image_url || undefined,
-                    bio: rating.users?.bio || undefined,
+                    bio: undefined,
                     following: [],
                     followers: [],
-                    createdAt: rating.users?.created_at || new Date().toISOString()
+                    createdAt: new Date().toISOString()
                   },
                   coffeeBeanId: rating.coffee_bean_id,
                   coffeeBean: {
