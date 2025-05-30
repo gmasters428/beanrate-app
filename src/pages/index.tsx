@@ -84,29 +84,40 @@ export default function HomePage() {
                 key={rating.id} 
                 rating={{
                   id: rating.id,
+                  userId: rating.user_id,
                   user: {
                     id: rating.user_id,
                     username: rating.users?.username || "Unknown",
                     name: rating.users?.display_name || rating.users?.username || "Unknown",
-                    profileImage: rating.users?.profile_image_url || null
+                    email: rating.users?.email || "",
+                    profileImage: rating.users?.profile_image_url || undefined,
+                    bio: rating.users?.bio || undefined,
+                    following: [],
+                    followers: [],
+                    createdAt: rating.users?.created_at || new Date().toISOString()
                   },
-                  coffee: {
+                  coffeeBeanId: rating.coffee_bean_id,
+                  coffeeBean: {
                     id: rating.coffee_bean_id,
                     name: rating.coffee_beans?.name || "Unknown Coffee",
-                    brand: rating.coffee_beans?.brand || "Unknown Brand",
-                    origin: rating.coffee_beans?.origin || null,
-                    roastLevel: rating.coffee_beans?.roast_level || null,
-                    image: rating.coffee_beans?.image_url || null
+                    roaster: rating.coffee_beans?.brand || "Unknown Brand",
+                    origin: rating.coffee_beans?.origin || "Unknown",
+                    roastLevel: rating.coffee_beans?.roast_level || "Medium",
+                    description: rating.coffee_beans?.description || undefined,
+                    imageUrl: rating.coffee_beans?.image_url || undefined,
+                    averageRating: 0,
+                    totalRatings: 0,
+                    createdAt: rating.coffee_beans?.created_at || new Date().toISOString()
                   },
-                  overallRating: rating.overall_rating,
-                  aromaRating: rating.aroma_rating || 0,
-                  flavorRating: rating.flavor_rating || 0,
-                  aftertasteRating: rating.aftertaste_rating || 0,
-                  acidityRating: rating.acidity_rating || 0,
-                  bodyRating: rating.body_rating || 0,
-                  reviewText: rating.review_text || "",
-                  brewingMethod: rating.brewing_method || null,
-                  createdAt: rating.created_at
+                  rating: rating.overall_rating,
+                  brewMethod: rating.brewing_method || "Unknown",
+                  tags: [],
+                  notes: rating.review_text || undefined,
+                  beanImage: rating.coffee_beans?.image_url || undefined,
+                  brewedImage: undefined,
+                  createdAt: rating.created_at,
+                  likes: [],
+                  comments: []
                 }}
               />
             ))
