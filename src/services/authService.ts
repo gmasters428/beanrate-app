@@ -19,9 +19,17 @@ export interface AuthUser {
 
 export const authService = {
   async signUp(email: string, password: string, username: string) {
+    // Sign up with email confirmation
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        data: {
+          username: username,
+          display_name: username
+        }
+      }
     });
 
     if (error) throw error;
@@ -40,7 +48,7 @@ export const authService = {
 
       if (profileError) throw profileError;
 
-      // Create user preferences
+      // Create user preferences with first/last name from form
       const { error: preferencesError } = await supabase
         .from('user_preferences')
         .insert([
@@ -121,7 +129,20 @@ export const authService = {
   },
 
   async resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`
+    });
+    if (error) throw error;
+  },
+
+  async resendConfirmation(email: string) {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`
+      }
+    });
     if (error) throw error;
   }
 };
