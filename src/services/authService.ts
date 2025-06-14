@@ -1,5 +1,56 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper function to parse Supabase auth errors into user-friendly messages
+const parseAuthError = (error: any): string => {
+  if (!error) return "An unknown error occurred";
+  
+  const message = error.message?.toLowerCase() || "";
+  
+  // Handle specific Supabase auth error codes
+  if (error.status === 422 || message.includes("user already registered")) {
+    return "An account with this email address already exists. Please try signing in instead.";
+  }
+  
+  if (message.includes("invalid email")) {
+    return "Please enter a valid email address.";
+  }
+  
+  if (message.includes("password") && message.includes("weak")) {
+    return "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
+  }
+  
+  if (message.includes("password") && message.includes("short")) {
+    return "Password must be at least 6 characters long.";
+  }
+  
+  if (message.includes("signup") && message.includes("disabled")) {
+    return "Account registration is currently disabled. Please contact support.";
+  }
+  
+  if (message.includes("rate limit")) {
+    return "Too many signup attempts. Please wait a few minutes before trying again.";
+  }
+  
+  if (message.includes("email") && message.includes("not confirmed")) {
+    return "Please check your email and click the confirmation link before signing in.";
+  }
+  
+  if (message.includes("network") || message.includes("connection")) {
+    return "Network error. Please check your internet connection and try again.";
+  }
+  
+  // Handle database constraint errors
+  if (message.includes("duplicate") || message.includes("unique")) {
+    if (message.includes("username")) {
+      return "This username is already taken. Please choose a different username.";
+    }
+    return "An account with this information already exists.";
+  }
+  
+  // Return the original error message if we can't parse it
+  return error.message || "An unexpected error occurred. Please try again.";
+};
+
 export interface AuthUser {
   id: string;
   username: string;
@@ -19,58 +70,73 @@ export interface AuthUser {
 
 export const authService = {
   async signUp(email: string, password: string, username: string) {
-    // Sign up with email confirmation
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        data: {
-          username: username,
-          display_name: username
+    try {
+      // Sign up with email confirmation
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          data: {
+            username: username,
+            display_name: username
+          }
         }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: data.user.id,
+              username,
+              display_name: username,
+            }
+          ]);
+
+        if (profileError) throw profileError;
+
+        // Create user preferences
+        const { error: preferencesError } = await supabase
+          .from('user_preferences')
+          .insert([
+            {
+              user_id: data.user.id,
+            }
+          ]);
+
+        if (preferencesError) throw preferencesError;
       }
-    });
 
-    if (error) throw error;
-
-    if (data.user) {
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            username,
-            display_name: username,
-          }
-        ]);
-
-      if (profileError) throw profileError;
-
-      // Create user preferences with first/last name from form
-      const { error: preferencesError } = await supabase
-        .from('user_preferences')
-        .insert([
-          {
-            user_id: data.user.id,
-          }
-        ]);
-
-      if (preferencesError) throw preferencesError;
+      return data;
+    } catch (error) {
+      // Parse and throw a user-friendly error message
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
     }
-
-    return data;
   },
 
   async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
   },
 
   async signOut() {

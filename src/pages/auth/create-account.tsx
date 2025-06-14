@@ -92,8 +92,19 @@ export default function CreateAccountPage() {
         router.push("/profile");
       }, 2000);
       
-    } catch (error) {
-      setErrors(["Failed to create account. Please try again."]);
+    } catch (error: any) {
+      console.error("Account creation error:", error);
+      
+      // Extract the error message
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      
+      setErrors([errorMessage]);
       setEmailSent(false);
     } finally {
       setIsLoading(false);
