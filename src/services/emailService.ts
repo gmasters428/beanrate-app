@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface EmailTestResult {
@@ -12,8 +11,10 @@ export const emailService = {
     try {
       // Test by attempting to send a password reset email to a test address
       const testEmail = "test@example.com";
+      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      
       const { error } = await supabase.auth.resetPasswordForEmail(testEmail, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${projectUrl}/auth/reset-password`
       });
 
       if (error) {
@@ -32,6 +33,84 @@ export const emailService = {
       return {
         success: false,
         message: "Failed to test SMTP connection",
+        details: error
+      };
+    }
+  },
+
+  async testPasswordResetEmail(email: string): Promise<EmailTestResult> {
+    try {
+      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${projectUrl}/auth/reset-password`
+      });
+
+      if (error) {
+        return {
+          success: false,
+          message: "Failed to send password reset email",
+          details: {
+            error: error.message,
+            code: error.status,
+            hint: "Check if the email exists in your user database and SMTP is properly configured"
+          }
+        };
+      }
+
+      return {
+        success: true,
+        message: "Password reset email sent successfully",
+        details: {
+          email: email,
+          redirectUrl: `${projectUrl}/auth/reset-password`,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Error sending password reset email",
+        details: error
+      };
+    }
+  },
+
+  async checkUserExists(email: string): Promise<EmailTestResult> {
+    try {
+      // Check if user exists by attempting to get user data
+      // Note: This is a workaround since Supabase doesn't provide a direct way to check user existence
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://example.com" // Dummy URL for testing
+      });
+
+      // If no error, user likely exists
+      if (!error) {
+        return {
+          success: true,
+          message: "User exists in the database",
+          details: { email }
+        };
+      }
+
+      // Check specific error messages
+      if (error.message?.includes("User not found") || error.message?.includes("Invalid email")) {
+        return {
+          success: false,
+          message: "User does not exist in the database",
+          details: { email, error: error.message }
+        };
+      }
+
+      return {
+        success: false,
+        message: "Unable to verify user existence",
+        details: { email, error: error.message }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Error checking user existence",
         details: error
       };
     }

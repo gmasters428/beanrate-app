@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Link from "next/link";
 import Layout from "@/components/layout/Layout";
@@ -7,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, AlertCircle, CheckCircle } from "lucide-react";
 import { authService } from "@/services/authService";
+import { emailService } from "@/services/emailService";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +39,42 @@ export default function ForgotPasswordPage() {
       setSuccess(true);
     } catch (error: any) {
       console.error("Password reset error:", error);
-      setError(error.message || "Failed to send reset email. Please try again.");
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to send reset email. Please try again.";
+      
+      if (error.message?.includes("User not found")) {
+        errorMessage = "No account found with this email address. Please check your email or create a new account.";
+      } else if (error.message?.includes("Email not confirmed")) {
+        errorMessage = "Please confirm your email address first before requesting a password reset.";
+      } else if (error.message?.includes("Too many requests")) {
+        errorMessage = "Too many password reset attempts. Please wait a few minutes before trying again.";
+      } else if (error.originalError) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const runDiagnostics = async () => {
+    if (!email) {
+      setError("Please enter an email address first");
+      return;
+    }
+
+    setIsLoading(true);
+    const results = {
+      userExists: await emailService.checkUserExists(email),
+      smtpTest: await emailService.testSMTPConnection(),
+      passwordResetTest: await emailService.testPasswordResetEmail(email)
+    };
+    
+    setDiagnostics(results);
+    setShowDiagnostics(true);
+    setIsLoading(false);
   };
 
   if (success) {
@@ -63,6 +97,16 @@ export default function ForgotPasswordPage() {
                 Click the link in the email to reset your password. If you don't see the email, check your spam folder.
               </p>
               
+              <Alert className="text-left">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Still not receiving emails?</strong><br />
+                  • Check your spam/junk folder<br />
+                  • Verify the email address is correct<br />
+                  • Contact support if the issue persists
+                </AlertDescription>
+              </Alert>
+              
               <div className="pt-4">
                 <Link href="/auth/login">
                   <Button variant="outline" className="w-full">
@@ -77,6 +121,8 @@ export default function ForgotPasswordPage() {
                   onClick={() => {
                     setSuccess(false);
                     setEmail("");
+                    setShowDiagnostics(false);
+                    setDiagnostics(null);
                   }}
                   className="text-sm text-brown-600 hover:text-brown-700 font-medium"
                 >
@@ -117,6 +163,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setError("");
+                    setShowDiagnostics(false);
                   }}
                   required
                 />
@@ -130,6 +177,58 @@ export default function ForgotPasswordPage() {
                 {isLoading ? "Sending..." : "Send Reset Instructions"}
               </Button>
             </form>
+
+            {/* Diagnostics Section */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={runDiagnostics}
+                disabled={isLoading || !email}
+                className="w-full text-xs"
+              >
+                {isLoading ? "Running Diagnostics..." : "🔧 Run Email Diagnostics"}
+              </Button>
+              
+              {showDiagnostics && diagnostics && (
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">Diagnostic Results:</h4>
+                  
+                  <div className="space-y-2 text-xs">
+                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.userExists.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                      {diagnostics.userExists.success ? 
+                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                        <AlertCircle className="h-3 w-3 text-red-600" />
+                      }
+                      <span className={diagnostics.userExists.success ? 'text-green-700' : 'text-red-700'}>
+                        User Check: {diagnostics.userExists.message}
+                      </span>
+                    </div>
+                    
+                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.smtpTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                      {diagnostics.smtpTest.success ? 
+                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                        <AlertCircle className="h-3 w-3 text-red-600" />
+                      }
+                      <span className={diagnostics.smtpTest.success ? 'text-green-700' : 'text-red-700'}>
+                        SMTP: {diagnostics.smtpTest.message}
+                      </span>
+                    </div>
+                    
+                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.passwordResetTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                      {diagnostics.passwordResetTest.success ? 
+                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                        <AlertCircle className="h-3 w-3 text-red-600" />
+                      }
+                      <span className={diagnostics.passwordResetTest.success ? 'text-green-700' : 'text-red-700'}>
+                        Email Send: {diagnostics.passwordResetTest.message}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="mt-6 text-center">
               <Link href="/auth/login" className="text-brown-600 hover:text-brown-700 font-medium inline-flex items-center">

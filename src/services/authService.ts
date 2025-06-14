@@ -195,21 +195,48 @@ export const authService = {
   },
 
   async resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`
-    });
-    if (error) throw error;
+    try {
+      // Use the correct project URL for password reset redirects
+      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${projectUrl}/auth/reset-password`
+      });
+
+      if (error) {
+        console.error("Password reset error details:", error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
   },
 
   async resendConfirmation(email: string) {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`
-      }
-    });
-    if (error) throw error;
+    try {
+      // Use the correct project URL for email confirmation redirects
+      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${projectUrl}/auth/confirm`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
   }
 };
 
