@@ -196,20 +196,33 @@ export const authService = {
 
   async resetPassword(email: string) {
     try {
-      // Use the correct project URL for password reset redirects
-      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      console.log("🔄 Starting password reset for:", email);
+      
+      // Get the current origin dynamically
+      const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      console.log("🔗 Redirect URL:", redirectUrl);
       
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${projectUrl}/auth/reset-password`
+        redirectTo: redirectUrl
       });
 
+      console.log("📧 Supabase response data:", data);
+      console.log("❌ Supabase response error:", error);
+
       if (error) {
-        console.error("Password reset error details:", error);
+        console.error("❌ Password reset error details:", {
+          message: error.message,
+          status: error.status,
+          code: error.code || 'No code',
+          details: error
+        });
         throw error;
       }
 
+      console.log("✅ Password reset request sent successfully");
       return data;
     } catch (error) {
+      console.error("💥 Exception in resetPassword:", error);
       const friendlyMessage = parseAuthError(error);
       const enhancedError = new Error(friendlyMessage);
       (enhancedError as any).originalError = error;
@@ -219,19 +232,28 @@ export const authService = {
 
   async resendConfirmation(email: string) {
     try {
-      // Use the correct project URL for email confirmation redirects
-      const projectUrl = "https://3000-76626cd7-7354-447d-be3e-b61f3780c4d1.h1061.daytona.work";
+      console.log("🔄 Resending confirmation for:", email);
+      
+      // Get the current origin dynamically
+      const redirectUrl = `${window.location.origin}/auth/confirm`;
+      console.log("🔗 Confirmation redirect URL:", redirectUrl);
       
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${projectUrl}/auth/confirm`
+          emailRedirectTo: redirectUrl
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Resend confirmation error:", error);
+        throw error;
+      }
+      
+      console.log("✅ Confirmation email resent successfully");
     } catch (error) {
+      console.error("💥 Exception in resendConfirmation:", error);
       const friendlyMessage = parseAuthError(error);
       const enhancedError = new Error(friendlyMessage);
       (enhancedError as any).originalError = error;

@@ -35,10 +35,12 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      await authService.resetPassword(email);
+      console.log("🚀 Attempting password reset for:", email);
+      const result = await authService.resetPassword(email);
+      console.log("✅ Password reset result:", result);
       setSuccess(true);
     } catch (error: any) {
-      console.error("Password reset error:", error);
+      console.error("❌ Password reset failed:", error);
       
       // Provide more specific error messages
       let errorMessage = "Failed to send reset email. Please try again.";
@@ -49,8 +51,10 @@ export default function ForgotPasswordPage() {
         errorMessage = "Please confirm your email address first before requesting a password reset.";
       } else if (error.message?.includes("Too many requests")) {
         errorMessage = "Too many password reset attempts. Please wait a few minutes before trying again.";
+      } else if (error.message?.includes("Invalid email")) {
+        errorMessage = "Please enter a valid email address.";
       } else if (error.originalError) {
-        errorMessage = error.message;
+        errorMessage = `${error.message} (Check browser console for details)`;
       }
       
       setError(errorMessage);
