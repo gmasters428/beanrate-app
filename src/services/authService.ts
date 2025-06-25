@@ -69,8 +69,8 @@ export interface AuthUser {
 }
 
 export const authService = {
-  // Add a cleanup function to clear orphaned auth data
-  async clearOrphanedAuthData() {
+  // Enhanced cleanup function to clear orphaned auth data
+  async clearOrphanedAuthData(email?: string) {
     try {
       console.log("🧹 Starting cleanup of orphaned auth data...");
       
@@ -87,9 +87,16 @@ export const authService = {
       
       console.log("👥 Found auth users:", authUsers?.users?.length || 0);
       
+      let cleanedCount = 0;
+      
       // Clear any users that don't have corresponding profile records
       if (authUsers?.users && authUsers.users.length > 0) {
         for (const user of authUsers.users) {
+          // If specific email provided, only clean that user
+          if (email && user.email !== email) {
+            continue;
+          }
+          
           const { data: profile } = await supabase
             .from('users')
             .select('id')
@@ -98,7 +105,12 @@ export const authService = {
           
           if (!profile) {
             console.log(`🗑️ Removing orphaned auth user: ${user.email}`);
-            await supabase.auth.admin.deleteUser(user.id);
+            const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+            if (!deleteError) {
+              cleanedCount++;
+            } else {
+              console.error(`❌ Failed to delete user ${user.email}:`, deleteError);
+            }
           }
         }
       }
@@ -107,8 +119,12 @@ export const authService = {
       localStorage.clear();
       sessionStorage.clear();
       
-      console.log("✅ Cleanup completed successfully");
-      return { success: true, message: "Cleanup completed successfully" };
+      console.log(`✅ Cleanup completed successfully. Removed ${cleanedCount} orphaned users.`);
+      return { 
+        success: true, 
+        message: `Cleanup completed successfully. Removed ${cleanedCount} orphaned users.`,
+        cleanedCount 
+      };
       
     } catch (error) {
       console.error("💥 Error during cleanup:", error);
@@ -119,7 +135,7 @@ export const authService = {
     }
   },
 
-  // Add a debug function to check auth state
+  // Enhanced debug function to check auth state
   async debugAuthState(email: string) {
     try {
       console.log("🔍 Debugging auth state for:", email);
@@ -142,10 +158,12 @@ export const authService = {
         email,
         authUserExists: !!authUser,
         authUserConfirmed: authUser?.email_confirmed_at ? true : false,
+        authUserCreatedAt: authUser?.created_at,
         publicUserExists: !!publicUser,
         currentSession: !!session?.session,
         authUserId: authUser?.id,
-        publicUserId: publicUser?.id
+        publicUserId: publicUser?.id,
+        isOrphaned: !!authUser && !publicUser
       };
       
       console.log("🐛 Debug info:", debugInfo);
@@ -157,11 +175,37 @@ export const authService = {
     }
   },
 
+  // New function to check if email exists and clean if orphaned
+  async checkAndCleanEmail(email: string) {
+    try {
+      console.log("🔍 Checking email status:", email);
+      
+      const debugInfo = await this.debugAuthState(email);
+      
+      if (debugInfo.isOrphaned) {
+        console.log("🧹 Found orphaned user, cleaning up...");
+        await this.clearOrphanedAuthData(email);
+        return { cleaned: true, message: "Orphaned user cleaned up successfully" };
+      }
+      
+      return { cleaned: false, debugInfo };
+    } catch (error) {
+      console.error("💥 Error checking email:", error);
+      return { error: error.message };
+    }
+  },
+
   async signUp(email: string, password: string, username: string) {
     try {
       console.log("🚀 Starting signup process for:", email);
       
-      // First, check if username is already taken
+      // First, check and clean any orphaned users with this email
+      const cleanupResult = await this.checkAndCleanEmail(email);
+      if (cleanupResult.cleaned) {
+        console.log("✅ Cleaned up orphaned user, proceeding with signup");
+      }
+      
+      // Check if username is already taken
       const { data: existingUsername } = await supabase
         .from('users')
         .select('username')
@@ -189,6 +233,15 @@ export const authService = {
 
       if (error) {
         console.error("❌ Auth signup error:", error);
+        
+        // If we still get "user already exists" error, try one more cleanup
+        if (error.message?.toLowerCase().includes("user already registered") || 
+            error.message?.toLowerCase().includes("already exists")) {
+          console.log("🔄 Attempting additional cleanup for persistent user...");
+          await this.clearOrphanedAuthData(email);
+          throw new Error("We found and cleaned up some old account data. Please try signing up again.");
+        }
+        
         throw error;
       }
 
