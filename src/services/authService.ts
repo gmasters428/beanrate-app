@@ -69,8 +69,109 @@ export interface AuthUser {
 }
 
 export const authService = {
+  // Add a cleanup function to clear orphaned auth data
+  async clearOrphanedAuthData() {
+    try {
+      console.log("🧹 Starting cleanup of orphaned auth data...");
+      
+      // First, try to get any existing auth users
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error("❌ Error fetching auth users:", authError);
+        // If we can't access admin functions, try clearing local storage
+        localStorage.clear();
+        sessionStorage.clear();
+        return { success: false, message: "Could not access admin functions. Cleared local storage." };
+      }
+      
+      console.log("👥 Found auth users:", authUsers?.users?.length || 0);
+      
+      // Clear any users that don't have corresponding profile records
+      if (authUsers?.users && authUsers.users.length > 0) {
+        for (const user of authUsers.users) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', user.id)
+            .single();
+          
+          if (!profile) {
+            console.log(`🗑️ Removing orphaned auth user: ${user.email}`);
+            await supabase.auth.admin.deleteUser(user.id);
+          }
+        }
+      }
+      
+      // Clear local storage and session storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      console.log("✅ Cleanup completed successfully");
+      return { success: true, message: "Cleanup completed successfully" };
+      
+    } catch (error) {
+      console.error("💥 Error during cleanup:", error);
+      // Fallback: clear local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      return { success: false, message: "Cleanup failed, but cleared local storage" };
+    }
+  },
+
+  // Add a debug function to check auth state
+  async debugAuthState(email: string) {
+    try {
+      console.log("🔍 Debugging auth state for:", email);
+      
+      // Check if user exists in auth.users
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const authUser = authUsers?.users?.find(u => u.email === email);
+      
+      // Check if user exists in public.users
+      const { data: publicUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser?.id || 'none')
+        .single();
+      
+      // Check current session
+      const { data: session } = await supabase.auth.getSession();
+      
+      const debugInfo = {
+        email,
+        authUserExists: !!authUser,
+        authUserConfirmed: authUser?.email_confirmed_at ? true : false,
+        publicUserExists: !!publicUser,
+        currentSession: !!session?.session,
+        authUserId: authUser?.id,
+        publicUserId: publicUser?.id
+      };
+      
+      console.log("🐛 Debug info:", debugInfo);
+      return debugInfo;
+      
+    } catch (error) {
+      console.error("💥 Error during debug:", error);
+      return { error: error.message };
+    }
+  },
+
   async signUp(email: string, password: string, username: string) {
     try {
+      console.log("🚀 Starting signup process for:", email);
+      
+      // First, check if username is already taken
+      const { data: existingUsername } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .single();
+      
+      if (existingUsername) {
+        throw new Error("This username is already taken. Please choose a different username.");
+      }
+      
       // Sign up with email confirmation
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -84,10 +185,24 @@ export const authService = {
         }
       });
 
-      if (error) throw error;
+      console.log("📧 Supabase auth signup response:", { data, error });
+
+      if (error) {
+        console.error("❌ Auth signup error:", error);
+        throw error;
+      }
+
+      if (data.user && !data.user.identities?.length) {
+        // This means the user already exists but isn't confirmed
+        console.log("⚠️ User exists but not confirmed, attempting to resend confirmation");
+        await this.resendConfirmation(email);
+        return data;
+      }
 
       if (data.user) {
-        // Create user profile
+        console.log("👤 Creating user profile for:", data.user.id);
+        
+        // Create user profile with better error handling
         const { error: profileError } = await supabase
           .from('users')
           .insert([
@@ -98,9 +213,20 @@ export const authService = {
             }
           ]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("❌ Profile creation error:", profileError);
+          // If profile creation fails, clean up the auth user
+          try {
+            await supabase.auth.admin.deleteUser(data.user.id);
+          } catch (cleanupError) {
+            console.error("❌ Cleanup error:", cleanupError);
+          }
+          throw profileError;
+        }
 
-        // Create user preferences
+        console.log("⚙️ Creating user preferences for:", data.user.id);
+        
+        // Create user preferences with better error handling
         const { error: preferencesError } = await supabase
           .from('user_preferences')
           .insert([
@@ -109,11 +235,24 @@ export const authService = {
             }
           ]);
 
-        if (preferencesError) throw preferencesError;
+        if (preferencesError) {
+          console.error("❌ Preferences creation error:", preferencesError);
+          // Clean up both auth user and profile
+          try {
+            await supabase.from('users').delete().eq('id', data.user.id);
+            await supabase.auth.admin.deleteUser(data.user.id);
+          } catch (cleanupError) {
+            console.error("❌ Cleanup error:", cleanupError);
+          }
+          throw preferencesError;
+        }
+        
+        console.log("✅ User signup completed successfully");
       }
 
       return data;
     } catch (error) {
+      console.error("💥 Signup process failed:", error);
       // Parse and throw a user-friendly error message
       const friendlyMessage = parseAuthError(error);
       const enhancedError = new Error(friendlyMessage);
