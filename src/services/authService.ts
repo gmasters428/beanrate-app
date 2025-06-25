@@ -126,7 +126,7 @@ export const authService = {
       
       // Check if user exists in auth.users
       const { data: authUsers } = await supabase.auth.admin.listUsers();
-      const authUser = authUsers?.users?.find(u => u.email === email);
+      const authUser = authUsers?.users?.find((u: any) => u.email === email);
       
       // Check if user exists in public.users
       const { data: publicUser } = await supabase
