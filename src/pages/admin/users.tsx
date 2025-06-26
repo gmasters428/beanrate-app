@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +33,23 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleAdvancedDebug = async () => {
+    if (!email) return;
+    
+    setLoading(true);
+    setMessage("");
+    
+    try {
+      const info = await authService.advancedDebugEmail(email);
+      setDebugInfo(info);
+      setMessage("Advanced debug completed successfully");
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCleanupEmail = async () => {
     if (!email) return;
     
@@ -44,6 +60,25 @@ export default function UserManagementPage() {
       const result = await authService.clearOrphanedAuthData(email);
       setMessage(result.message);
       await handleDebugEmail();
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceCleanup = async () => {
+    if (!email) return;
+    
+    if (!confirm(`⚠️ FORCE CLEANUP: This will aggressively clean all data for ${email}. Continue?`)) return;
+    
+    setLoading(true);
+    setMessage("");
+    
+    try {
+      const result = await authService.forceCleanupEmail(email);
+      setMessage(result.message || `Force cleanup completed: ${result.success ? 'Success' : 'Failed'}`);
+      await handleAdvancedDebug();
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
     } finally {
@@ -79,6 +114,29 @@ export default function UserManagementPage() {
     
     try {
       const result = await authService.nuclearAuthReset();
+      setMessage(result.message);
+      setDebugInfo(null);
+      setAllUsers([]);
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSuperNuclearReset = async () => {
+    if (!confirm("⚠️⚠️ SUPER NUCLEAR RESET: This will delete EVERYTHING with extreme prejudice. Are you absolutely sure?")) return;
+    const confirmationText = prompt("This action cannot be undone and will clear ALL data. Type 'SUPER-RESET' to confirm.");
+    if (confirmationText !== "SUPER-RESET") {
+      setMessage("Super nuclear reset cancelled. Confirmation text did not match.");
+      return;
+    }
+    
+    setLoading(true);
+    setMessage("");
+    
+    try {
+      const result = await authService.superNuclearReset();
       setMessage(result.message);
       setDebugInfo(null);
       setAllUsers([]);
@@ -207,11 +265,11 @@ export default function UserManagementPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <Button onClick={handleDebugEmail} disabled={loading}>
-                Debug
+              <Button onClick={handleAdvancedDebug} disabled={loading}>
+                Advanced Debug
               </Button>
-              <Button onClick={handleCleanupEmail} disabled={loading} variant="destructive">
-                Clean Email
+              <Button onClick={handleForceCleanup} disabled={loading} variant="destructive">
+                Force Cleanup
               </Button>
             </div>
             
@@ -263,11 +321,16 @@ export default function UserManagementPage() {
                 <AlertTriangle className="h-4 w-4" />
                 Danger Zone
               </h4>
-              <Button onClick={handleNuclearReset} disabled={loading} variant="destructive" className="bg-red-600 hover:bg-red-700">
-                💥 Nuclear Reset (Delete Everything)
-              </Button>
+              <div className="space-y-2">
+                <Button onClick={handleNuclearReset} disabled={loading} variant="destructive" className="bg-red-600 hover:bg-red-700 w-full">
+                  💥 Nuclear Reset (Delete Everything)
+                </Button>
+                <Button onClick={handleSuperNuclearReset} disabled={loading} variant="destructive" className="bg-red-800 hover:bg-red-900 w-full">
+                  💥💥 SUPER Nuclear Reset (Extreme Cleanup)
+                </Button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                This will delete ALL auth users and ALL data from all tables. Use only as last resort.
+                Super Nuclear will use multiple strategies to completely eliminate all traces of user data.
               </p>
             </div>
           </CardContent>

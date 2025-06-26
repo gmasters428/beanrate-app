@@ -69,6 +69,263 @@ export interface AuthUser {
 }
 
 export const authService = {
+  // Enhanced nuclear option with deeper cleanup
+  async superNuclearReset() {
+    try {
+      console.log("💥💥 Starting SUPER nuclear auth reset...");
+      
+      // Step 1: Get all auth users and delete them with retry logic
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      let deletedAuthUsers = 0;
+      
+      if (authUsers?.users) {
+        for (const user of authUsers.users) {
+          try {
+            // Try multiple times to ensure deletion
+            for (let attempt = 0; attempt < 3; attempt++) {
+              const { error } = await supabase.auth.admin.deleteUser(user.id);
+              if (!error) break;
+              console.log(`🔄 Retry ${attempt + 1} for user ${user.email}`);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            deletedAuthUsers++;
+            console.log(`🗑️ Deleted auth user: ${user.email}`);
+          } catch (error) {
+            console.error(`❌ Failed to delete auth user ${user.email}:`, error);
+          }
+        }
+      }
+      
+      // Step 2: Clear all public tables with more aggressive approach
+      const tables = ['users', 'user_preferences', 'ratings', 'follows'];
+      const errors: any = {};
+      
+      for (const table of tables) {
+        try {
+          // Delete all records
+          const { error } = await supabase.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          if (error) errors[table] = error.message;
+          
+          // Also try to truncate if possible
+          const { error: truncateError } = await supabase.rpc('truncate_table', { table_name: table });
+          if (truncateError) console.log(`Truncate failed for ${table}:`, truncateError.message);
+        } catch (error: any) {
+          errors[table] = error.message;
+        }
+      }
+      
+      // Step 3: Clear all browser storage aggressively
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear all cookies
+        document.cookie.split(";").forEach((c) => {
+          const eqPos = c.indexOf("=");
+          const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        });
+        
+        // Clear IndexedDB if it exists
+        if ('indexedDB' in window) {
+          try {
+            const databases = await indexedDB.databases();
+            for (const db of databases) {
+              if (db.name) {
+                indexedDB.deleteDatabase(db.name);
+              }
+            }
+          } catch (error) {
+            console.log("IndexedDB cleanup failed:", error);
+          }
+        }
+      }
+      
+      // Step 4: Force sign out from Supabase
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      console.log("✅ Super nuclear reset completed");
+      return {
+        success: true,
+        message: `Super nuclear reset completed. Deleted ${deletedAuthUsers} auth users and cleared all data.`,
+        deletedAuthUsers,
+        errors
+      };
+      
+    } catch (error: any) {
+      console.error("💥 Super nuclear reset failed:", error);
+      return { success: false, message: `Super nuclear reset failed: ${error.message}` };
+    }
+  },
+
+  // Advanced email debugging with more detailed checks
+  async advancedDebugEmail(email: string) {
+    try {
+      console.log("🔍🔍 Advanced debugging for email:", email);
+      
+      // Check 1: Auth users with pagination
+      let allAuthUsers: any[] = [];
+      let page = 1;
+      const perPage = 1000;
+      
+      while (true) {
+        const { data: authUsers } = await supabase.auth.admin.listUsers({
+          page,
+          perPage
+        });
+        
+        if (!authUsers?.users || authUsers.users.length === 0) break;
+        allAuthUsers = [...allAuthUsers, ...authUsers.users];
+        page++;
+        
+        if (authUsers.users.length < perPage) break;
+      }
+      
+      const authUser = allAuthUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      
+      // Check 2: Public users
+      const { data: publicUsers } = await supabase.from('users').select('*');
+      const publicUser = publicUsers?.find(u => u.id === authUser?.id);
+      
+      // Check 3: Current session
+      const { data: session } = await supabase.auth.getSession();
+      
+      // Check 4: Try to sign up to see exact error
+      let signupError = null;
+      try {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password: 'test123456',
+          options: { data: { test: true } }
+        });
+        signupError = error;
+      } catch (error: any) {
+        signupError = error;
+      }
+      
+      // Check 5: Check for any cached data
+      const localStorageData = typeof window !== 'undefined' ? {
+        supabaseAuth: localStorage.getItem('sb-auth-token'),
+        allKeys: Object.keys(localStorage)
+      } : null;
+      
+      const debugInfo = {
+        email,
+        totalAuthUsers: allAuthUsers.length,
+        authUserExists: !!authUser,
+        authUserConfirmed: authUser?.email_confirmed_at ? true : false,
+        authUserCreatedAt: authUser?.created_at,
+        authUserLastSignIn: authUser?.last_sign_in_at,
+        publicUserExists: !!publicUser,
+        currentSession: !!session?.session,
+        authUserId: authUser?.id,
+        publicUserId: publicUser?.id,
+        isOrphaned: !!authUser && !publicUser,
+        signupError: signupError?.message,
+        signupErrorCode: signupError?.status,
+        localStorageData,
+        authUserMetadata: authUser?.user_metadata,
+        authUserAppMetadata: authUser?.app_metadata
+      };
+      
+      console.log("🐛🐛 Advanced debug info:", debugInfo);
+      return debugInfo;
+      
+    } catch (error: any) {
+      console.error("💥 Error during advanced debug:", error);
+      return { error: error.message };
+    }
+  },
+
+  // Force cleanup with multiple strategies
+  async forceCleanupEmail(email: string) {
+    try {
+      console.log("🧹🧹 Force cleanup for email:", email);
+      
+      // Strategy 1: Find and delete all matching auth users
+      let allAuthUsers: any[] = [];
+      let page = 1;
+      const perPage = 1000;
+      
+      while (true) {
+        const { data: authUsers } = await supabase.auth.admin.listUsers({
+          page,
+          perPage
+        });
+        
+        if (!authUsers?.users || authUsers.users.length === 0) break;
+        allAuthUsers = [...allAuthUsers, ...authUsers.users];
+        page++;
+        
+        if (authUsers.users.length < perPage) break;
+      }
+      
+      const matchingUsers = allAuthUsers.filter((u: any) => 
+        u.email?.toLowerCase() === email.toLowerCase()
+      );
+      
+      console.log(`Found ${matchingUsers.length} matching auth users`);
+      
+      for (const user of matchingUsers) {
+        try {
+          // Multiple deletion attempts
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const { error } = await supabase.auth.admin.deleteUser(user.id);
+            if (!error) {
+              console.log(`✅ Deleted auth user: ${user.email} (attempt ${attempt + 1})`);
+              break;
+            }
+            console.log(`🔄 Retry ${attempt + 1} for user ${user.email}:`, error.message);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          
+          // Clean up related data
+          await supabase.from('users').delete().eq('id', user.id);
+          await supabase.from('user_preferences').delete().eq('user_id', user.id);
+          await supabase.from('ratings').delete().eq('user_id', user.id);
+          await supabase.from('follows').delete().eq('follower_id', user.id);
+          await supabase.from('follows').delete().eq('following_id', user.id);
+          
+        } catch (error: any) {
+          console.error(`❌ Failed to delete user ${user.email}:`, error);
+        }
+      }
+      
+      // Strategy 2: Clear all browser storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear cookies more aggressively
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.${window.location.hostname}`;
+        }
+      }
+      
+      // Strategy 3: Force global sign out
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Strategy 4: Wait and verify
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      return { 
+        success: true, 
+        message: `Force cleanup completed for ${email}. Deleted ${matchingUsers.length} auth users.`,
+        deletedUsers: matchingUsers.length
+      };
+      
+    } catch (error: any) {
+      console.error("💥 Force cleanup failed:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
   // Nuclear option: Complete auth system reset
   async nuclearAuthReset() {
     try {
