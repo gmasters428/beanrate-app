@@ -66,7 +66,12 @@ export default function AuthDebugPage() {
 
   const handleNuclearReset = async () => {
     if (!confirm("⚠️ NUCLEAR RESET: This will delete ALL users and data. Are you absolutely sure?")) return;
-    if (!confirm("This action cannot be undone. Type 'RESET' to confirm.") || !prompt("Type 'RESET' to confirm:") === "RESET") return;
+    // Corrected confirmation logic
+    const confirmationText = prompt("This action cannot be undone. Type 'RESET' to confirm.");
+    if (confirmationText !== "RESET") {
+      setMessage("Nuclear reset cancelled. Confirmation text did not match.");
+      return;
+    }
     
     setLoading(true);
     setMessage("");
