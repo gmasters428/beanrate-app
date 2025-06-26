@@ -11,7 +11,7 @@ const parseAuthError = (error: any): string => {
     return "Database security policy error. Please contact support or try again later.";
   }
   
-  // Handle password complexity issues
+  // Handle password complexity issues - check for specific Supabase password errors
   if (message.includes("password") && (message.includes("weak") || message.includes("short") || message.includes("simple"))) {
     return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
   }
@@ -20,15 +20,28 @@ const parseAuthError = (error: any): string => {
     return "Password must be at least 8 characters long.";
   }
   
+  // Check for password policy violations from Supabase
+  if (message.includes("password does not meet") || message.includes("password policy")) {
+    return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+  }
+  
   // Handle specific Supabase auth error codes
   if (error.status === 422) {
-    if (message.includes("user already registered") || message.includes("already exists")) {
-      return "An account with this email address already exists. Please try signing in instead.";
-    }
+    // Check if it's actually a password issue disguised as user exists
     if (message.includes("password")) {
       return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
     }
+    if (message.includes("user already registered") || message.includes("already exists")) {
+      return "An account with this email address already exists. Please try signing in instead.";
+    }
     return "Invalid input. Please check your email and password requirements.";
+  }
+  
+  // Handle 400 errors which might be password related
+  if (error.status === 400) {
+    if (message.includes("password")) {
+      return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+    }
   }
   
   if (message.includes("invalid email")) {
@@ -647,7 +660,7 @@ export const authService = {
       console.log("🐛 Debug info:", debugInfo);
       return debugInfo;
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("💥 Error during debug:", error);
       return { error: error.message };
     }
@@ -676,6 +689,21 @@ export const authService = {
   async signUp(email: string, password: string, username: string) {
     try {
       console.log("🚀 Starting signup process for:", email);
+      
+      // Validate password complexity on frontend first
+      const passwordRequirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      };
+      
+      const isPasswordValid = Object.values(passwordRequirements).every(req => req);
+      
+      if (!isPasswordValid) {
+        throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
+      }
       
       // First, check and clean any orphaned users with this email
       const cleanupResult = await this.checkAndCleanEmail(email);
@@ -711,6 +739,14 @@ export const authService = {
 
       if (error) {
         console.error("❌ Auth signup error:", error);
+        
+        // Enhanced error handling for password issues
+        if (error.status === 422 || error.status === 400) {
+          const errorMsg = error.message?.toLowerCase() || "";
+          if (errorMsg.includes("password") || errorMsg.includes("weak") || errorMsg.includes("policy")) {
+            throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
+          }
+        }
         
         // If we still get "user already exists" error, try one more cleanup
         if (error.message?.toLowerCase().includes("user already registered") || 
@@ -789,6 +825,51 @@ export const authService = {
       const enhancedError = new Error(friendlyMessage);
       (enhancedError as any).originalError = error;
       throw enhancedError;
+    }
+  },
+
+  // Test signup function to verify everything works
+  async testSignupProcess(email: string, password: string, username: string) {
+    try {
+      console.log("🧪 Testing signup process...");
+      
+      // Step 1: Test password validation
+      const passwordRequirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      };
+      
+      console.log("🔐 Password requirements check:", passwordRequirements);
+      
+      // Step 2: Test database connection
+      const { data: testQuery } = await supabase.from('users').select('count').limit(1);
+      console.log("🗄️ Database connection test:", testQuery ? "✅ Connected" : "❌ Failed");
+      
+      // Step 3: Test auth service
+      const { data: authTest } = await supabase.auth.getSession();
+      console.log("🔐 Auth service test:", authTest ? "✅ Working" : "❌ Failed");
+      
+      // Step 4: Test RLS policies
+      try {
+        const { error: rlsTest } = await supabase.from('users').select('*').limit(1);
+        console.log("🛡️ RLS policies test:", rlsTest ? `❌ ${rlsTest.message}` : "✅ Working");
+      } catch (rlsError) {
+        console.log("🛡️ RLS policies test:", `❌ ${rlsError}`);
+      }
+      
+      return {
+        passwordValid: Object.values(passwordRequirements).every(req => req),
+        databaseConnected: !!testQuery,
+        authWorking: !!authTest,
+        requirements: passwordRequirements
+      };
+      
+    } catch (error: any) {
+      console.error("🧪 Test signup process failed:", error);
+      return { error: error.message };
     }
   },
 
