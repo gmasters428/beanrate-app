@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +59,53 @@ export default function AuthDebugPage() {
       setDebugInfo(null);
     } catch (error: any) {
       setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNuclearReset = async () => {
+    if (!confirm("⚠️ NUCLEAR RESET: This will delete ALL users and data. Are you absolutely sure?")) return;
+    if (!confirm("This action cannot be undone. Type 'RESET' to confirm.") || !prompt("Type 'RESET' to confirm:") === "RESET") return;
+    
+    setLoading(true);
+    setMessage("");
+    
+    try {
+      const result = await authService.nuclearAuthReset();
+      setMessage(result.message);
+      setDebugInfo(null);
+      setAllUsers([]);
+    } catch (error: any) {
+      setMessage(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceSignup = async () => {
+    if (!email) {
+      setMessage("Please enter an email address first");
+      return;
+    }
+    
+    const password = prompt("Enter password for force signup:");
+    const username = prompt("Enter username for force signup:");
+    
+    if (!password || !username) {
+      setMessage("Password and username are required");
+      return;
+    }
+    
+    setLoading(true);
+    setMessage("");
+    
+    try {
+      const result = await authService.forceSignUp(email, password, username);
+      setMessage(`Force signup successful for ${email}`);
+      await handleDebugEmail();
+    } catch (error: any) {
+      setMessage(`Force signup failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -177,13 +223,26 @@ export default function AuthDebugPage() {
             <CardTitle>Global Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button onClick={handleListAllUsers} disabled={loading}>
                 List All Users
               </Button>
               <Button onClick={handleCleanupAll} disabled={loading} variant="destructive">
                 Clean All Orphaned
               </Button>
+              <Button onClick={handleForceSignup} disabled={loading} variant="outline">
+                Force Signup (Email Above)
+              </Button>
+            </div>
+            
+            <div className="border-t pt-4">
+              <h4 className="font-semibold text-red-600 mb-2">⚠️ Danger Zone</h4>
+              <Button onClick={handleNuclearReset} disabled={loading} variant="destructive" className="bg-red-600 hover:bg-red-700">
+                💥 Nuclear Reset (Delete Everything)
+              </Button>
+              <p className="text-xs text-gray-500 mt-1">
+                This will delete ALL auth users and ALL data from all tables. Use only as last resort.
+              </p>
             </div>
           </CardContent>
         </Card>
