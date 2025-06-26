@@ -6,21 +6,33 @@ const parseAuthError = (error: any): string => {
   
   const message = error.message?.toLowerCase() || "";
   
+  // Handle RLS policy violations
+  if (message.includes("row-level security policy") || message.includes("rls")) {
+    return "Database security policy error. Please contact support or try again later.";
+  }
+  
+  // Handle password complexity issues
+  if (message.includes("password") && (message.includes("weak") || message.includes("short") || message.includes("simple"))) {
+    return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+  }
+  
+  if (message.includes("password") && message.includes("length")) {
+    return "Password must be at least 8 characters long.";
+  }
+  
   // Handle specific Supabase auth error codes
-  if (error.status === 422 || message.includes("user already registered")) {
-    return "An account with this email address already exists. Please try signing in instead.";
+  if (error.status === 422) {
+    if (message.includes("user already registered") || message.includes("already exists")) {
+      return "An account with this email address already exists. Please try signing in instead.";
+    }
+    if (message.includes("password")) {
+      return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+    }
+    return "Invalid input. Please check your email and password requirements.";
   }
   
   if (message.includes("invalid email")) {
     return "Please enter a valid email address.";
-  }
-  
-  if (message.includes("password") && message.includes("weak")) {
-    return "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
-  }
-  
-  if (message.includes("password") && message.includes("short")) {
-    return "Password must be at least 6 characters long.";
   }
   
   if (message.includes("signup") && message.includes("disabled")) {

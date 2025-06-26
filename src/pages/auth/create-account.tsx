@@ -7,25 +7,37 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, Mail, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreateAccountPage() {
-  const router = useRouter();
-  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    username: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    username: ""
   });
+  const [errors, setErrors] = useState<any>({});
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const router = useRouter();
+
+  // Password validation function
+  const validatePassword = (password: string) => {
+    const requirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    
+    const isValid = Object.values(requirements).every(req => req);
+    return { isValid, requirements };
+  };
+
+  const passwordValidation = validatePassword(formData.password);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -33,261 +45,262 @@ export default function CreateAccountPage() {
       ...prev,
       [name]: value
     }));
-    setErrors([]);
+    
+    // Clear errors when user starts typing
+    if (errors[name]) {
+      setErrors((prev: any) => ({
+        ...prev,
+        [name]: ""
+      }));
+    }
   };
 
   const validateForm = () => {
-    const newErrors: string[] = [];
+    const newErrors: any = {};
 
-    if (!formData.firstName.trim()) {
-      newErrors.push("First name is required");
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.push("Last name is required");
-    }
-
-    if (!formData.username.trim()) {
-      newErrors.push("Username is required");
-    } else if (formData.username.length < 3) {
-      newErrors.push("Username must be at least 3 characters");
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.push("Email is required");
+    if (!formData.email) {
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.push("Please enter a valid email address");
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!formData.username) {
+      newErrors.username = "Username is required";
+    } else if (formData.username.length < 3) {
+      newErrors.username = "Username must be at least 3 characters long";
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      newErrors.username = "Username can only contain letters, numbers, and underscores";
     }
 
     if (!formData.password) {
-      newErrors.push("Password is required");
-    } else if (formData.password.length < 6) {
-      newErrors.push("Password must be at least 6 characters");
+      newErrors.password = "Password is required";
+    } else if (!passwordValidation.isValid) {
+      newErrors.password = "Password does not meet security requirements";
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.push("Passwords do not match");
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
-    return newErrors;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const validationErrors = validateForm();
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
+    if (!validateForm()) {
       return;
     }
 
-    setIsLoading(true);
-    setErrors([]);
+    setLoading(true);
+    setErrors({});
 
     try {
-      await signUp(formData.email, formData.password, formData.username);
-      setEmailSent(true);
+      await authService.signUp(formData.email, formData.password, formData.username);
       
-      setTimeout(() => {
-        router.push("/profile");
-      }, 2000);
+      // Show success message and redirect
+      toast({
+        title: "Account created successfully!",
+        description: "Please check your email to confirm your account before signing in.",
+      });
       
+      router.push("/auth/login?message=Please check your email to confirm your account");
     } catch (error: any) {
-      console.error("Account creation error:", error);
+      console.error("Signup error:", error);
       
-      // Extract the error message
-      let errorMessage = "Failed to create account. Please try again.";
-      
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
+      // Handle specific error types
+      if (error.message?.includes("username")) {
+        setErrors({ username: error.message });
+      } else if (error.message?.includes("email")) {
+        setErrors({ email: error.message });
+      } else if (error.message?.includes("password")) {
+        setErrors({ password: error.message });
+      } else if (error.message?.includes("security policy") || error.message?.includes("rls")) {
+        setErrors({ general: "There was a database configuration issue. Please contact support." });
+      } else {
+        setErrors({ general: error.message });
       }
-      
-      setErrors([errorMessage]);
-      setEmailSent(false);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  if (emailSent) {
-    return (
-      <Layout title="BeanRate - Email Confirmation">
-        <div className="max-w-md mx-auto mt-8">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                <Mail className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">Check Your Email</CardTitle>
-              <p className="text-gray-600">We've sent a confirmation email to</p>
-              <p className="font-medium text-brown-600">{formData.email}</p>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="space-y-4">
-                <Alert className="border-blue-200 bg-blue-50">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-700">
-                    Confirming your email automatically... You'll be redirected to your profile shortly.
-                  </AlertDescription>
-                </Alert>
-                
-                <p className="text-sm text-gray-600">
-                  Didn't receive the email? Check your spam folder or{" "}
-                  <button 
-                    onClick={() => setEmailSent(false)}
-                    className="text-brown-600 hover:text-brown-700 font-medium"
-                  >
-                    try again
-                  </button>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
-    <Layout title="BeanRate - Create Account">
-      <div className="max-w-md mx-auto mt-8">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-brown-600">Create Account</CardTitle>
-            <p className="text-gray-600">Join the BeanRate community</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {errors.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertDescription>
-                    <ul className="list-disc list-inside space-y-1">
-                      {errors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+    <Layout>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <div className="flex justify-center">
+              <Coffee className="h-12 w-12 text-amber-600" />
+            </div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Create your account
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Join the coffee community
+            </p>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {errors.general && (
+              <Alert variant="destructive">
+                <AlertDescription>{errors.general}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={errors.email ? "border-red-500" : ""}
+                />
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   name="username"
                   type="text"
-                  placeholder="Enter your username"
+                  autoComplete="username"
+                  required
                   value={formData.username}
                   onChange={handleInputChange}
-                  required
+                  className={errors.username ? "border-red-500" : ""}
                 />
+                {errors.username && (
+                  <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
+                    autoComplete="new-password"
+                    required
                     value={formData.password}
                     onChange={handleInputChange}
-                    required
+                    className={errors.password ? "border-red-500" : ""}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
+                
+                {/* Password Requirements */}
+                {formData.password && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs font-medium text-gray-700">Password Requirements:</p>
+                    <div className="grid grid-cols-1 gap-1 text-xs">
+                      <div className={`flex items-center gap-1 ${passwordValidation.requirements.length ? 'text-green-600' : 'text-red-600'}`}>
+                        {passwordValidation.requirements.length ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        At least 8 characters
+                      </div>
+                      <div className={`flex items-center gap-1 ${passwordValidation.requirements.uppercase ? 'text-green-600' : 'text-red-600'}`}>
+                        {passwordValidation.requirements.uppercase ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        One uppercase letter
+                      </div>
+                      <div className={`flex items-center gap-1 ${passwordValidation.requirements.lowercase ? 'text-green-600' : 'text-red-600'}`}>
+                        {passwordValidation.requirements.lowercase ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        One lowercase letter
+                      </div>
+                      <div className={`flex items-center gap-1 ${passwordValidation.requirements.number ? 'text-green-600' : 'text-red-600'}`}>
+                        {passwordValidation.requirements.number ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        One number
+                      </div>
+                      <div className={`flex items-center gap-1 ${passwordValidation.requirements.special ? 'text-green-600' : 'text-red-600'}`}>
+                        {passwordValidation.requirements.special ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        One special character
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
+                    autoComplete="new-password"
+                    required
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    required
+                    className={errors.confirmPassword ? "border-red-500" : ""}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                )}
               </div>
+            </div>
 
-              <Button 
-                type="submit" 
-                className="w-full bg-brown-600 hover:bg-brown-700"
-                disabled={isLoading}
+            <div>
+              <Button
+                type="submit"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+                disabled={loading || !passwordValidation.isValid}
               >
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {loading ? "Creating account..." : "Create account"}
               </Button>
-            </form>
+            </div>
 
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="text-brown-600 hover:text-brown-700 font-medium">
-                  Sign in
+                <Link href="/auth/login" className="font-medium text-amber-600 hover:text-amber-500">
+                  Sign in here
                 </Link>
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </form>
+        </div>
       </div>
     </Layout>
   );
