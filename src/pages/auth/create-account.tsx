@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail, CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff, Coffee, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import authService from "@/services/authService";
 
 export default function CreateAccountPage() {
   const [formData, setFormData] = useState({
@@ -22,6 +24,7 @@ export default function CreateAccountPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   // Password validation function
   const validatePassword = (password: string) => {
