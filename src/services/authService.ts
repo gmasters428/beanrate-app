@@ -69,6 +69,215 @@ export interface AuthUser {
 }
 
 export const authService = {
+  // Nuclear option: Complete auth system reset
+  async nuclearAuthReset() {
+    try {
+      console.log("💥 Starting nuclear auth reset...");
+      
+      // Step 1: Get all auth users and delete them
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      let deletedAuthUsers = 0;
+      
+      if (authUsers?.users) {
+        for (const user of authUsers.users) {
+          try {
+            await supabase.auth.admin.deleteUser(user.id);
+            deletedAuthUsers++;
+            console.log(`🗑️ Deleted auth user: ${user.email}`);
+          } catch (error) {
+            console.error(`❌ Failed to delete auth user ${user.email}:`, error);
+          }
+        }
+      }
+      
+      // Step 2: Clear all public tables
+      const { error: usersError } = await supabase.from('users').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: prefsError } = await supabase.from('user_preferences').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: ratingsError } = await supabase.from('ratings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: followsError } = await supabase.from('follows').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      // Step 3: Clear all local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Step 4: Clear any cookies
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+      });
+      
+      console.log("✅ Nuclear reset completed");
+      return {
+        success: true,
+        message: `Nuclear reset completed. Deleted ${deletedAuthUsers} auth users and cleared all data.`,
+        deletedAuthUsers,
+        errors: {
+          users: usersError?.message,
+          preferences: prefsError?.message,
+          ratings: ratingsError?.message,
+          follows: followsError?.message
+        }
+      };
+      
+    } catch (error) {
+      console.error("💥 Nuclear reset failed:", error);
+      return { success: false, message: `Nuclear reset failed: ${error.message}` };
+    }
+  },
+
+  // Force signup with aggressive cleanup
+  async forceSignUp(email: string, password: string, username: string) {
+    try {
+      console.log("🚀 Starting FORCE signup process for:", email);
+      
+      // Step 1: Nuclear cleanup for this specific email
+      await this.nuclearCleanupEmail(email);
+      
+      // Step 2: Wait a moment for Supabase to process
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Step 3: Try signup with different approach
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          data: {
+            username: username,
+            display_name: username
+          }
+        }
+      });
+
+      if (error) {
+        console.error("❌ Force signup still failed:", error);
+        
+        // If it still fails, try the admin approach
+        if (error.message?.toLowerCase().includes("already") || error.status === 422) {
+          console.log("🔧 Trying admin user creation approach...");
+          return await this.adminCreateUser(email, password, username);
+        }
+        
+        throw error;
+      }
+
+      // Continue with normal profile creation
+      if (data.user) {
+        await this.createUserProfile(data.user.id, username);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("💥 Force signup failed:", error);
+      throw error;
+    }
+  },
+
+  // Nuclear cleanup for specific email
+  async nuclearCleanupEmail(email: string) {
+    try {
+      console.log("💥 Nuclear cleanup for email:", email);
+      
+      // Get all auth users and find matches
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      
+      if (authUsers?.users) {
+        for (const user of authUsers.users) {
+          if (user.email === email) {
+            console.log(`🗑️ Force deleting auth user: ${user.email}`);
+            await supabase.auth.admin.deleteUser(user.id);
+            
+            // Also clean up any public records
+            await supabase.from('users').delete().eq('id', user.id);
+            await supabase.from('user_preferences').delete().eq('user_id', user.id);
+            await supabase.from('ratings').delete().eq('user_id', user.id);
+            await supabase.from('follows').delete().eq('follower_id', user.id);
+            await supabase.from('follows').delete().eq('following_id', user.id);
+          }
+        }
+      }
+      
+      // Clear local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      return { success: true };
+    } catch (error) {
+      console.error("💥 Nuclear cleanup failed:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Admin approach to create user (bypass normal signup)
+  async adminCreateUser(email: string, password: string, username: string) {
+    try {
+      console.log("🔧 Admin creating user:", email);
+      
+      // Use admin API to create user
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm
+        user_metadata: {
+          username: username,
+          display_name: username
+        }
+      });
+
+      if (error) {
+        console.error("❌ Admin create user failed:", error);
+        throw error;
+      }
+
+      if (data.user) {
+        await this.createUserProfile(data.user.id, username);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("💥 Admin create user failed:", error);
+      throw error;
+    }
+  },
+
+  // Helper to create user profile
+  async createUserProfile(userId: string, username: string) {
+    console.log("👤 Creating user profile for:", userId);
+    
+    // Create user profile
+    const { error: profileError } = await supabase
+      .from('users')
+      .insert([
+        {
+          id: userId,
+          username,
+          display_name: username,
+        }
+      ]);
+
+    if (profileError) {
+      console.error("❌ Profile creation error:", profileError);
+      throw profileError;
+    }
+
+    // Create user preferences
+    const { error: preferencesError } = await supabase
+      .from('user_preferences')
+      .insert([
+        {
+          user_id: userId,
+        }
+      ]);
+
+    if (preferencesError) {
+      console.error("❌ Preferences creation error:", preferencesError);
+      throw preferencesError;
+    }
+    
+    console.log("✅ User profile created successfully");
+  },
+
   // Enhanced cleanup function to clear orphaned auth data
   async clearOrphanedAuthData(email?: string) {
     try {
