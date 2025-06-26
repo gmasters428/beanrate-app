@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Coffee, Search, User, Menu, Shield } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const router = useRouter();
