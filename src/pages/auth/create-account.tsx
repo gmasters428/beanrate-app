@@ -102,7 +102,15 @@ export default function CreateAccountPage() {
     setErrors({});
 
     try {
-      await authService.signUp(formData.email, formData.password, formData.username);
+      console.log("🚀 Starting signup with form data:", {
+        email: formData.email,
+        username: formData.username,
+        passwordLength: formData.password.length
+      });
+
+      const result = await authService.signUp(formData.email, formData.password, formData.username);
+      
+      console.log("✅ Signup result:", result);
       
       // Show success message and redirect
       toast({
@@ -112,7 +120,7 @@ export default function CreateAccountPage() {
       
       router.push("/auth/login?message=Please check your email to confirm your account");
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("❌ Signup error:", error);
       
       // Handle specific error types
       if (error.message?.includes("username")) {
@@ -124,7 +132,7 @@ export default function CreateAccountPage() {
       } else if (error.message?.includes("security policy") || error.message?.includes("rls")) {
         setErrors({ general: "There was a database configuration issue. Please contact support." });
       } else {
-        setErrors({ general: error.message });
+        setErrors({ general: error.message || "An unexpected error occurred. Please try again." });
       }
     } finally {
       setLoading(false);

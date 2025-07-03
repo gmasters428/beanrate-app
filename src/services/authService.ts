@@ -705,24 +705,21 @@ export const authService = {
         throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
       }
       
-      // First, check and clean any orphaned users with this email
-      const cleanupResult = await this.checkAndCleanEmail(email);
-      if (cleanupResult.cleaned) {
-        console.log("✅ Cleaned up orphaned user, proceeding with signup");
-      }
-      
-      // Check if username is already taken
-      const { data: existingUsername } = await supabase
+      // Check if username is already taken (simple check without admin functions)
+      const { data: existingUsername, error: usernameCheckError } = await supabase
         .from('users')
         .select('username')
         .eq('username', username)
         .single();
       
-      if (existingUsername) {
+      // Only throw error if we actually found a user, ignore other errors
+      if (existingUsername && !usernameCheckError) {
         throw new Error("This username is already taken. Please choose a different username.");
       }
       
-      // Sign up with email confirmation
+      console.log("📧 Attempting Supabase auth signup...");
+      
+      // Sign up with email confirmation - simplified approach
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -739,34 +736,11 @@ export const authService = {
 
       if (error) {
         console.error("❌ Auth signup error:", error);
-        
-        // Enhanced error handling for password issues
-        if (error.status === 422 || error.status === 400) {
-          const errorMsg = error.message?.toLowerCase() || "";
-          if (errorMsg.includes("password") || errorMsg.includes("weak") || errorMsg.includes("policy")) {
-            throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
-          }
-        }
-        
-        // If we still get "user already exists" error, try one more cleanup
-        if (error.message?.toLowerCase().includes("user already registered") || 
-            error.message?.toLowerCase().includes("already exists")) {
-          console.log("🔄 Attempting additional cleanup for persistent user...");
-          await this.clearOrphanedAuthData(email);
-          throw new Error("We found and cleaned up some old account data. Please try signing up again.");
-        }
-        
         throw error;
       }
 
-      if (data.user && !data.user.identities?.length) {
-        // This means the user already exists but isn't confirmed
-        console.log("⚠️ User exists but not confirmed, attempting to resend confirmation");
-        await this.resendConfirmation(email);
-        return data;
-      }
-
-      if (data.user) {
+      // Check if user was created successfully
+      if (data.user && data.user.identities && data.user.identities.length > 0) {
         console.log("👤 Creating user profile for:", data.user.id);
         
         // Create user profile with better error handling
@@ -782,12 +756,6 @@ export const authService = {
 
         if (profileError) {
           console.error("❌ Profile creation error:", profileError);
-          // If profile creation fails, clean up the auth user
-          try {
-            await supabase.auth.admin.deleteUser(data.user.id);
-          } catch (cleanupError) {
-            console.error("❌ Cleanup error:", cleanupError);
-          }
           throw profileError;
         }
 
@@ -804,17 +772,14 @@ export const authService = {
 
         if (preferencesError) {
           console.error("❌ Preferences creation error:", preferencesError);
-          // Clean up both auth user and profile
-          try {
-            await supabase.from('users').delete().eq('id', data.user.id);
-            await supabase.auth.admin.deleteUser(data.user.id);
-          } catch (cleanupError) {
-            console.error("❌ Cleanup error:", cleanupError);
-          }
           throw preferencesError;
         }
         
         console.log("✅ User signup completed successfully");
+      } else if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        // This means the user already exists but isn't confirmed
+        console.log("⚠️ User exists but not confirmed");
+        // Don't throw an error, just return the data - the UI will handle this
       }
 
       return data;
