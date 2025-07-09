@@ -120,8 +120,8 @@ export const authService = {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-          data: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/confirm`,
+           {
             username: username,
             display_name: username
           }
@@ -139,36 +139,14 @@ export const authService = {
         throw new Error("Could not create user. The user may already exist or another error occurred.");
       }
 
-      if (data.user && data.user.identities && data.user.identities.length > 0) {
-        console.log("👤 Creating user profile for:", data.user.id);
-        
-        const profilePromise = supabase
-          .from('users')
-          .insert([{ id: data.user.id, username, display_name: username }]);
+      // IMPORTANT: We are not creating the profile here anymore.
+      // This should be handled by a database trigger or upon first login.
+      // This avoids RLS issues where the user is not yet authenticated to write to the 'users' table.
 
-        const { error: profileError } = await withTimeout(profilePromise, 15000);
-
-        if (profileError) {
-          console.error("❌ Profile creation error:", profileError);
-          throw new Error("Your account was created, but we failed to set up your profile. Please contact support.");
-        }
-
-        console.log("⚙️ Creating user preferences for:", data.user.id);
-        
-        const preferencesPromise = supabase
-          .from('user_preferences')
-          .insert([{ user_id: data.user.id }]);
-
-        const { error: preferencesError } = await withTimeout(preferencesPromise, 15000);
-
-        if (preferencesError) {
-          console.error("❌ Preferences creation error:", preferencesError);
-          throw new Error("Your account was created, but we failed to set up your preferences. Please contact support.");
-        }
-        
-        console.log("✅ User signup completed successfully");
-      } else if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
         console.log("⚠️ User exists but not confirmed");
+      } else {
+        console.log("✅ User signup initiated successfully. Waiting for email confirmation.");
       }
 
       return data;
@@ -210,14 +188,14 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
+      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
       if (userError || !user) {
         if(userError) console.error("Get user error:", userError.message);
         return null;
       }
 
-      const { data: profile, error: profileError } = await withTimeout(
+      const {  profile, error: profileError } = await withTimeout(
         supabase.from('users').select('*').eq('id', user.id).single(),
         10000
       );
@@ -226,7 +204,7 @@ export const authService = {
         console.warn("Could not fetch user profile:", profileError.message);
       }
 
-      const { data: preferences, error: preferencesError } = await withTimeout(
+      const {  preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
       );
@@ -267,7 +245,7 @@ export const authService = {
 
   async resetPassword(email: string) {
     try {
-      const redirectUrl = `${window.location.origin}/auth/reset-password`;
+      const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password`;
       const { data, error } = await withTimeout(supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl }), 15000);
       if (error) throw error;
       return data;
@@ -282,7 +260,7 @@ export const authService = {
 
   async resendConfirmation(email: string) {
     try {
-      const redirectUrl = `${window.location.origin}/auth/confirm`;
+      const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/confirm`;
       const { error } = await withTimeout(supabase.auth.resend({ type: 'signup', email: email, options: { emailRedirectTo: redirectUrl } }), 15000);
       if (error) throw error;
     } catch (error) {
@@ -295,9 +273,9 @@ export const authService = {
   },
 
   // Dummy functions to fix build errors in admin pages - these should be removed in production
-  async debugAuthState(): Promise<any> {
-    console.log("debugAuthState not implemented");
-    return { message: "Not implemented" };
+  async debugAuthState(email?: string): Promise<any> {
+    console.log("debugAuthState not implemented for", email);
+    return { message: "Not implemented", email };
   },
   async clearOrphanedAuthData(email?: string): Promise<{ message: string }> {
     console.log("clearOrphanedAuthData not implemented for", email || "all users");
@@ -307,9 +285,9 @@ export const authService = {
     console.log("nuclearAuthReset not implemented");
     return { message: "Not implemented" };
   },
-  async forceSignUp(email: string, password: string, username: string): Promise<{ data: any, error: any }> {
+  async forceSignUp(email: string, password: string, username: string): Promise<{  any, error: any }> {
     console.log("forceSignUp not implemented for", email, username);
-    return { data: null, error: new Error("Not implemented") };
+    return {  null, error: new Error("Not implemented") };
   },
   async advancedDebugEmail(email: string): Promise<any> {
     console.log("advancedDebugEmail not implemented for", email);
