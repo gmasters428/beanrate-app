@@ -216,16 +216,6 @@ export const authService = {
         return null;
       }
 
-      const { data: profile, error: profileError } = await withTimeout(
-        supabase.from('users').select('*').eq('id', user.id).single(), 
-        10000
-      );
-
-      if (profileError || !profile) {
-        if(profileError) console.error("Get profile error:", profileError.message);
-        return null;
-      }
-
       const {  preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
