@@ -204,7 +204,7 @@ export const authService = {
         console.warn("Could not fetch user profile:", profileError.message);
       }
 
-      const {  preferences, error: preferencesError } = await withTimeout(
+      const { data: preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
       );
