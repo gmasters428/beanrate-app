@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session, AuthError } from "@supabase/supabase-js";
 
@@ -121,7 +120,7 @@ export const authService = {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
-           {
+          data: {
             username: username,
             display_name: username
           }
@@ -210,14 +209,14 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
+      const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
       if (userError || !user) {
         if(userError) console.error("Get user error:", userError.message);
         return null;
       }
 
-      const {  profile, error: profileError } = await withTimeout(
+      const { data: profile, error: profileError } = await withTimeout(
         supabase.from('users').select('*').eq('id', user.id).single(), 
         10000
       );
@@ -227,7 +226,7 @@ export const authService = {
         return null;
       }
 
-      const {  preferences, error: preferencesError } = await withTimeout(
+      const { data: preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
       );
@@ -299,9 +298,9 @@ export const authService = {
   async debugAuthState() { console.log("debugAuthState not implemented"); return {}; },
   async clearOrphanedAuthData() { console.log("clearOrphanedAuthData not implemented"); },
   async nuclearAuthReset() { console.log("nuclearAuthReset not implemented"); },
-  async forceSignUp(email: string, password: string): Promise<{  any, error: any }> { 
+  async forceSignUp(email: string, password: string): Promise<{ data: any, error: any }> { 
     console.log("forceSignUp not implemented"); 
-    return {  null, error: new Error("Not implemented") }; 
+    return { data: null, error: new Error("Not implemented") }; 
   },
   async advancedDebugEmail(email: string) { console.log("advancedDebugEmail not implemented"); },
   async forceCleanupEmail(email: string) { console.log("forceCleanupEmail not implemented"); },
