@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session, AuthError } from "@supabase/supabase-js";
 
@@ -209,14 +210,23 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
+      const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
       if (userError || !user) {
         if(userError) console.error("Get user error:", userError.message);
         return null;
       }
 
-      const {  preferences, error: preferencesError } = await withTimeout(
+      const { data: profile, error: profileError } = await withTimeout(
+        supabase.from('users').select('*').eq('id', user.id).single(),
+        10000
+      );
+
+      if (profileError) {
+        console.warn("Could not fetch user profile:", profileError.message);
+      }
+
+      const { data: preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
       );
@@ -235,11 +245,11 @@ export const authService = {
 
       return {
         id: user.id,
-        username: profile.username,
+        username: profile?.username || user.email?.split('@')[0] || 'user',
         email: user.email || '',
-        name: profile.display_name || profile.username,
-        profileImage: profile.profile_image_url,
-        bio: profile.bio,
+        name: profile?.display_name || profile?.username || user.email?.split('@')[0] || 'User',
+        profileImage: profile?.profile_image_url || null,
+        bio: profile?.bio || null,
         following: followingResult.data?.map((f: any) => f.following_id) || [],
         followers: followersResult.data?.map((f: any) => f.follower_id) || [],
         preferences: {
@@ -284,10 +294,10 @@ export const authService = {
     }
   },
 
-  // Corrected dummy functions to fix build errors in admin pages
-  async debugAuthState(email: string): Promise<any> {
-    console.log("debugAuthState not implemented for", email);
-    return { email, message: "Not implemented" };
+  // Dummy functions to fix build errors in admin pages - these should be removed in production
+  async debugAuthState(): Promise<any> {
+    console.log("debugAuthState not implemented");
+    return { message: "Not implemented" };
   },
   async clearOrphanedAuthData(email?: string): Promise<{ message: string }> {
     console.log("clearOrphanedAuthData not implemented for", email || "all users");
@@ -297,9 +307,9 @@ export const authService = {
     console.log("nuclearAuthReset not implemented");
     return { message: "Not implemented" };
   },
-  async forceSignUp(email: string, password: string, username: string): Promise<{  any, error: any }> {
+  async forceSignUp(email: string, password: string, username: string): Promise<{ data: any, error: any }> {
     console.log("forceSignUp not implemented for", email, username);
-    return {  null, error: new Error("Not implemented") };
+    return { data: null, error: new Error("Not implemented") };
   },
   async advancedDebugEmail(email: string): Promise<any> {
     console.log("advancedDebugEmail not implemented for", email);
