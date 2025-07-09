@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session, AuthError } from "@supabase/supabase-js";
 
@@ -120,7 +121,7 @@ export const authService = {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
-          data: {
+           {
             username: username,
             display_name: username
           }
@@ -209,7 +210,7 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
+      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
       if (userError || !user) {
         if(userError) console.error("Get user error:", userError.message);
@@ -226,7 +227,7 @@ export const authService = {
         return null;
       }
 
-      const { data: preferences, error: preferencesError } = await withTimeout(
+      const {  preferences, error: preferencesError } = await withTimeout(
         supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
         10000
       );
@@ -294,17 +295,35 @@ export const authService = {
     }
   },
 
-  // Dummy functions to fix build errors in admin pages
-  async debugAuthState() { console.log("debugAuthState not implemented"); return {}; },
-  async clearOrphanedAuthData() { console.log("clearOrphanedAuthData not implemented"); },
-  async nuclearAuthReset() { console.log("nuclearAuthReset not implemented"); },
-  async forceSignUp(email: string, password: string): Promise<{ data: any, error: any }> { 
-    console.log("forceSignUp not implemented"); 
-    return { data: null, error: new Error("Not implemented") }; 
+  // Corrected dummy functions to fix build errors in admin pages
+  async debugAuthState(email: string): Promise<any> {
+    console.log("debugAuthState not implemented for", email);
+    return { email, message: "Not implemented" };
   },
-  async advancedDebugEmail(email: string) { console.log("advancedDebugEmail not implemented"); },
-  async forceCleanupEmail(email: string) { console.log("forceCleanupEmail not implemented"); },
-  async superNuclearReset() { console.log("superNuclearReset not implemented"); },
+  async clearOrphanedAuthData(email?: string): Promise<{ message: string }> {
+    console.log("clearOrphanedAuthData not implemented for", email || "all users");
+    return { message: "Not implemented" };
+  },
+  async nuclearAuthReset(): Promise<{ message: string }> {
+    console.log("nuclearAuthReset not implemented");
+    return { message: "Not implemented" };
+  },
+  async forceSignUp(email: string, password: string, username: string): Promise<{  any, error: any }> {
+    console.log("forceSignUp not implemented for", email, username);
+    return {  null, error: new Error("Not implemented") };
+  },
+  async advancedDebugEmail(email: string): Promise<any> {
+    console.log("advancedDebugEmail not implemented for", email);
+    return { email, message: "Not implemented" };
+  },
+  async forceCleanupEmail(email: string): Promise<{ message: string, success: boolean }> {
+    console.log("forceCleanupEmail not implemented for", email);
+    return { message: "Not implemented", success: false };
+  },
+  async superNuclearReset(): Promise<{ message: string }> {
+    console.log("superNuclearReset not implemented");
+    return { message: "Not implemented" };
+  },
 };
 
 export default authService;
