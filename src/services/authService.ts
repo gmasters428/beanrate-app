@@ -187,14 +187,14 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
+      const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
       if (userError || !user) {
         if(userError) console.error("Get user error:", userError.message);
         return null;
       }
 
-      const {  profile, error: profileError } = await withTimeout(
+      const { data: profile, error: profileError } = await withTimeout(
         supabase.from('users').select('*').eq('id', user.id).single(),
         10000
       );
@@ -284,9 +284,9 @@ export const authService = {
     console.log("nuclearAuthReset not implemented");
     return { message: "Not implemented" };
   },
-  async forceSignUp(email: string, password: string, username: string): Promise<{  any, error: any }> {
+  async forceSignUp(email: string, password: string, username: string): Promise<{ data: any, error: any }> {
     console.log("forceSignUp not implemented for", email, username);
-    return {  null, error: new Error("Not implemented") };
+    return { data: null, error: new Error("Not implemented") };
   },
   async advancedDebugEmail(email: string): Promise<any> {
     console.log("advancedDebugEmail not implemented for", email);
