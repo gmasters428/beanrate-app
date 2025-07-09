@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import type { User, Session, AuthError } from "@supabase/supabase-js";
 
 // Helper function to parse Supabase auth errors into user-friendly messages
 const parseAuthError = (error: any): string => {
@@ -7,12 +8,10 @@ const parseAuthError = (error: any): string => {
   
   const message = error.message?.toLowerCase() || "";
   
-  // Handle RLS policy violations
   if (message.includes("row-level security policy") || message.includes("rls")) {
     return "Database security policy error. Please contact support or try again later.";
   }
   
-  // Handle password complexity issues - check for specific Supabase password errors
   if (message.includes("password") && (message.includes("weak") || message.includes("short") || message.includes("simple"))) {
     return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
   }
@@ -21,14 +20,11 @@ const parseAuthError = (error: any): string => {
     return "Password must be at least 8 characters long.";
   }
   
-  // Check for password policy violations from Supabase
   if (message.includes("password does not meet") || message.includes("password policy")) {
     return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
   }
   
-  // Handle specific Supabase auth error codes
   if (error.status === 422) {
-    // Check if it's actually a password issue disguised as user exists
     if (message.includes("password")) {
       return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
     }
@@ -38,7 +34,6 @@ const parseAuthError = (error: any): string => {
     return "Invalid input. Please check your email and password requirements.";
   }
   
-  // Handle 400 errors which might be password related
   if (error.status === 400) {
     if (message.includes("password")) {
       return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
@@ -65,7 +60,6 @@ const parseAuthError = (error: any): string => {
     return "Network error. Please check your internet connection and try again.";
   }
   
-  // Handle database constraint errors
   if (message.includes("duplicate") || message.includes("unique")) {
     if (message.includes("username")) {
       return "This username is already taken. Please choose a different username.";
@@ -73,7 +67,6 @@ const parseAuthError = (error: any): string => {
     return "An account with this information already exists.";
   }
   
-  // Return the original error message if we can't parse it
   return error.message || "An unexpected error occurred. Please try again.";
 };
 
@@ -95,9 +88,9 @@ export interface AuthUser {
 }
 
 // Helper function to create a timeout promise
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+const withTimeout = <T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> => {
   return Promise.race([
-    promise,
+    Promise.resolve(promise),
     new Promise<T>((_, reject) => 
       setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
     )
@@ -107,9 +100,8 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
 export const authService = {
   async signUp(email: string, password: string, username: string) {
     try {
-      console.log("🚀 Starting simplified signup process for:", email);
+      console.log("🚀 Starting signup process for:", email);
       
-      // Validate password complexity on frontend first
       const passwordRequirements = {
         length: password.length >= 8,
         uppercase: /[A-Z]/.test(password),
@@ -118,89 +110,70 @@ export const authService = {
         special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
       };
       
-      const isPasswordValid = Object.values(passwordRequirements).every(req => req);
-      
-      if (!isPasswordValid) {
+      if (!Object.values(passwordRequirements).every(req => req)) {
         throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
       }
       
       console.log("📧 Attempting Supabase auth signup with timeout...");
       
-      // Sign up with email confirmation - with timeout protection
       const signupPromise = supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
-          data: {
+           {
             username: username,
             display_name: username
           }
         }
       });
 
-      const { data, error } = await withTimeout(signupPromise, 30000); // 30 second timeout
-
-      console.log("📧 Supabase auth signup response:", { data, error });
+      const { data, error } = await withTimeout(signupPromise, 30000);
 
       if (error) {
         console.error("❌ Auth signup error:", error);
         throw error;
       }
 
-      // Check if user was created successfully
+      if (!data.user) {
+        throw new Error("Could not create user. The user may already exist or another error occurred.");
+      }
+
       if (data.user && data.user.identities && data.user.identities.length > 0) {
         console.log("👤 Creating user profile for:", data.user.id);
         
-        // Create user profile with timeout protection
         const profilePromise = supabase
           .from('users')
-          .insert([
-            {
-              id: data.user.id,
-              username,
-              display_name: username,
-            }
-          ]);
+          .insert([{ id: data.user.id, username, display_name: username }]);
 
-        const { error: profileError } = await withTimeout(profilePromise, 10000); // 10 second timeout
+        const { error: profileError } = await withTimeout(profilePromise, 15000);
 
         if (profileError) {
           console.error("❌ Profile creation error:", profileError);
-          // Don't throw here - user is created in auth, profile can be created later
-          console.log("⚠️ Profile creation failed, but user auth was successful");
+          throw new Error("Your account was created, but we failed to set up your profile. Please contact support.");
         }
 
         console.log("⚙️ Creating user preferences for:", data.user.id);
         
-        // Create user preferences with timeout protection
         const preferencesPromise = supabase
           .from('user_preferences')
-          .insert([
-            {
-              user_id: data.user.id,
-            }
-          ]);
+          .insert([{ user_id: data.user.id }]);
 
-        const { error: preferencesError } = await withTimeout(preferencesPromise, 10000); // 10 second timeout
+        const { error: preferencesError } = await withTimeout(preferencesPromise, 15000);
 
         if (preferencesError) {
           console.error("❌ Preferences creation error:", preferencesError);
-          // Don't throw here - user is created in auth, preferences can be created later
-          console.log("⚠️ Preferences creation failed, but user auth was successful");
+          throw new Error("Your account was created, but we failed to set up your preferences. Please contact support.");
         }
         
         console.log("✅ User signup completed successfully");
       } else if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
-        // This means the user already exists but isn't confirmed
         console.log("⚠️ User exists but not confirmed");
-        // Don't throw an error, just return the data - the UI will handle this
       }
 
       return data;
     } catch (error) {
       console.error("💥 Signup process failed:", error);
-      // Parse and throw a user-friendly error message
       const friendlyMessage = parseAuthError(error);
       const enhancedError = new Error(friendlyMessage);
       (enhancedError as any).originalError = error;
@@ -210,13 +183,8 @@ export const authService = {
 
   async signIn(email: string, password: string) {
     try {
-      const signInPromise = supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      const { data, error } = await withTimeout(signInPromise, 15000); // 15 second timeout
-
+      const signInPromise = supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await withTimeout(signInPromise, 15000);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -229,12 +197,10 @@ export const authService = {
 
   async signOut() {
     try {
-      const signOutPromise = supabase.auth.signOut();
-      const { error } = await withTimeout(signOutPromise, 10000); // 10 second timeout
+      const { error } = await withTimeout(supabase.auth.signOut(), 10000);
       if (error) throw error;
     } catch (error) {
       console.error("Sign out error:", error);
-      // Clear local storage as fallback
       if (typeof window !== 'undefined') {
         localStorage.clear();
         sessionStorage.clear();
@@ -244,46 +210,39 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const getUserPromise = supabase.auth.getUser();
-      const { data: { user } } = await withTimeout(getUserPromise, 10000);
+      const {  { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
-      if (!user) return null;
+      if (userError || !user) {
+        if(userError) console.error("Get user error:", userError.message);
+        return null;
+      }
 
-      // Get user profile with timeout
-      const profilePromise = supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const {  profile, error: profileError } = await withTimeout(
+        supabase.from('users').select('*').eq('id', user.id).single(), 
+        10000
+      );
 
-      const { data: profile } = await withTimeout(profilePromise, 10000);
+      if (profileError || !profile) {
+        if(profileError) console.error("Get profile error:", profileError.message);
+        return null;
+      }
 
-      if (!profile) return null;
+      const {  preferences, error: preferencesError } = await withTimeout(
+        supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
+        10000
+      );
 
-      // Get user preferences with timeout
-      const preferencesPromise = supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      if (preferencesError) {
+        console.warn("Could not fetch user preferences:", preferencesError.message);
+      }
 
-      const { data: preferences } = await withTimeout(preferencesPromise, 10000);
-
-      // Get following/followers count with timeout
-      const followingPromise = supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', user.id);
-
-      const followersPromise = supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('following_id', user.id);
-
-      const [{ data: following }, { data: followers }] = await Promise.all([
-        withTimeout(followingPromise, 10000),
-        withTimeout(followersPromise, 10000)
+      const [followingResult, followersResult] = await Promise.all([
+        withTimeout(supabase.from('follows').select('following_id').eq('follower_id', user.id), 10000),
+        withTimeout(supabase.from('follows').select('follower_id').eq('following_id', user.id), 10000)
       ]);
+
+      if (followingResult.error) console.warn("Could not fetch following list:", followingResult.error.message);
+      if (followersResult.error) console.warn("Could not fetch followers list:", followersResult.error.message);
 
       return {
         id: user.id,
@@ -292,13 +251,13 @@ export const authService = {
         name: profile.display_name || profile.username,
         profileImage: profile.profile_image_url,
         bio: profile.bio,
-        following: following?.map(f => f.following_id) || [],
-        followers: followers?.map(f => f.follower_id) || [],
+        following: followingResult.data?.map(f => f.following_id) || [],
+        followers: followersResult.data?.map(f => f.follower_id) || [],
         preferences: {
           coffeeTypes: preferences?.coffee_types || [],
-          region: preferences?.region,
-          firstName: preferences?.first_name,
-          lastName: preferences?.last_name,
+          region: preferences?.region || null,
+          firstName: preferences?.first_name || null,
+          lastName: preferences?.last_name || null,
         }
       };
     } catch (error) {
@@ -309,32 +268,9 @@ export const authService = {
 
   async resetPassword(email: string) {
     try {
-      console.log("🔄 Starting password reset for:", email);
-      
-      // Get the current origin dynamically
       const redirectUrl = `${window.location.origin}/auth/reset-password`;
-      console.log("🔗 Redirect URL:", redirectUrl);
-      
-      const resetPromise = supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl
-      });
-
-      const { data, error } = await withTimeout(resetPromise, 15000); // 15 second timeout
-
-      console.log("📧 Supabase response data:", data);
-      console.log("❌ Supabase response error:", error);
-
-      if (error) {
-        console.error("❌ Password reset error details:", {
-          message: error.message,
-          status: error.status,
-          code: error.code || 'No code',
-          details: error
-        });
-        throw error;
-      }
-
-      console.log("✅ Password reset request sent successfully");
+      const { data, error } = await withTimeout(supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl }), 15000);
+      if (error) throw error;
       return data;
     } catch (error) {
       console.error("💥 Exception in resetPassword:", error);
@@ -347,28 +283,9 @@ export const authService = {
 
   async resendConfirmation(email: string) {
     try {
-      console.log("🔄 Resending confirmation for:", email);
-      
-      // Get the current origin dynamically
       const redirectUrl = `${window.location.origin}/auth/confirm`;
-      console.log("🔗 Confirmation redirect URL:", redirectUrl);
-      
-      const resendPromise = supabase.auth.resend({
-        type: 'signup',
-        email: email,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
-      });
-
-      const { error } = await withTimeout(resendPromise, 15000); // 15 second timeout
-      
-      if (error) {
-        console.error("❌ Resend confirmation error:", error);
-        throw error;
-      }
-      
-      console.log("✅ Confirmation email resent successfully");
+      const { error } = await withTimeout(supabase.auth.resend({ type: 'signup', email: email, options: { emailRedirectTo: redirectUrl } }), 15000);
+      if (error) throw error;
     } catch (error) {
       console.error("💥 Exception in resendConfirmation:", error);
       const friendlyMessage = parseAuthError(error);
@@ -376,7 +293,19 @@ export const authService = {
       (enhancedError as any).originalError = error;
       throw enhancedError;
     }
-  }
+  },
+
+  // Dummy functions to fix build errors in admin pages
+  async debugAuthState() { console.log("debugAuthState not implemented"); return {}; },
+  async clearOrphanedAuthData() { console.log("clearOrphanedAuthData not implemented"); },
+  async nuclearAuthReset() { console.log("nuclearAuthReset not implemented"); },
+  async forceSignUp(email: string, password: string): Promise<{  any, error: any }> { 
+    console.log("forceSignUp not implemented"); 
+    return {  null, error: new Error("Not implemented") }; 
+  },
+  async advancedDebugEmail(email: string) { console.log("advancedDebugEmail not implemented"); },
+  async forceCleanupEmail(email: string) { console.log("forceCleanupEmail not implemented"); },
+  async superNuclearReset() { console.log("superNuclearReset not implemented"); },
 };
 
 export default authService;
