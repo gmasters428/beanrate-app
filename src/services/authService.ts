@@ -251,8 +251,8 @@ export const authService = {
         name: profile.display_name || profile.username,
         profileImage: profile.profile_image_url,
         bio: profile.bio,
-        following: followingResult.data?.map(f => f.following_id) || [],
-        followers: followersResult.data?.map(f => f.follower_id) || [],
+        following: followingResult.data?.map((f: any) => f.following_id) || [],
+        followers: followersResult.data?.map((f: any) => f.follower_id) || [],
         preferences: {
           coffeeTypes: preferences?.coffee_types || [],
           region: preferences?.region || null,
