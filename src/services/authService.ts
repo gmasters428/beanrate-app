@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session, AuthError } from "@supabase/supabase-js";
 
@@ -121,7 +120,7 @@ export const authService = {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
-           {
+          data: {
             username: username,
             display_name: username
           }
