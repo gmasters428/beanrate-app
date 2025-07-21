@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
@@ -12,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { userService } from "@/services/userService";
 import Link from "next/link";
 
 const coffeeTypes = [
@@ -98,21 +98,34 @@ export default function ProfileSettingsPage() {
     setSaveMessage("");
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Instead of using updateUser directly, we'll use refreshUser after updating
-      // the profile through a service or API call
-      
-      // Mock update for now
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // After successful update, refresh the user data
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      console.log("Updating profile with data:", formData);
+
+      // Update user profile (bio)
+      await userService.updateProfile(user.id, {
+        bio: formData.bio.trim() || null
+      });
+
+      // Update user preferences (firstName, lastName, region, coffeeTypes)
+      await userService.updatePreferences(user.id, {
+        first_name: formData.firstName.trim() || null,
+        last_name: formData.lastName.trim() || null,
+        region: formData.region || null,
+        coffee_types: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
+      });
+
+      // Refresh user data to show updated information
       await refreshUser();
 
       setSaveMessage("Profile updated successfully!");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
+      console.error("Error updating profile:", error);
       setSaveMessage("Failed to update profile. Please try again.");
+      setTimeout(() => setSaveMessage(""), 5000);
     } finally {
       setIsSaving(false);
     }
