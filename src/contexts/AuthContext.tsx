@@ -56,7 +56,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const {  { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
           // Ensure user profile exists
@@ -82,7 +82,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     initializeAuth();
 
-    const {  { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           // Ensure user profile exists when signing in
