@@ -112,13 +112,8 @@ export default function CreateAccountPage() {
       
       console.log("✅ Signup result:", result);
       
-      // Show success message and redirect
-      toast({
-        title: "Account created successfully!",
-        description: "Please check your email to confirm your account before signing in.",
-      });
-      
-      router.push("/auth/login?message=Please check your email to confirm your account");
+      // Redirect to check inbox page instead of login
+      router.push(`/auth/check-inbox?email=${encodeURIComponent(formData.email)}`);
     } catch (error: any) {
       console.error("❌ Signup error:", error);
       
