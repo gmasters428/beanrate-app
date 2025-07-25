@@ -29,7 +29,7 @@ export default function CreateAccountPage() {
   // Password validation function
   const validatePassword = (password: string) => {
     const requirements = {
-      length: password.length >= 8,
+      length: password.length >= 10,
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /\d/.test(password),
@@ -227,7 +227,7 @@ export default function CreateAccountPage() {
                     <div className="grid grid-cols-1 gap-1 text-xs">
                       <div className={`flex items-center gap-1 ${passwordValidation.requirements.length ? 'text-green-600' : 'text-red-600'}`}>
                         {passwordValidation.requirements.length ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                        At least 8 characters
+                        At least 10 characters
                       </div>
                       <div className={`flex items-center gap-1 ${passwordValidation.requirements.uppercase ? 'text-green-600' : 'text-red-600'}`}>
                         {passwordValidation.requirements.uppercase ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}

@@ -12,20 +12,20 @@ const parseAuthError = (error: any): string => {
   }
   
   if (message.includes("password") && (message.includes("weak") || message.includes("short") || message.includes("simple"))) {
-    return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+    return "Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
   }
   
   if (message.includes("password") && message.includes("length")) {
-    return "Password must be at least 8 characters long.";
+    return "Password must be at least 10 characters long.";
   }
   
   if (message.includes("password does not meet") || message.includes("password policy")) {
-    return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+    return "Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
   }
   
   if (error.status === 422) {
     if (message.includes("password")) {
-      return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+      return "Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
     }
     if (message.includes("user already registered") || message.includes("already exists")) {
       return "An account with this email address already exists. Please try signing in instead.";
@@ -35,7 +35,7 @@ const parseAuthError = (error: any): string => {
   
   if (error.status === 400) {
     if (message.includes("password")) {
-      return "Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
+      return "Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.";
     }
   }
   
@@ -102,7 +102,7 @@ export const authService = {
       console.log("🚀 Starting signup process for:", email);
       
       const passwordRequirements = {
-        length: password.length >= 8,
+        length: password.length >= 10,
         uppercase: /[A-Z]/.test(password),
         lowercase: /[a-z]/.test(password),
         number: /\d/.test(password),
@@ -110,7 +110,7 @@ export const authService = {
       };
       
       if (!Object.values(passwordRequirements).every(req => req)) {
-        throw new Error("Password must be at least 8 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
+        throw new Error("Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
       }
       
       console.log("📧 Attempting Supabase auth signup with timeout...");
