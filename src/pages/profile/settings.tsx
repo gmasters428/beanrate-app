@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,8 +43,6 @@ export default function ProfileSettingsPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
-    lastName: "",
-    bio: "",
     region: "",
     coffeeTypes: [] as string[]
   });
@@ -60,15 +58,13 @@ export default function ProfileSettingsPage() {
     if (user) {
       setFormData({
         firstName: user.preferences?.firstName || "",
-        lastName: user.preferences?.lastName || "",
-        bio: user.bio || "",
         region: user.preferences?.region || "",
         coffeeTypes: user.preferences?.coffeeTypes || []
       });
     }
   }, [user, loading, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -104,17 +100,17 @@ export default function ProfileSettingsPage() {
 
       console.log("Updating profile with data:", formData);
 
-      // Update user profile (bio)
-      await userService.updateProfile(user.id, {
-        bio: formData.bio.trim() || null
-      });
-
-      // Update user preferences (firstName, lastName, region, coffeeTypes)
+      // Update user preferences (firstName, region, coffeeTypes)
       await userService.updatePreferences(user.id, {
         first_name: formData.firstName.trim() || null,
-        last_name: formData.lastName.trim() || null,
+        last_name: null, // Clear last name since we removed it
         region: formData.region || null,
         coffee_types: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
+      });
+
+      // Update user profile to clear bio since we removed it
+      await userService.updateProfile(user.id, {
+        bio: null
       });
 
       // Refresh user data to show updated information
@@ -172,49 +168,23 @@ export default function ProfileSettingsPage() {
                 </Alert>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  placeholder="Tell us about yourself and your coffee journey..."
-                  value={formData.bio}
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="First name"
+                  value={formData.firstName}
                   onChange={handleInputChange}
-                  rows={3}
                 />
-                <p className="text-xs text-gray-500">Share what makes your coffee experience unique</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="region">General Location</Label>
+                <Label htmlFor="region">Region</Label>
                 <Select value={formData.region} onValueChange={handleRegionChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select your general region" />
+                    <SelectValue placeholder="Select your region" />
                   </SelectTrigger>
                   <SelectContent>
                     {regions.map((region) => (
