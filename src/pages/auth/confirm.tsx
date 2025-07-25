@@ -15,67 +15,110 @@ export default function ConfirmPage() {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
+        console.log('🔍 Checking URL parameters:', router.query);
+        
         // Check if we have auth tokens in the URL (from email link)
-        const { access_token, refresh_token, error, error_description } = router.query;
+        const { access_token, refresh_token, error, error_description, token_hash, type } = router.query;
         
         if (error) {
-          console.error('URL contains error:', error, error_description);
+          console.error('❌ URL contains error:', error, error_description);
           setStatus('error');
           
           if (error === 'access_denied' || error_description?.includes('expired')) {
             setErrorMessage('The confirmation link has expired. Please request a new confirmation email.');
+          } else if (error_description?.includes('invalid') || error_description?.includes('malformed')) {
+            setErrorMessage('The confirmation link is invalid. Please request a new confirmation email.');
           } else {
             setErrorMessage(error_description as string || 'Failed to confirm your account');
           }
           return;
         }
 
-        if (access_token && refresh_token) {
-          // Set the session using the tokens from the URL
-          const { data, error: sessionError } = await supabase.auth.setSession({
-            access_token: access_token as string,
-            refresh_token: refresh_token as string,
-          });
-
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            setStatus('error');
-            setErrorMessage(sessionError.message || 'Failed to confirm your account');
-            return;
-          }
-
-          if (data.session) {
-            setStatus('success');
-            setTimeout(() => {
-              router.push('/auth/account-verified');
-            }, 1500);
-          } else {
-            setStatus('error');
-            setErrorMessage('Could not establish session. Please try clicking the confirmation link again.');
-          }
-        } else {
-          // Fallback: check current session
-          const { data, error: sessionError } = await supabase.auth.getSession();
+        // Handle different types of auth flows
+        if (type === 'signup' || access_token || refresh_token || token_hash) {
+          console.log('🔐 Processing auth tokens...');
           
-          if (sessionError) {
-            console.error('Session check error:', sessionError);
-            setStatus('error');
-            setErrorMessage(sessionError.message || 'Failed to confirm your account');
-            return;
+          // Try to verify the OTP/tokens
+          if (token_hash && type) {
+            console.log('📧 Verifying email with token hash...');
+            const { data, error: verifyError } = await supabase.auth.verifyOtp({
+              token_hash: token_hash as string,
+              type: type as any,
+            });
+
+            if (verifyError) {
+              console.error('❌ OTP verification error:', verifyError);
+              setStatus('error');
+              if (verifyError.message?.includes('expired')) {
+                setErrorMessage('The confirmation link has expired. Please request a new confirmation email.');
+              } else if (verifyError.message?.includes('invalid')) {
+                setErrorMessage('The confirmation link is invalid. Please request a new confirmation email.');
+              } else {
+                setErrorMessage(verifyError.message || 'Failed to verify your email');
+              }
+              return;
+            }
+
+            if (data.session) {
+              console.log('✅ Email verified successfully!');
+              setStatus('success');
+              setTimeout(() => {
+                router.push('/auth/account-verified');
+              }, 1500);
+              return;
+            }
           }
 
-          if (data.session) {
-            setStatus('success');
-            setTimeout(() => {
-              router.push('/auth/account-verified');
-            }, 1500);
-          } else {
-            setStatus('error');
-            setErrorMessage('No confirmation data found. Please try clicking the confirmation link in your email again.');
+          // Fallback: try setting session with tokens
+          if (access_token && refresh_token) {
+            console.log('🔄 Setting session with tokens...');
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: access_token as string,
+              refresh_token: refresh_token as string,
+            });
+
+            if (sessionError) {
+              console.error('❌ Session error:', sessionError);
+              setStatus('error');
+              setErrorMessage(sessionError.message || 'Failed to confirm your account');
+              return;
+            }
+
+            if (data.session) {
+              console.log('✅ Session established successfully!');
+              setStatus('success');
+              setTimeout(() => {
+                router.push('/auth/account-verified');
+              }, 1500);
+              return;
+            }
           }
         }
+
+        // Final fallback: check current session
+        console.log('🔍 Checking current session...');
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Session check error:', sessionError);
+          setStatus('error');
+          setErrorMessage(sessionError.message || 'Failed to confirm your account');
+          return;
+        }
+
+        if (data.session) {
+          console.log('✅ Found existing session!');
+          setStatus('success');
+          setTimeout(() => {
+            router.push('/auth/account-verified');
+          }, 1500);
+        } else {
+          console.log('❌ No session found');
+          setStatus('error');
+          setErrorMessage('No confirmation data found. Please try clicking the confirmation link in your email again, or request a new confirmation email.');
+        }
       } catch (error: any) {
-        console.error('Unexpected error during confirmation:', error);
+        console.error('💥 Unexpected error during confirmation:', error);
         setStatus('error');
         setErrorMessage('An unexpected error occurred. Please try again.');
       }
