@@ -1,9 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Coffee, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function ConfirmPage() {
@@ -14,23 +15,64 @@ export default function ConfirmPage() {
   useEffect(() => {
     const handleEmailConfirmation = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        // Check if we have auth tokens in the URL (from email link)
+        const { access_token, refresh_token, error, error_description } = router.query;
         
         if (error) {
-          console.error('Confirmation error:', error);
+          console.error('URL contains error:', error, error_description);
           setStatus('error');
-          setErrorMessage(error.message || 'Failed to confirm your account');
+          
+          if (error === 'access_denied' || error_description?.includes('expired')) {
+            setErrorMessage('The confirmation link has expired. Please request a new confirmation email.');
+          } else {
+            setErrorMessage(error_description as string || 'Failed to confirm your account');
+          }
           return;
         }
 
-        if (data.session) {
-          setStatus('success');
-          setTimeout(() => {
-            router.push('/auth/account-verified');
-          }, 1500);
+        if (access_token && refresh_token) {
+          // Set the session using the tokens from the URL
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: access_token as string,
+            refresh_token: refresh_token as string,
+          });
+
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            setStatus('error');
+            setErrorMessage(sessionError.message || 'Failed to confirm your account');
+            return;
+          }
+
+          if (data.session) {
+            setStatus('success');
+            setTimeout(() => {
+              router.push('/auth/account-verified');
+            }, 1500);
+          } else {
+            setStatus('error');
+            setErrorMessage('Could not establish session. Please try clicking the confirmation link again.');
+          }
         } else {
-          setStatus('error');
-          setErrorMessage('No valid session found. Please try clicking the confirmation link again.');
+          // Fallback: check current session
+          const { data, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('Session check error:', sessionError);
+            setStatus('error');
+            setErrorMessage(sessionError.message || 'Failed to confirm your account');
+            return;
+          }
+
+          if (data.session) {
+            setStatus('success');
+            setTimeout(() => {
+              router.push('/auth/account-verified');
+            }, 1500);
+          } else {
+            setStatus('error');
+            setErrorMessage('No confirmation data found. Please try clicking the confirmation link in your email again.');
+          }
         }
       } catch (error: any) {
         console.error('Unexpected error during confirmation:', error);
@@ -42,7 +84,7 @@ export default function ConfirmPage() {
     if (router.isReady) {
       handleEmailConfirmation();
     }
-  }, [router.isReady, router]);
+  }, [router.isReady, router.query, router]);
 
   return (
     <Layout>
@@ -100,15 +142,29 @@ export default function ConfirmPage() {
               )}
               
               {status === 'error' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-red-800 text-sm">
                       {errorMessage}
                     </p>
                   </div>
-                  <p className="text-gray-600 text-sm">
-                    Please try clicking the confirmation link in your email again, or contact support if the problem persists.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-gray-600 text-sm">
+                      You can try the following options:
+                    </p>
+                    <div className="space-y-2">
+                      <Link href="/auth/create-account">
+                        <Button variant="outline" className="w-full">
+                          Request New Confirmation Email
+                        </Button>
+                      </Link>
+                      <Link href="/auth/login">
+                        <Button variant="ghost" className="w-full">
+                          Try Signing In
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

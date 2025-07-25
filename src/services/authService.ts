@@ -119,7 +119,7 @@ export const authService = {
         email,
         password,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/account-verified`,
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/confirm`,
           data: {
             username: username,
             display_name: username
