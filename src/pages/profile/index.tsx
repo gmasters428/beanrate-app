@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -6,15 +7,18 @@ import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import { mockRatings } from "@/data/mockData";
 import { Rating } from "@/types";
-import { Settings, LogOut, User as UserIcon, MapPin, Edit3 } from "lucide-react";
+import { Settings, LogOut, User as UserIcon, MapPin, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { userService } from "@/services/userService";
 
 export default function ProfilePage() {
   const { user, signOut, loading } = useAuth();
   const router = useRouter();
   const [userRatings, setUserRatings] = useState<Rating[]>([]);
   const [activeTab, setActiveTab] = useState<"ratings" | "beans">("ratings");
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -25,8 +29,27 @@ export default function ProfilePage() {
     if (user) {
       const filteredRatings = mockRatings.filter((rating) => rating.userId === user.id);
       setUserRatings(filteredRatings);
+      
+      // Load friends count
+      loadFriendsData();
     }
   }, [user, loading, router]);
+
+  const loadFriendsData = async () => {
+    if (!user) return;
+    
+    try {
+      const [friendsCountResult, pendingRequests] = await Promise.all([
+        userService.getFriendsCount(user.id),
+        userService.getPendingRequests()
+      ]);
+      
+      setFriendsCount(friendsCountResult);
+      setPendingRequestsCount(pendingRequests.length);
+    } catch (error) {
+      console.error("Error loading friends data:", error);
+    }
+  };
 
   const handleTabChange = (tab: "ratings" | "beans") => {
     setActiveTab(tab);
@@ -147,19 +170,29 @@ export default function ProfilePage() {
                 </div>
               )}
               
-              <div className="mt-4 flex justify-center space-x-6">
-                <Link href="/profile/following">
-                  <div className="text-center">
-                    <p className="font-bold text-gray-900">{user.following.length}</p>
-                    <p className="text-sm text-gray-600">Following</p>
+              <div className="mt-4 flex justify-center space-x-8">
+                <Link href="/profile/friends">
+                  <div className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Users className="h-4 w-4 text-brown-600" />
+                      <p className="font-bold text-gray-900">{friendsCount}</p>
+                    </div>
+                    <p className="text-sm text-gray-600">Friends</p>
                   </div>
                 </Link>
-                <Link href="/profile/followers">
-                  <div className="text-center">
-                    <p className="font-bold text-gray-900">{user.followers.length}</p>
-                    <p className="text-sm text-gray-600">Followers</p>
-                  </div>
-                </Link>
+                
+                {pendingRequestsCount > 0 && (
+                  <Link href="/profile/friend-requests">
+                    <div className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors relative">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <p className="font-bold text-brown-600">{pendingRequestsCount}</p>
+                      </div>
+                      <p className="text-sm text-brown-600 font-medium">Requests</p>
+                      <div className="absolute -top-1 -right-1 h-3 w-3 bg-brown-500 rounded-full"></div>
+                    </div>
+                  </Link>
+                )}
+                
                 <div className="text-center">
                   <p className="font-bold text-gray-900">{userRatings.length}</p>
                   <p className="text-sm text-gray-600">Ratings</p>
