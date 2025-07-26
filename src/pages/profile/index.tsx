@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
+import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { mockRatings } from "@/data/mockData";
 import { Rating } from "@/types";
 import { Settings, LogOut, User as UserIcon, MapPin, Users } from "lucide-react";
@@ -12,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 
 export default function ProfilePage() {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, refreshUser } = useAuth();
   const router = useRouter();
   const [userRatings, setUserRatings] = useState<Rating[]>([]);
   const [activeTab, setActiveTab] = useState<"ratings" | "beans">("ratings");
   const [friendsCount, setFriendsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   const loadFriendsData = useCallback(async () => {
     if (!user) return;
@@ -45,10 +47,19 @@ export default function ProfilePage() {
       const filteredRatings = mockRatings.filter((rating) => rating.userId === user.id);
       setUserRatings(filteredRatings);
       
+      // Set initial profile image URL
+      setProfileImageUrl(user.profileImage || null);
+      
       // Load friends count
       loadFriendsData();
     }
   }, [user, loading, router, loadFriendsData]);
+
+  const handleImageUpdate = async (newImageUrl: string | null) => {
+    setProfileImageUrl(newImageUrl);
+    // Refresh user data to get updated profile
+    await refreshUser();
+  };
 
   const handleTabChange = (tab: "ratings" | "beans") => {
     setActiveTab(tab);
@@ -107,20 +118,12 @@ export default function ProfilePage() {
           <div className="bg-brown-600 h-24"></div>
           <div className="px-4 pb-4 relative">
             <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
-              <div className="h-24 w-24 rounded-full border-4 border-white overflow-hidden relative bg-white">
-                {user.profileImage ? (
-                  <Image 
-                    src={user.profileImage} 
-                    alt={user.username} 
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                    <UserIcon className="h-12 w-12 text-gray-500" />
-                  </div>
-                )}
-              </div>
+              <ProfileImageUpload
+                userId={user.id}
+                currentImageUrl={profileImageUrl}
+                onImageUpdate={handleImageUpdate}
+                size="lg"
+              />
             </div>
             
             <div className="pt-16 text-center">
