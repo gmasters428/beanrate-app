@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -14,18 +14,7 @@ export default function FriendsPage() {
   const [friends, setFriends] = useState<UserWithProfile[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    if (user) {
-      loadFriends();
-    }
-  }, [user, loading, router]);
-
-  const loadFriends = async () => {
+  const loadFriends = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -37,7 +26,18 @@ export default function FriendsPage() {
     } finally {
       setLoadingFriends(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (user) {
+      loadFriends();
+    }
+  }, [user, loading, router, loadFriends]);
 
   const handleRemoveFriend = async (friendId: string) => {
     try {

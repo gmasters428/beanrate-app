@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -20,22 +19,7 @@ export default function ProfilePage() {
   const [friendsCount, setFriendsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    if (user) {
-      const filteredRatings = mockRatings.filter((rating) => rating.userId === user.id);
-      setUserRatings(filteredRatings);
-      
-      // Load friends count
-      loadFriendsData();
-    }
-  }, [user, loading, router]);
-
-  const loadFriendsData = async () => {
+  const loadFriendsData = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -49,7 +33,22 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Error loading friends data:", error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (user) {
+      const filteredRatings = mockRatings.filter((rating) => rating.userId === user.id);
+      setUserRatings(filteredRatings);
+      
+      // Load friends count
+      loadFriendsData();
+    }
+  }, [user, loading, router, loadFriendsData]);
 
   const handleTabChange = (tab: "ratings" | "beans") => {
     setActiveTab(tab);

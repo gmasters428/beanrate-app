@@ -110,6 +110,28 @@ export const mockBeans: CoffeeBean[] = [
   }
 ];
 
+export const mockBrewMethods: string[] = [
+  "Pour Over",
+  "French Press",
+  "Espresso Machine",
+  "Aeropress",
+  "Chemex",
+  "Drip Machine",
+  "Moka Pot",
+  "Cold Brew",
+];
+
+export const mockTags: string[] = [
+  "Black",
+  "Latte",
+  "Vanilla Syrup",
+  "Oat Milk",
+  "Iced",
+  "Decaf",
+  "Single Origin",
+  "Blend",
+];
+
 export const mockRatings: Rating[] = [
   {
     id: "1",

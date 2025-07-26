@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Image from "next/image";
 import Layout from "@/components/layout/Layout";
-import { mockCoffeeBeans, mockBrewMethods, mockTags } from "@/data/mockData";
+import { Button } from "@/components/ui/button";
+import { mockBeans, mockBrewMethods, mockTags } from "@/data/mockData";
 import { CoffeeBean } from "@/types";
-import { Camera, Coffee, Search, X, Plus } from "lucide-react";
+import { ArrowLeft, Star, Camera, PlusCircle, XCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function RatePage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function RatePage() {
 
   useEffect(() => {
     if (beanId && typeof beanId === "string") {
-      const bean = mockCoffeeBeans.find((b) => b.id === beanId);
+      const bean = mockBeans.find((b) => b.id === beanId);
       if (bean) {
         setSelectedBean(bean);
         setShowSearch(false);
@@ -41,7 +41,7 @@ export default function RatePage() {
       return;
     }
     
-    const results = mockCoffeeBeans.filter(
+    const results = mockBeans.filter(
       (bean) =>
         bean.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         bean.roaster.toLowerCase().includes(searchQuery.toLowerCase())
@@ -76,7 +76,7 @@ export default function RatePage() {
   const handleImageUpload = (type: "bean" | "brewed") => {
     // In a real app, we would handle file uploads
     // For now, we'll just use a random image from our mock data
-    const randomImage = mockCoffeeBeans[Math.floor(Math.random() * mockCoffeeBeans.length)].imageUrl;
+    const randomImage = mockBeans[Math.floor(Math.random() * mockBeans.length)].imageUrl;
     
     if (type === "bean") {
       setBeanImage(randomImage || null);
@@ -164,7 +164,7 @@ export default function RatePage() {
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="font-medium text-gray-900 mb-2">Popular Beans</h3>
               <div className="space-y-2">
-                {mockCoffeeBeans.slice(0, 3).map((bean) => (
+                {mockBeans.slice(0, 3).map((bean) => (
                   <div
                     key={bean.id}
                     className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer"

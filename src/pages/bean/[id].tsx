@@ -1,13 +1,12 @@
-
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
 import Image from "next/image";
+import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
-import { mockCoffeeBeans, mockRatings } from "@/data/mockData";
+import { mockBeans, mockRatings } from "@/data/mockData";
 import { CoffeeBean, Rating } from "@/types";
-import { Coffee, MapPin, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Star, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function BeanDetailPage() {
   const router = useRouter();
@@ -20,7 +19,7 @@ export default function BeanDetailPage() {
   useEffect(() => {
     if (id) {
       // Find the bean with the matching ID
-      const foundBean = mockCoffeeBeans.find((b) => b.id === id);
+      const foundBean = mockBeans.find((b) => b.id === id);
       setBean(foundBean || null);
       
       // Find all ratings for this bean
@@ -72,7 +71,7 @@ export default function BeanDetailPage() {
               />
             ) : (
               <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                <Coffee className="h-12 w-12 text-gray-400" />
+                <ArrowLeft className="h-12 w-12 text-gray-400" />
               </div>
             )}
           </div>
@@ -107,15 +106,15 @@ export default function BeanDetailPage() {
             
             <div className="mt-4 space-y-2">
               <div className="flex items-center text-gray-700">
-                <MapPin className="h-5 w-5 mr-2 text-gray-500" />
+                <Star className="h-5 w-5 mr-2 text-gray-500" />
                 <span>{bean.origin}</span>
               </div>
               <div className="flex items-center text-gray-700">
-                <Coffee className="h-5 w-5 mr-2 text-gray-500" />
+                <Star className="h-5 w-5 mr-2 text-gray-500" />
                 <span>{bean.roastLevel} Roast</span>
               </div>
               <div className="flex items-center text-gray-700">
-                <Calendar className="h-5 w-5 mr-2 text-gray-500" />
+                <Star className="h-5 w-5 mr-2 text-gray-500" />
                 <span>Added {format(new Date(bean.createdAt), "MMMM d, yyyy")}</span>
               </div>
             </div>
@@ -127,12 +126,12 @@ export default function BeanDetailPage() {
             )}
             
             <div className="mt-6">
-              <button
+              <Button
                 onClick={() => router.push(`/rate?beanId=${bean.id}`)}
                 className="w-full py-2 bg-brown-600 text-white rounded-lg hover:bg-brown-700"
               >
                 Rate This Bean
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -151,12 +150,12 @@ export default function BeanDetailPage() {
           {beanRatings.length === 0 && (
             <div className="text-center py-8 bg-white rounded-lg shadow-md">
               <p className="text-gray-500">Be the first to rate this bean!</p>
-              <button
+              <Button
                 onClick={() => router.push(`/rate?beanId=${bean.id}`)}
                 className="mt-4 px-4 py-2 bg-brown-600 text-white rounded-lg hover:bg-brown-700"
               >
                 Add Rating
-              </button>
+              </Button>
             </div>
           )}
         </div>

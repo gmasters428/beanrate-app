@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Layout from "@/components/layout/Layout";
@@ -19,6 +19,23 @@ export default function SearchPage() {
   const [searchResults, setSearchResults] = useState<UserWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const searchUsers = useCallback(async (query: string) => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const results = await userService.searchUsers(query);
+      // Filter out current user from results
+      const filteredResults = results.filter(result => result.id !== user.id);
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (searchType === "beans") {
       if (searchQuery.trim() === "") {
@@ -37,24 +54,7 @@ export default function SearchPage() {
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery, searchType]);
-
-  const searchUsers = async (query: string) => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      const results = await userService.searchUsers(query);
-      // Filter out current user from results
-      const filteredResults = results.filter(result => result.id !== user.id);
-      setSearchResults(filteredResults);
-    } catch (error) {
-      console.error("Error searching users:", error);
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [searchQuery, searchType, searchUsers]);
 
   const handleSendFriendRequest = async (userId: string) => {
     try {

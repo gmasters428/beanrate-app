@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -23,18 +23,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !currentUser) {
-      router.push("/auth/login");
-      return;
-    }
-
-    if (id && typeof id === 'string') {
-      loadUserProfile(id);
-    }
-  }, [id, currentUser, authLoading, router]);
-
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = useCallback(async (userId: string) => {
     try {
       setLoading(true);
       const [profile, friendship, friendsCountResult] = await Promise.all([
@@ -61,7 +50,18 @@ export default function UserProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, router]);
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (id && typeof id === 'string') {
+      loadUserProfile(id);
+    }
+  }, [id, currentUser, authLoading, router, loadUserProfile]);
 
   const handleSendFriendRequest = async () => {
     if (!profileUser || !currentUser) return;

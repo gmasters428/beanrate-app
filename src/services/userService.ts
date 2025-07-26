@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -258,7 +257,8 @@ export const userService = {
 
     const friends = await Promise.all(
       data?.map(async (friendship) => {
-        const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
+        const friend = (friendship.user_one_id === userId ? friendship.user_two : friendship.user_one) as User;
+        if (!friend) return null;
         const { data: authUser } = await supabase.auth.admin.getUserById(friend.id);
         return {
           ...friend,
@@ -267,7 +267,7 @@ export const userService = {
       }) || []
     );
 
-    return friends as UserWithProfile[];
+    return friends.filter(Boolean) as UserWithProfile[];
   },
 
   async getPendingRequests(): Promise<UserWithProfile[]> {
@@ -288,15 +288,17 @@ export const userService = {
 
     const requests = await Promise.all(
       data?.map(async (request) => {
-        const { data: authUser } = await supabase.auth.admin.getUserById(request.requester.id);
+        const requester = request.requester as User;
+        if (!requester) return null;
+        const { data: authUser } = await supabase.auth.admin.getUserById(requester.id);
         return {
-          ...request.requester,
+          ...requester,
           email: authUser.user?.email || ''
         };
       }) || []
     );
 
-    return requests as UserWithProfile[];
+    return requests.filter(Boolean) as UserWithProfile[];
   },
 
   async getFriendsCount(userId: string): Promise<number> {

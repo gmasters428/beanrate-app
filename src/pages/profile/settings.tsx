@@ -121,42 +121,6 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const handleProfileSubmit = async (values: ProfileFormValues) => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      await userService.updateUserProfile(user.id, {
-        display_name: values.displayName,
-        bio: values.bio,
-      });
-      
-      // This part seems to handle preferences, let's use the correct service method
-      await userService.updatePreferences(user.id, {
-        region: values.region,
-        coffee_types: values.coffeePreferences,
-      });
-
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-      // Refresh user data in AuthContext if needed
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAccountSubmit = async (values: AccountFormValues) => {
-    // Handle account settings submission
-  };
-
   if (loading) {
     return (
       <Layout title="BeanRate - Loading...">
