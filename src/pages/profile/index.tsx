@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -124,29 +123,15 @@ export default function ProfilePage() {
                 </div>
               </div>
               
-              {hasBio ? (
+              {hasBio && (
                 <p className="mt-2 text-gray-700 text-center">{user.bio}</p>
-              ) : (
-                <Link href="/profile/settings">
-                  <div className="mt-2 text-gray-400 text-center hover:text-gray-600 cursor-pointer flex items-center justify-center gap-1">
-                    <Edit3 className="h-3 w-3" />
-                    <span className="text-sm">Add bio</span>
-                  </div>
-                </Link>
               )}
 
-              {hasRegion ? (
+              {hasRegion && (
                 <p className="mt-1 text-sm text-gray-500 flex items-center justify-center gap-1">
                   <MapPin className="h-3 w-3" />
                   {user.preferences.region}
                 </p>
-              ) : (
-                <Link href="/profile/settings">
-                  <div className="mt-1 text-gray-400 text-sm hover:text-gray-600 cursor-pointer flex items-center justify-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>Add location</span>
-                  </div>
-                </Link>
               )}
 
               {hasCoffeePreferences && (
