@@ -271,6 +271,57 @@ export const authService = {
     }
   },
 
+  async changeEmail(newEmail: string) {
+    try {
+      const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/confirm`;
+      const { data, error } = await withTimeout(
+        supabase.auth.updateUser({ 
+          email: newEmail 
+        }, {
+          emailRedirectTo: redirectUrl
+        }), 
+        15000
+      );
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("💥 Exception in changeEmail:", error);
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
+  },
+
+  async changePassword(newPassword: string) {
+    try {
+      const passwordRequirements = {
+        length: newPassword.length >= 10,
+        uppercase: /[A-Z]/.test(newPassword),
+        lowercase: /[a-z]/.test(newPassword),
+        number: /\d/.test(newPassword),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+      };
+      
+      if (!Object.values(passwordRequirements).every(req => req)) {
+        throw new Error("Password must be at least 10 characters long and include a mix of uppercase, lowercase, numbers, and special characters.");
+      }
+
+      const { data, error } = await withTimeout(
+        supabase.auth.updateUser({ password: newPassword }), 
+        15000
+      );
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("💥 Exception in changePassword:", error);
+      const friendlyMessage = parseAuthError(error);
+      const enhancedError = new Error(friendlyMessage);
+      (enhancedError as any).originalError = error;
+      throw enhancedError;
+    }
+  },
+
   // Dummy functions to fix build errors in admin pages - these should be removed in production
   async debugAuthState(email?: string): Promise<any> {
     console.log("debugAuthState not implemented for", email);

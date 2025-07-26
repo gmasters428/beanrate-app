@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
@@ -236,6 +235,14 @@ export default function ProfileSettingsPage() {
                 )}
               </Button>
             </form>
+            
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <Link href="/profile/account">
+                <Button variant="outline" className="w-full">
+                  Account Settings (Change Email & Password)
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
