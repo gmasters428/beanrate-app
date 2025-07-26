@@ -244,7 +244,7 @@ export const authService = {
 
   async resetPassword(email: string) {
     try {
-      const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password`;
+      const redirectUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password-confirm`;
       const { data, error } = await withTimeout(supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl }), 15000);
       if (error) throw error;
       return data;
