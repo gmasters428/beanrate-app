@@ -1,5 +1,4 @@
-
-import { User, CoffeeBean, Rating, BrewMethod, Tag } from "@/types";
+import { CoffeeBean, Rating, User } from "@/types";
 
 export const mockUsers: User[] = [
   {
@@ -48,7 +47,7 @@ export const mockUsers: User[] = [
   }
 ];
 
-export const mockCoffeeBeans: CoffeeBean[] = [
+export const mockBeans: CoffeeBean[] = [
   {
     id: "1",
     name: "Ethiopian Yirgacheffe",
@@ -111,37 +110,13 @@ export const mockCoffeeBeans: CoffeeBean[] = [
   }
 ];
 
-export const mockBrewMethods: BrewMethod[] = [
-  { id: "1", name: "Pour Over" },
-  { id: "2", name: "French Press" },
-  { id: "3", name: "Espresso Machine" },
-  { id: "4", name: "Aeropress" },
-  { id: "5", name: "Drip Machine" },
-  { id: "6", name: "Cold Brew" },
-  { id: "7", name: "Moka Pot" },
-  { id: "8", name: "Chemex" }
-];
-
-export const mockTags: Tag[] = [
-  { id: "1", name: "Black" },
-  { id: "2", name: "With Milk" },
-  { id: "3", name: "Vanilla Syrup" },
-  { id: "4", name: "Caramel Syrup" },
-  { id: "5", name: "Hazelnut Syrup" },
-  { id: "6", name: "Oat Milk" },
-  { id: "7", name: "Almond Milk" },
-  { id: "8", name: "Latte" },
-  { id: "9", name: "Cappuccino" },
-  { id: "10", name: "Americano" }
-];
-
 export const mockRatings: Rating[] = [
   {
     id: "1",
     userId: "1",
     user: mockUsers[0],
     coffeeBeanId: "1",
-    coffeeBean: mockCoffeeBeans[0],
+    coffeeBean: mockBeans[0],
     rating: 5,
     brewMethod: "Pour Over",
     tags: ["Black"],
@@ -166,7 +141,7 @@ export const mockRatings: Rating[] = [
     userId: "2",
     user: mockUsers[1],
     coffeeBeanId: "3",
-    coffeeBean: mockCoffeeBeans[2],
+    coffeeBean: mockBeans[2],
     rating: 4,
     brewMethod: "French Press",
     tags: ["Black"],
@@ -182,7 +157,7 @@ export const mockRatings: Rating[] = [
     userId: "3",
     user: mockUsers[2],
     coffeeBeanId: "2",
-    coffeeBean: mockCoffeeBeans[1],
+    coffeeBean: mockBeans[1],
     rating: 5,
     brewMethod: "Espresso Machine",
     tags: ["Latte", "Vanilla Syrup", "Oat Milk"],
@@ -215,7 +190,7 @@ export const mockRatings: Rating[] = [
     userId: "4",
     user: mockUsers[3],
     coffeeBeanId: "4",
-    coffeeBean: mockCoffeeBeans[3],
+    coffeeBean: mockBeans[3],
     rating: 4,
     brewMethod: "Aeropress",
     tags: ["Black"],
@@ -231,7 +206,7 @@ export const mockRatings: Rating[] = [
     userId: "1",
     user: mockUsers[0],
     coffeeBeanId: "5",
-    coffeeBean: mockCoffeeBeans[4],
+    coffeeBean: mockBeans[4],
     rating: 4,
     brewMethod: "Chemex",
     tags: ["Black"],

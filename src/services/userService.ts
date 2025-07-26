@@ -4,9 +4,11 @@ import type { Database } from "@/integrations/supabase/types";
 
 type User = Database["public"]["Tables"]["users"]["Row"];
 type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
+type UserPreferences = Database["public"]["Tables"]["user_preferences"]["Row"];
 
 export interface UserWithProfile extends User {
   user_profiles: UserProfile | null;
+  email: string; // Ensure email is available
 }
 
 export interface FriendshipStatus {
@@ -25,13 +27,32 @@ export const userService = {
     const { data, error } = await supabase
       .from("users")
       .select(`
-        *,
+        id,
+        email,
         user_profiles (*)
       `)
       .eq("id", userId)
       .single();
 
     if (error) throw error;
+    return data as UserWithProfile | null;
+  },
+
+  async createUserProfile(userId: string, email: string) {
+    const username = email.split('@')[0];
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .insert({
+        user_id: userId,
+        display_name: username,
+      })
+      .select()
+      .single();
+
+    if (error) {
+        console.error("Error creating user profile:", error);
+        throw error;
+    }
     return data;
   },
 
@@ -46,19 +67,30 @@ export const userService = {
     if (error) throw error;
     return data;
   },
+  
+  async updatePreferences(userId: string, updates: Partial<UserPreferences>) {
+    const { data, error } = await supabase
+      .from("user_preferences")
+      .update(updates)
+      .eq("user_id", userId);
 
-  async searchUsers(query: string, limit = 10) {
+    if (error) throw error;
+    return data;
+  },
+
+  async searchUsers(query: string, limit = 10): Promise<UserWithProfile[]> {
     const { data, error } = await supabase
       .from("users")
       .select(`
-        *,
+        id,
+        email,
         user_profiles (*)
       `)
       .or(`email.ilike.%${query}%,user_profiles.display_name.ilike.%${query}%`)
       .limit(limit);
 
     if (error) throw error;
-    return data;
+    return data as UserWithProfile[];
   },
 
   // Friendship functions
@@ -66,13 +98,11 @@ export const userService = {
     const currentUser = await this.getCurrentUser();
     if (!currentUser) throw new Error("Not authenticated");
 
-    // Check if friendship already exists
     const existingFriendship = await this.getFriendshipStatus(receiverId);
     if (existingFriendship.status !== 'none') {
       throw new Error("Friendship request already exists or users are already friends");
     }
 
-    // Ensure consistent ordering for the unique constraint
     const userOneId = currentUser.id < receiverId ? currentUser.id : receiverId;
     const userTwoId = currentUser.id < receiverId ? receiverId : currentUser.id;
 
@@ -175,29 +205,17 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .select(`
-        *,
-        user_one:users!friendships_user_one_id_fkey(
-          *,
-          user_profiles(*)
-        ),
-        user_two:users!friendships_user_two_id_fkey(
-          *,
-          user_profiles(*)
-        )
+        user_one:users!friendships_user_one_id_fkey(id, email, user_profiles(*)),
+        user_two:users!friendships_user_two_id_fkey(id, email, user_profiles(*))
       `)
       .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
       .eq("status", "accepted");
 
     if (error) throw error;
 
-    // Extract the friend (the other user in each friendship)
-    const friends = data?.map(friendship => {
-      if (friendship.user_one_id === userId) {
-        return friendship.user_two;
-      } else {
-        return friendship.user_one;
-      }
-    }).filter(Boolean) || [];
+    const friends = data?.map(friendship => 
+      friendship.user_one_id === userId ? friendship.user_two : friendship.user_one
+    ).filter(Boolean) || [];
 
     return friends as UserWithProfile[];
   },
@@ -209,11 +227,7 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .select(`
-        *,
-        requester:users!friendships_action_user_id_fkey(
-          *,
-          user_profiles(*)
-        )
+        requester:users!friendships_action_user_id_fkey(id, email, user_profiles(*))
       `)
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
       .eq("status", "pending")
@@ -221,7 +235,7 @@ export const userService = {
 
     if (error) throw error;
 
-    return data?.map(request => request.requester).filter(Boolean) || [];
+    return data?.map(request => request.requester).filter(Boolean) as UserWithProfile[] || [];
   },
 
   async getFriendsCount(userId: string): Promise<number> {

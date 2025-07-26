@@ -12,6 +12,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
+import { toast } from "@/components/ui/toast";
 
 const coffeeTypes = [
   "Arabica",
@@ -124,6 +125,42 @@ export default function ProfileSettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleProfileSubmit = async (values: ProfileFormValues) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      await userService.updateUserProfile(user.id, {
+        display_name: values.displayName,
+        bio: values.bio,
+      });
+      
+      // This part seems to handle preferences, let's use the correct service method
+      await userService.updatePreferences(user.id, {
+        region: values.region,
+        coffee_types: values.coffeePreferences,
+      });
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+      // Refresh user data in AuthContext if needed
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAccountSubmit = async (values: AccountFormValues) => {
+    // Handle account settings submission
   };
 
   if (loading) {
