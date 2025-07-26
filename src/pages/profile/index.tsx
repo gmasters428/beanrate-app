@@ -26,14 +26,23 @@ export default function ProfilePage() {
     
     try {
       const [friendsCountResult, pendingRequests] = await Promise.all([
-        userService.getFriendsCount(user.id),
-        userService.getPendingRequests()
+        userService.getFriendsCount(user.id).catch(error => {
+          console.warn("Error loading friends count:", error);
+          return 0;
+        }),
+        userService.getPendingRequests().catch(error => {
+          console.warn("Error loading pending requests:", error);
+          return [];
+        })
       ]);
       
       setFriendsCount(friendsCountResult);
       setPendingRequestsCount(pendingRequests.length);
     } catch (error) {
       console.error("Error loading friends data:", error);
+      // Set default values on error
+      setFriendsCount(0);
+      setPendingRequestsCount(0);
     }
   }, [user]);
 
