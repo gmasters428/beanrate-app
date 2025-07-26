@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { mockBeans, mockBrewMethods, mockTags } from "@/data/mockData";
 import { CoffeeBean } from "@/types";
-import { ArrowLeft, Star, Camera, PlusCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Star, Camera, PlusCircle, XCircle, Search, Coffee, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function RatePage() {
@@ -275,8 +277,8 @@ export default function RatePage() {
                 >
                   <option value="">Select a brew method</option>
                   {mockBrewMethods.map((method) => (
-                    <option key={method.id} value={method.name}>
-                      {method.name}
+                    <option key={method} value={method}>
+                      {method}
                     </option>
                   ))}
                 </select>
@@ -289,16 +291,16 @@ export default function RatePage() {
                 <div className="flex flex-wrap gap-2">
                   {mockTags.map((tag) => (
                     <button
-                      key={tag.id}
+                      key={tag}
                       type="button"
                       className={`px-3 py-1 rounded-full text-sm ${
-                        selectedTags.includes(tag.name)
+                        selectedTags.includes(tag)
                           ? "bg-brown-600 text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
-                      onClick={() => handleToggleTag(tag.name)}
+                      onClick={() => handleToggleTag(tag)}
                     >
-                      {tag.name}
+                      {tag}
                     </button>
                   ))}
                 </div>

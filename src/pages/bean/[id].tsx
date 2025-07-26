@@ -7,6 +7,7 @@ import { mockBeans, mockRatings } from "@/data/mockData";
 import { CoffeeBean, Rating } from "@/types";
 import { Star, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
 export default function BeanDetailPage() {
   const router = useRouter();

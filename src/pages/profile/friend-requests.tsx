@@ -97,7 +97,7 @@ export default function FriendRequestsPage() {
                       {request.profile_image_url ? (
                         <Image 
                           src={request.profile_image_url} 
-                          alt={request.display_name || request.email} 
+                          alt={request.display_name || request.username} 
                           fill
                           className="object-cover"
                         />
@@ -109,9 +109,9 @@ export default function FriendRequestsPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {request.display_name || request.email}
+                        {request.display_name || request.username}
                       </h3>
-                      <p className="text-sm text-gray-500">@{request.email.split('@')[0]}</p>
+                      <p className="text-sm text-gray-500">@{request.username}</p>
                       <p className="text-xs text-gray-400">Wants to be friends</p>
                     </div>
                   </div>

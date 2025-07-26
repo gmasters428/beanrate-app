@@ -146,7 +146,7 @@ export default function SearchPage() {
                         {searchUser.profile_image_url ? (
                           <Image 
                             src={searchUser.profile_image_url} 
-                            alt={searchUser.display_name || searchUser.email} 
+                            alt={searchUser.display_name || searchUser.username} 
                             fill
                             className="object-cover"
                           />
@@ -158,9 +158,9 @@ export default function SearchPage() {
                       </div>
                       <div>
                         <h3 className="font-medium text-gray-900">
-                          {searchUser.display_name || searchUser.email}
+                          {searchUser.display_name || searchUser.username}
                         </h3>
-                        <p className="text-sm text-gray-500">@{searchUser.email.split('@')[0]}</p>
+                        <p className="text-sm text-gray-500">@{searchUser.username}</p>
                         {searchUser.bio && (
                           <p className="text-xs text-gray-400 mt-1 line-clamp-1">
                             {searchUser.bio}

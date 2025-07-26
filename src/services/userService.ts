@@ -4,12 +4,10 @@ import type { Database } from "@/integrations/supabase/types";
 type User = Database["public"]["Tables"]["users"]["Row"];
 type UserPreferences = Database["public"]["Tables"]["user_preferences"]["Row"];
 
-export interface UserWithProfile extends User {
-  email: string;
-}
+export type UserWithProfile = User;
 
 export interface FriendshipStatus {
-  status: 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked';
+  status: "none" | "pending_sent" | "pending_received" | "accepted" | "blocked";
   friendshipId?: string;
 }
 
@@ -27,21 +25,16 @@ export const userService = {
       .eq("id", userId)
       .single();
 
-    if (error) throw error;
-    
-    // Get email from auth.users
-    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-    
-    return {
-      ...data,
-      email: authUser.user?.email || ''
-    } as UserWithProfile;
+    if (error) {
+      console.error("Error getting user profile:", error);
+      return null;
+    };
+    return data;
   },
 
   async createUserProfile(userId: string, email: string) {
-    const username = email.split('@')[0];
+    const username = email.split("@")[0];
     
-    // Check if user already exists
     const { data: existingUser } = await supabase
       .from("users")
       .select("id")
@@ -80,9 +73,73 @@ export const userService = {
     if (error) throw error;
     return data;
   },
+
+  async uploadProfileImage(userId: string, file: File): Promise<string> {
+    try {
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
+      const filePath = `profile-images/${fileName}`;
+
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      // Update user profile with new image URL
+      await this.updateUserProfile(userId, {
+        profile_image_url: publicUrl
+      });
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      throw error;
+    }
+  },
+
+  async removeProfileImage(userId: string): Promise<void> {
+    try {
+      // Get current user to find existing image
+      const user = await this.getUserProfile(userId);
+      if (!user?.profile_image_url) return;
+
+      // Extract file path from URL
+      const url = new URL(user.profile_image_url);
+      const filePath = url.pathname.split('/').slice(-2).join('/'); // Get last two parts of path
+
+      // Delete from storage
+      const { error: deleteError } = await supabase.storage
+        .from('profile-images')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.warn('Error deleting old profile image:', deleteError);
+      }
+
+      // Update user profile to remove image URL
+      await this.updateUserProfile(userId, {
+        profile_image_url: null
+      });
+    } catch (error) {
+      console.error('Error removing profile image:', error);
+      throw error;
+    }
+  },
   
   async updatePreferences(userId: string, updates: Partial<UserPreferences>) {
-    // First check if preferences exist
     const { data: existing } = await supabase
       .from("user_preferences")
       .select("id")
@@ -118,28 +175,15 @@ export const userService = {
       .limit(limit);
 
     if (error) throw error;
-    
-    // Add email from auth for each user
-    const usersWithEmail = await Promise.all(
-      data.map(async (user) => {
-        const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
-        return {
-          ...user,
-          email: authUser.user?.email || ''
-        };
-      })
-    );
-
-    return usersWithEmail as UserWithProfile[];
+    return data as UserWithProfile[];
   },
 
-  // Friendship functions
   async sendFriendRequest(receiverId: string) {
     const currentUser = await this.getCurrentUser();
     if (!currentUser) throw new Error("Not authenticated");
 
     const existingFriendship = await this.getFriendshipStatus(receiverId);
-    if (existingFriendship.status !== 'none') {
+    if (existingFriendship.status !== "none") {
       throw new Error("Friendship request already exists or users are already friends");
     }
 
@@ -152,7 +196,7 @@ export const userService = {
         user_one_id: userOneId,
         user_two_id: userTwoId,
         action_user_id: currentUser.id,
-        status: 'pending'
+        status: "pending"
       })
       .select()
       .single();
@@ -168,7 +212,7 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .update({ 
-        status: 'accepted',
+        status: "accepted",
         updated_at: new Date().toISOString()
       })
       .or(`and(user_one_id.eq.${requesterId},user_two_id.eq.${currentUser.id}),and(user_one_id.eq.${currentUser.id},user_two_id.eq.${requesterId})`)
@@ -212,7 +256,7 @@ export const userService = {
 
   async getFriendshipStatus(otherUserId: string): Promise<FriendshipStatus> {
     const currentUser = await this.getCurrentUser();
-    if (!currentUser) return { status: 'none' };
+    if (!currentUser) return { status: "none" };
 
     const { data, error } = await supabase
       .from("friendships")
@@ -220,25 +264,25 @@ export const userService = {
       .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUser.id})`)
       .single();
 
-    if (error || !data) return { status: 'none' };
+    if (error || !data) return { status: "none" };
 
-    if (data.status === 'accepted') {
-      return { status: 'accepted', friendshipId: data.id };
+    if (data.status === "accepted") {
+      return { status: "accepted", friendshipId: data.id };
     }
 
-    if (data.status === 'pending') {
+    if (data.status === "pending") {
       if (data.action_user_id === currentUser.id) {
-        return { status: 'pending_sent', friendshipId: data.id };
+        return { status: "pending_sent", friendshipId: data.id };
       } else {
-        return { status: 'pending_received', friendshipId: data.id };
+        return { status: "pending_received", friendshipId: data.id };
       }
     }
 
-    if (data.status === 'blocked') {
-      return { status: 'blocked', friendshipId: data.id };
+    if (data.status === "blocked") {
+      return { status: "blocked", friendshipId: data.id };
     }
 
-    return { status: 'none' };
+    return { status: "none" };
   },
 
   async getFriends(userId: string): Promise<UserWithProfile[]> {
@@ -255,19 +299,12 @@ export const userService = {
 
     if (error) throw error;
 
-    const friends = await Promise.all(
-      data?.map(async (friendship) => {
-        const friend = (friendship.user_one_id === userId ? friendship.user_two : friendship.user_one) as User;
-        if (!friend) return null;
-        const { data: authUser } = await supabase.auth.admin.getUserById(friend.id);
-        return {
-          ...friend,
-          email: authUser.user?.email || ''
-        };
-      }) || []
-    );
+    const friends = data?.map(friendship => {
+        const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
+        return friend;
+    }).filter(Boolean);
 
-    return friends.filter(Boolean) as UserWithProfile[];
+    return friends as unknown as UserWithProfile[];
   },
 
   async getPendingRequests(): Promise<UserWithProfile[]> {
@@ -286,25 +323,14 @@ export const userService = {
 
     if (error) throw error;
 
-    const requests = await Promise.all(
-      data?.map(async (request) => {
-        const requester = request.requester as User;
-        if (!requester) return null;
-        const { data: authUser } = await supabase.auth.admin.getUserById(requester.id);
-        return {
-          ...requester,
-          email: authUser.user?.email || ''
-        };
-      }) || []
-    );
-
-    return requests.filter(Boolean) as UserWithProfile[];
+    const requests = data?.map(request => request.requester).filter(Boolean);
+    return requests as unknown as UserWithProfile[];
   },
 
   async getFriendsCount(userId: string): Promise<number> {
     const { count, error } = await supabase
       .from("friendships")
-      .select("*", { count: 'exact', head: true })
+      .select("*", { count: "exact", head: true })
       .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
       .eq("status", "accepted");
 

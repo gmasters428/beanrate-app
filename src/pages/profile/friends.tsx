@@ -95,7 +95,7 @@ export default function FriendsPage() {
                       {friend.profile_image_url ? (
                         <Image 
                           src={friend.profile_image_url} 
-                          alt={friend.display_name || friend.email} 
+                          alt={friend.display_name || friend.username} 
                           fill
                           className="object-cover"
                         />
@@ -107,9 +107,9 @@ export default function FriendsPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {friend.display_name || friend.email}
+                        {friend.display_name || friend.username}
                       </h3>
-                      <p className="text-sm text-gray-500">@{friend.email.split('@')[0]}</p>
+                      <p className="text-sm text-gray-500">@{friend.username}</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">

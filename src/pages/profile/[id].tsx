@@ -139,7 +139,7 @@ export default function UserProfilePage() {
     return null;
   }
 
-  const displayName = profileUser.display_name || profileUser.email;
+  const displayName = profileUser.display_name || profileUser.username;
   const hasBio = profileUser.bio && profileUser.bio.trim().length > 0;
 
   const renderFriendshipButton = () => {
@@ -237,7 +237,7 @@ export default function UserProfilePage() {
             
             <div className="pt-16 text-center">
               <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-              <p className="text-gray-600">@{profileUser.email.split('@')[0]}</p>
+              <p className="text-gray-600">@{profileUser.username}</p>
               
               {hasBio && (
                 <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>
