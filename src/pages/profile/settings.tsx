@@ -12,7 +12,6 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
-import { toast } from "@/components/ui/toast";
 
 const coffeeTypes = [
   "Arabica",
@@ -103,14 +102,9 @@ export default function ProfileSettingsPage() {
       // Update user preferences (firstName, region, coffeeTypes)
       await userService.updatePreferences(user.id, {
         first_name: formData.firstName.trim() || null,
-        last_name: null, // Clear last name since we removed it
+        last_name: null,
         region: formData.region || null,
         coffee_types: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
-      });
-
-      // Update user profile to clear bio since we removed it
-      await userService.updateProfile(user.id, {
-        bio: null
       });
 
       // Refresh user data to show updated information

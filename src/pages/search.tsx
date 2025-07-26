@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -144,10 +143,10 @@ export default function SearchPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="h-12 w-12 rounded-full overflow-hidden relative bg-gray-200">
-                        {searchUser.user_profiles?.avatar_url ? (
+                        {searchUser.profile_image_url ? (
                           <Image 
-                            src={searchUser.user_profiles.avatar_url} 
-                            alt={searchUser.user_profiles.display_name || searchUser.email} 
+                            src={searchUser.profile_image_url} 
+                            alt={searchUser.display_name || searchUser.email} 
                             fill
                             className="object-cover"
                           />
@@ -159,12 +158,12 @@ export default function SearchPage() {
                       </div>
                       <div>
                         <h3 className="font-medium text-gray-900">
-                          {searchUser.user_profiles?.display_name || searchUser.email}
+                          {searchUser.display_name || searchUser.email}
                         </h3>
                         <p className="text-sm text-gray-500">@{searchUser.email.split('@')[0]}</p>
-                        {searchUser.user_profiles?.bio && (
+                        {searchUser.bio && (
                           <p className="text-xs text-gray-400 mt-1 line-clamp-1">
-                            {searchUser.user_profiles.bio}
+                            {searchUser.bio}
                           </p>
                         )}
                       </div>

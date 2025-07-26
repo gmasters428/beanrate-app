@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -140,8 +139,8 @@ export default function UserProfilePage() {
     return null;
   }
 
-  const displayName = profileUser.user_profiles?.display_name || profileUser.email;
-  const hasBio = profileUser.user_profiles?.bio && profileUser.user_profiles.bio.trim().length > 0;
+  const displayName = profileUser.display_name || profileUser.email;
+  const hasBio = profileUser.bio && profileUser.bio.trim().length > 0;
 
   const renderFriendshipButton = () => {
     if (!currentUser || currentUser.id === profileUser.id) return null;
@@ -221,9 +220,9 @@ export default function UserProfilePage() {
           <div className="px-4 pb-4 relative">
             <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
               <div className="h-24 w-24 rounded-full border-4 border-white overflow-hidden relative bg-white">
-                {profileUser.user_profiles?.avatar_url ? (
+                {profileUser.profile_image_url ? (
                   <Image 
-                    src={profileUser.user_profiles.avatar_url} 
+                    src={profileUser.profile_image_url} 
                     alt={displayName} 
                     fill
                     className="object-cover"
@@ -241,7 +240,7 @@ export default function UserProfilePage() {
               <p className="text-gray-600">@{profileUser.email.split('@')[0]}</p>
               
               {hasBio && (
-                <p className="mt-2 text-gray-700 text-center">{profileUser.user_profiles.bio}</p>
+                <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>
               )}
 
               <div className="mt-4 flex justify-center">

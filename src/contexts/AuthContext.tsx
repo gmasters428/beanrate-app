@@ -62,7 +62,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           try {
             await userService.createUserProfile(
               session.user.id,
-              session.user.email?.split('@')[0] || 'user',
               session.user.email || ''
             );
           } catch (error) {
@@ -88,7 +87,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           try {
             await userService.createUserProfile(
               session.user.id,
-              session.user.email?.split('@')[0] || 'user',
               session.user.email || ''
             );
           } catch (error) {

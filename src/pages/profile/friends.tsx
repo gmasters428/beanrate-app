@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -93,10 +92,10 @@ export default function FriendsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="h-12 w-12 rounded-full overflow-hidden relative bg-gray-200">
-                      {friend.user_profiles?.avatar_url ? (
+                      {friend.profile_image_url ? (
                         <Image 
-                          src={friend.user_profiles.avatar_url} 
-                          alt={friend.user_profiles.display_name || friend.email} 
+                          src={friend.profile_image_url} 
+                          alt={friend.display_name || friend.email} 
                           fill
                           className="object-cover"
                         />
@@ -108,7 +107,7 @@ export default function FriendsPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {friend.user_profiles?.display_name || friend.email}
+                        {friend.display_name || friend.email}
                       </h3>
                       <p className="text-sm text-gray-500">@{friend.email.split('@')[0]}</p>
                     </div>

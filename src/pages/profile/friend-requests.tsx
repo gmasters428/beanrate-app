@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -95,10 +94,10 @@ export default function FriendRequestsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="h-12 w-12 rounded-full overflow-hidden relative bg-gray-200">
-                      {request.user_profiles?.avatar_url ? (
+                      {request.profile_image_url ? (
                         <Image 
-                          src={request.user_profiles.avatar_url} 
-                          alt={request.user_profiles.display_name || request.email} 
+                          src={request.profile_image_url} 
+                          alt={request.display_name || request.email} 
                           fill
                           className="object-cover"
                         />
@@ -110,7 +109,7 @@ export default function FriendRequestsPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {request.user_profiles?.display_name || request.email}
+                        {request.display_name || request.email}
                       </h3>
                       <p className="text-sm text-gray-500">@{request.email.split('@')[0]}</p>
                       <p className="text-xs text-gray-400">Wants to be friends</p>

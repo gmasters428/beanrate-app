@@ -3,12 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type User = Database["public"]["Tables"]["users"]["Row"];
-type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 type UserPreferences = Database["public"]["Tables"]["user_preferences"]["Row"];
 
 export interface UserWithProfile extends User {
-  user_profiles: UserProfile | null;
-  email: string; // Ensure email is available
+  email: string;
 }
 
 export interface FriendshipStatus {
@@ -26,41 +24,57 @@ export const userService = {
   async getUserProfile(userId: string): Promise<UserWithProfile | null> {
     const { data, error } = await supabase
       .from("users")
-      .select(`
-        id,
-        email,
-        user_profiles (*)
-      `)
+      .select("*")
       .eq("id", userId)
       .single();
 
     if (error) throw error;
-    return data as UserWithProfile | null;
+    
+    // Get email from auth.users
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    
+    return {
+      ...data,
+      email: authUser.user?.email || ''
+    } as UserWithProfile;
   },
 
   async createUserProfile(userId: string, email: string) {
     const username = email.split('@')[0];
+    
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    if (existingUser) {
+      return existingUser;
+    }
+
     const { data, error } = await supabase
-      .from("user_profiles")
+      .from("users")
       .insert({
-        user_id: userId,
+        id: userId,
+        username: username,
         display_name: username,
       })
       .select()
       .single();
 
     if (error) {
-        console.error("Error creating user profile:", error);
-        throw error;
+      console.error("Error creating user profile:", error);
+      throw error;
     }
     return data;
   },
 
-  async updateUserProfile(userId: string, updates: Partial<UserProfile>) {
+  async updateUserProfile(userId: string, updates: Partial<User>) {
     const { data, error } = await supabase
-      .from("user_profiles")
+      .from("users")
       .update(updates)
-      .eq("user_id", userId)
+      .eq("id", userId)
       .select()
       .single();
 
@@ -69,28 +83,55 @@ export const userService = {
   },
   
   async updatePreferences(userId: string, updates: Partial<UserPreferences>) {
-    const { data, error } = await supabase
+    // First check if preferences exist
+    const { data: existing } = await supabase
       .from("user_preferences")
-      .update(updates)
-      .eq("user_id", userId);
+      .select("id")
+      .eq("user_id", userId)
+      .single();
 
-    if (error) throw error;
-    return data;
+    if (existing) {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .update(updates)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+      return data;
+    } else {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .insert({
+          user_id: userId,
+          ...updates
+        });
+
+      if (error) throw error;
+      return data;
+    }
   },
 
   async searchUsers(query: string, limit = 10): Promise<UserWithProfile[]> {
     const { data, error } = await supabase
       .from("users")
-      .select(`
-        id,
-        email,
-        user_profiles (*)
-      `)
-      .or(`email.ilike.%${query}%,user_profiles.display_name.ilike.%${query}%`)
+      .select("*")
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
       .limit(limit);
 
     if (error) throw error;
-    return data as UserWithProfile[];
+    
+    // Add email from auth for each user
+    const usersWithEmail = await Promise.all(
+      data.map(async (user) => {
+        const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
+        return {
+          ...user,
+          email: authUser.user?.email || ''
+        };
+      })
+    );
+
+    return usersWithEmail as UserWithProfile[];
   },
 
   // Friendship functions
@@ -205,17 +246,26 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .select(`
-        user_one:users!friendships_user_one_id_fkey(id, email, user_profiles(*)),
-        user_two:users!friendships_user_two_id_fkey(id, email, user_profiles(*))
+        user_one_id,
+        user_two_id,
+        user_one:users!friendships_user_one_id_fkey(*),
+        user_two:users!friendships_user_two_id_fkey(*)
       `)
       .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
       .eq("status", "accepted");
 
     if (error) throw error;
 
-    const friends = data?.map(friendship => 
-      friendship.user_one_id === userId ? friendship.user_two : friendship.user_one
-    ).filter(Boolean) || [];
+    const friends = await Promise.all(
+      data?.map(async (friendship) => {
+        const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
+        const { data: authUser } = await supabase.auth.admin.getUserById(friend.id);
+        return {
+          ...friend,
+          email: authUser.user?.email || ''
+        };
+      }) || []
+    );
 
     return friends as UserWithProfile[];
   },
@@ -227,7 +277,8 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .select(`
-        requester:users!friendships_action_user_id_fkey(id, email, user_profiles(*))
+        action_user_id,
+        requester:users!friendships_action_user_id_fkey(*)
       `)
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
       .eq("status", "pending")
@@ -235,7 +286,17 @@ export const userService = {
 
     if (error) throw error;
 
-    return data?.map(request => request.requester).filter(Boolean) as UserWithProfile[] || [];
+    const requests = await Promise.all(
+      data?.map(async (request) => {
+        const { data: authUser } = await supabase.auth.admin.getUserById(request.requester.id);
+        return {
+          ...request.requester,
+          email: authUser.user?.email || ''
+        };
+      }) || []
+    );
+
+    return requests as UserWithProfile[];
   },
 
   async getFriendsCount(userId: string): Promise<number> {
