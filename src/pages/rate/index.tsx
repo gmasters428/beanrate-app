@@ -1,89 +1,144 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { mockBeans, mockBrewMethods, mockTags } from "@/data/mockData";
-import { CoffeeBean } from "@/types";
+import { coffeeBeansService, CoffeeBeanWithRatings } from "@/services/coffeeBeansService";
+import { ratingsService } from "@/services/ratingsService";
 import { ArrowLeft, Star, Camera, PlusCircle, XCircle, Search, Coffee, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function RatePage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const { beanId } = router.query;
   
-  const [selectedBean, setSelectedBean] = useState<CoffeeBean | null>(null);
+  const [selectedBean, setSelectedBean] = useState<CoffeeBeanWithRatings | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<CoffeeBean[]>([]);
+  const [searchResults, setSearchResults] = useState<CoffeeBeanWithRatings[]>([]);
+  const [popularBeans, setPopularBeans] = useState<CoffeeBeanWithRatings[]>([]);
   const [showSearch, setShowSearch] = useState(!beanId);
+  const [isSearching, setIsSearching] = useState(false);
   
   const [rating, setRating] = useState<number>(0);
   const [brewMethod, setBrewMethod] = useState<string>("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>("");
-  const [beanImage, setBeanImage] = useState<string | null>(null);
-  const [brewedImage, setBrewedImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const brewMethods = [
+    "Espresso", "Pour Over", "French Press", "AeroPress", "Chemex", 
+    "V60", "Drip Coffee", "Cold Brew", "Moka Pot", "Turkish Coffee"
+  ];
+
+  useEffect(() => {
+    // Load popular beans on component mount
+    loadPopularBeans();
+  }, []);
 
   useEffect(() => {
     if (beanId && typeof beanId === "string") {
-      const bean = mockBeans.find((b) => b.id === beanId);
+      loadBeanById(beanId);
+    }
+  }, [beanId]);
+
+  const loadPopularBeans = async () => {
+    try {
+      const beans = await coffeeBeansService.getCoffeeBeans(6);
+      setPopularBeans(beans);
+    } catch (error) {
+      console.error("Error loading popular beans:", error);
+    }
+  };
+
+  const loadBeanById = async (id: string) => {
+    try {
+      const bean = await coffeeBeansService.getCoffeeBeanById(id);
       if (bean) {
         setSelectedBean(bean);
         setShowSearch(false);
       }
+    } catch (error) {
+      console.error("Error loading bean:", error);
     }
-  }, [beanId]);
+  };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!searchQuery) {
+    if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
     }
     
-    const results = mockBeans.filter(
-      (bean) =>
-        bean.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bean.roaster.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    setSearchResults(results);
+    setIsSearching(true);
+    try {
+      const results = await coffeeBeansService.searchCoffeeBeans(searchQuery);
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Error searching beans:", error);
+      toast({
+        title: "Search Error",
+        description: "Failed to search coffee beans. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleSelectBean = (bean: CoffeeBean) => {
+  const handleSelectBean = (bean: CoffeeBeanWithRatings) => {
     setSelectedBean(bean);
     setShowSearch(false);
     setSearchQuery("");
     setSearchResults([]);
   };
 
-  const handleToggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
+  const handleSubmitRating = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit a rating.",
+        variant: "destructive",
+      });
+      return;
     }
-  };
 
-  const handleSubmitRating = () => {
-    // In a real app, we would submit the rating to the backend
-    // For now, we'll just show a success message and redirect
-    alert("Rating submitted successfully!");
-    router.push("/");
-  };
+    if (!selectedBean || rating === 0) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a coffee bean and provide a rating.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // Mock image upload function
-  const handleImageUpload = (type: "bean" | "brewed") => {
-    // In a real app, we would handle file uploads
-    // For now, we'll just use a random image from our mock data
-    const randomImage = mockBeans[Math.floor(Math.random() * mockBeans.length)].imageUrl;
-    
-    if (type === "bean") {
-      setBeanImage(randomImage || null);
-    } else {
-      setBrewedImage(randomImage || null);
+    setIsSubmitting(true);
+    try {
+      await ratingsService.createRating({
+        coffee_bean_id: selectedBean.id,
+        overall_rating: rating,
+        brewing_method: brewMethod || undefined,
+        review_text: notes || undefined,
+      });
+
+      toast({
+        title: "Success!",
+        description: "Your rating has been submitted successfully.",
+      });
+
+      router.push(`/bean/${selectedBean.id}`);
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit rating. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -113,8 +168,9 @@ export default function RatePage() {
                 <button
                   type="submit"
                   className="absolute right-2 top-2 text-brown-600 hover:text-brown-700"
+                  disabled={isSearching}
                 >
-                  Search
+                  {isSearching ? "..." : "Search"}
                 </button>
               </div>
             </form>
@@ -128,9 +184,9 @@ export default function RatePage() {
                     onClick={() => handleSelectBean(bean)}
                   >
                     <div className="h-10 w-10 relative rounded overflow-hidden">
-                      {bean.imageUrl ? (
+                      {bean.image_url ? (
                         <Image 
-                          src={bean.imageUrl} 
+                          src={bean.image_url} 
                           alt={bean.name} 
                           fill
                           className="object-cover"
@@ -143,7 +199,15 @@ export default function RatePage() {
                     </div>
                     <div className="ml-3">
                       <p className="font-medium text-gray-900">{bean.name}</p>
-                      <p className="text-sm text-gray-500">by {bean.roaster}</p>
+                      <p className="text-sm text-gray-500">by {bean.brand}</p>
+                      {bean.averageRating && bean.averageRating > 0 && (
+                        <div className="flex items-center mt-1">
+                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                          <span className="text-xs text-gray-500 ml-1">
+                            {bean.averageRating.toFixed(1)} ({bean.totalRatings})
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -151,31 +215,27 @@ export default function RatePage() {
             ) : searchQuery ? (
               <div className="text-center py-4">
                 <p className="text-gray-500">No coffee beans found.</p>
-                <button
-                  className="mt-2 text-brown-600 hover:text-brown-700 text-sm font-medium"
-                  onClick={() => {
-                    // In a real app, we would show a form to add a new bean
-                    alert("Add new bean feature coming soon!");
-                  }}
-                >
-                  + Add a new coffee bean
-                </button>
+                <Link href="/bean/add">
+                  <button className="mt-2 text-brown-600 hover:text-brown-700 text-sm font-medium">
+                    + Add a new coffee bean
+                  </button>
+                </Link>
               </div>
             ) : null}
             
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h3 className="font-medium text-gray-900 mb-2">Popular Beans</h3>
               <div className="space-y-2">
-                {mockBeans.slice(0, 3).map((bean) => (
+                {popularBeans.slice(0, 3).map((bean) => (
                   <div
                     key={bean.id}
                     className="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                     onClick={() => handleSelectBean(bean)}
                   >
                     <div className="h-10 w-10 relative rounded overflow-hidden">
-                      {bean.imageUrl ? (
+                      {bean.image_url ? (
                         <Image 
-                          src={bean.imageUrl} 
+                          src={bean.image_url} 
                           alt={bean.name} 
                           fill
                           className="object-cover"
@@ -188,7 +248,15 @@ export default function RatePage() {
                     </div>
                     <div className="ml-3">
                       <p className="font-medium text-gray-900">{bean.name}</p>
-                      <p className="text-sm text-gray-500">by {bean.roaster}</p>
+                      <p className="text-sm text-gray-500">by {bean.brand}</p>
+                      {bean.averageRating && bean.averageRating > 0 && (
+                        <div className="flex items-center mt-1">
+                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                          <span className="text-xs text-gray-500 ml-1">
+                            {bean.averageRating.toFixed(1)} ({bean.totalRatings})
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -202,9 +270,9 @@ export default function RatePage() {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
                     <div className="h-12 w-12 relative rounded overflow-hidden">
-                      {selectedBean.imageUrl ? (
+                      {selectedBean.image_url ? (
                         <Image 
-                          src={selectedBean.imageUrl} 
+                          src={selectedBean.image_url} 
                           alt={selectedBean.name} 
                           fill
                           className="object-cover"
@@ -217,7 +285,15 @@ export default function RatePage() {
                     </div>
                     <div className="ml-3">
                       <p className="font-medium text-gray-900">{selectedBean.name}</p>
-                      <p className="text-sm text-gray-500">by {selectedBean.roaster}</p>
+                      <p className="text-sm text-gray-500">by {selectedBean.brand}</p>
+                      {selectedBean.averageRating && selectedBean.averageRating > 0 && (
+                        <div className="flex items-center mt-1">
+                          <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                          <span className="text-sm text-gray-500 ml-1">
+                            {selectedBean.averageRating.toFixed(1)} ({selectedBean.totalRatings} ratings)
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <button
@@ -268,7 +344,7 @@ export default function RatePage() {
               
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Brew Method
+                  Brew Method (Optional)
                 </label>
                 <select
                   className="w-full p-2 border border-gray-300 rounded-lg"
@@ -276,7 +352,7 @@ export default function RatePage() {
                   onChange={(e) => setBrewMethod(e.target.value)}
                 >
                   <option value="">Select a brew method</option>
-                  {mockBrewMethods.map((method) => (
+                  {brewMethods.map((method) => (
                     <option key={method} value={method}>
                       {method}
                     </option>
@@ -286,29 +362,7 @@ export default function RatePage() {
               
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {mockTags.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        selectedTags.includes(tag)
-                          ? "bg-brown-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                      onClick={() => handleToggleTag(tag)}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
+                  Notes (Optional)
                 </label>
                 <textarea
                   className="w-full p-2 border border-gray-300 rounded-lg"
@@ -319,74 +373,12 @@ export default function RatePage() {
                 ></textarea>
               </div>
               
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photos
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Coffee Beans</p>
-                    {beanImage ? (
-                      <div className="relative h-32 rounded-lg overflow-hidden">
-                        <Image 
-                          src={beanImage} 
-                          alt="Coffee beans" 
-                          fill
-                          className="object-cover"
-                        />
-                        <button
-                          className="absolute top-2 right-2 bg-gray-800 bg-opacity-50 rounded-full p-1 text-white"
-                          onClick={() => setBeanImage(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="h-32 w-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-400"
-                        onClick={() => handleImageUpload("bean")}
-                      >
-                        <Camera className="h-6 w-6 mb-1" />
-                        <span className="text-xs">Add Photo</span>
-                      </button>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Brewed Coffee</p>
-                    {brewedImage ? (
-                      <div className="relative h-32 rounded-lg overflow-hidden">
-                        <Image 
-                          src={brewedImage} 
-                          alt="Brewed coffee" 
-                          fill
-                          className="object-cover"
-                        />
-                        <button
-                          className="absolute top-2 right-2 bg-gray-800 bg-opacity-50 rounded-full p-1 text-white"
-                          onClick={() => setBrewedImage(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="h-32 w-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-400"
-                        onClick={() => handleImageUpload("brewed")}
-                      >
-                        <Camera className="h-6 w-6 mb-1" />
-                        <span className="text-xs">Add Photo</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
               <button
                 className="w-full py-2 bg-brown-600 text-white rounded-lg hover:bg-brown-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                disabled={!selectedBean || rating === 0 || !brewMethod}
+                disabled={!selectedBean || rating === 0 || isSubmitting}
                 onClick={handleSubmitRating}
               >
-                Submit Rating
+                {isSubmitting ? "Submitting..." : "Submit Rating"}
               </button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -93,10 +94,41 @@ export const coffeeBeansService = {
     })) as CoffeeBeanWithRatings[];
   },
 
-  async createCoffeeBean(bean: CoffeeBeanInsert): Promise<CoffeeBean> {
+  async createCoffeeBean(bean: CoffeeBeanInsert, imageFile?: File | null): Promise<CoffeeBean> {
+    let imageUrl = null;
+
+    // Upload image if provided
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `coffee-beans/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, imageFile);
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      imageUrl = publicUrl;
+    }
+
+    // Create the coffee bean with image URL
+    const beanData = {
+      ...bean,
+      image_url: imageUrl,
+    };
+
     const { data, error } = await supabase
       .from('coffee_beans')
-      .insert([bean])
+      .insert([beanData])
       .select()
       .single();
 
@@ -104,10 +136,35 @@ export const coffeeBeansService = {
     return data;
   },
 
-  async updateCoffeeBean(id: string, updates: CoffeeBeanUpdate): Promise<CoffeeBean> {
+  async updateCoffeeBean(id: string, updates: CoffeeBeanUpdate, imageFile?: File | null): Promise<CoffeeBean> {
+    let updateData = { ...updates };
+
+    // Upload new image if provided
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `coffee-beans/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, imageFile);
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+
+      updateData.image_url = publicUrl;
+    }
+
     const { data, error } = await supabase
       .from('coffee_beans')
-      .update(updates)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
