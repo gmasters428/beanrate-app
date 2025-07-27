@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -177,7 +178,7 @@ export default function AddBeanPage() {
           <FormLabel className="flex items-center justify-between">
             {label}
             <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-              {field.value?.toFixed(1) || "3.0"}
+              {typeof field.value === "number" ? field.value.toFixed(1) : "3.0"}
             </span>
           </FormLabel>
           <FormControl>
@@ -185,7 +186,7 @@ export default function AddBeanPage() {
               min={1}
               max={5}
               step={0.1}
-              value={[field.value || 3]}
+              value={[typeof field.value === "number" ? field.value : 3]}
               onValueChange={(value) => field.onChange(value[0])}
               className="w-full"
             />
@@ -368,11 +369,12 @@ export default function AddBeanPage() {
                     </Button>
                   </div>
                   {imagePreview && (
-                    <div className="mt-4">
-                      <img
+                    <div className="mt-4 relative w-32 h-32">
+                      <Image
                         src={imagePreview}
                         alt="Bean preview"
-                        className="w-32 h-32 object-cover rounded-lg border"
+                        fill
+                        className="object-cover rounded-lg border"
                       />
                     </div>
                   )}
