@@ -303,45 +303,61 @@ export const userService = {
   },
 
   async getFriends(userId: string): Promise<UserWithProfile[]> {
-    const { data, error } = await supabase
+    // Use a simpler approach to avoid relationship issues
+    const { data: friendships, error } = await supabase
       .from("friendships")
-      .select(`
-        user_one_id,
-        user_two_id,
-        user_one:users!friendships_user_one_id_fkey(*),
-        user_two:users!friendships_user_two_id_fkey(*)
-      `)
+      .select("user_one_id, user_two_id")
       .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
       .eq("status", "accepted");
 
     if (error) throw error;
 
-    const friends = data?.map(friendship => {
-        const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
-        return friend;
-    }).filter(Boolean);
+    if (!friendships || friendships.length === 0) return [];
 
-    return friends as unknown as UserWithProfile[];
+    // Get friend IDs
+    const friendIds = friendships.map(friendship => 
+      friendship.user_one_id === userId ? friendship.user_two_id : friendship.user_one_id
+    );
+
+    // Fetch friend profiles separately
+    const { data: friends, error: friendsError } = await supabase
+      .from("users")
+      .select("*")
+      .in("id", friendIds);
+
+    if (friendsError) throw friendsError;
+
+    return friends as UserWithProfile[];
   },
 
   async getPendingRequests(): Promise<UserWithProfile[]> {
     const currentUser = await this.getCurrentUser();
     if (!currentUser) return [];
 
-    const { data, error } = await supabase
+    // Get pending requests where current user is the receiver
+    const { data: friendships, error } = await supabase
       .from("friendships")
-      .select(`
-        action_user_id,
-        requester:users!friendships_action_user_id_fkey(*)
-      `)
+      .select("action_user_id")
       .or(`user_one_id.eq.${currentUser.id},user_two_id.eq.${currentUser.id}`)
       .eq("status", "pending")
       .neq("action_user_id", currentUser.id);
 
     if (error) throw error;
 
-    const requests = data?.map(request => request.requester).filter(Boolean);
-    return requests as unknown as UserWithProfile[];
+    if (!friendships || friendships.length === 0) return [];
+
+    // Get requester IDs
+    const requesterIds = friendships.map(f => f.action_user_id);
+
+    // Fetch requester profiles separately
+    const { data: requesters, error: requestersError } = await supabase
+      .from("users")
+      .select("*")
+      .in("id", requesterIds);
+
+    if (requestersError) throw requestersError;
+
+    return requesters as UserWithProfile[];
   },
 
   async getFriendsCount(userId: string): Promise<number> {
