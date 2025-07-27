@@ -89,11 +89,11 @@ export const userService = {
         throw new Error(`File size (${fileSizeMB}MB) exceeds the 10MB limit.`);
       }
 
-      // Generate unique filename - Fixed path structure
+      // Generate unique filename with folder structure that matches RLS policy
       const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      // Remove the nested folder structure - just use the filename
-      const filePath = fileName;
+      const fileName = `${Date.now()}.${fileExt}`;
+      // Use folder structure: userId/filename.ext (this matches the RLS policy expectation)
+      const filePath = `${userId}/${fileName}`;
 
       // Upload file to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -131,15 +131,16 @@ export const userService = {
       const user = await this.getUserProfile(userId);
       if (!user?.profile_image_url) return;
 
-      // Extract file path from URL - Fixed to handle the correct path structure
+      // Extract file path from URL - Updated to handle folder structure
       const url = new URL(user.profile_image_url);
       const pathParts = url.pathname.split('/');
-      const fileName = pathParts[pathParts.length - 1]; // Get just the filename
+      // Get the last two parts: userId/filename.ext
+      const filePath = pathParts.slice(-2).join('/');
 
       // Delete from storage
       const { error: deleteError } = await supabase.storage
         .from('profile-images')
-        .remove([fileName]);
+        .remove([filePath]);
 
       if (deleteError) {
         console.warn('Error deleting old profile image:', deleteError);
