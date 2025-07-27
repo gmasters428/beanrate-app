@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Camera, Upload, Trash2, User as UserIcon } from "lucide-react";
@@ -40,28 +39,51 @@ export default function ProfileImageUpload({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+    // Reset previous errors
+    setError(null);
+
+    // More specific file type validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setError(`File type "${file.type}" is not supported. Please use JPEG, PNG, WebP, or GIF.`);
       return;
     }
 
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be smaller than 5MB');
+    // Validate file size (10MB limit - increased from 5MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setError(`File size (${fileSizeMB}MB) exceeds the 10MB limit. Please choose a smaller image.`);
       return;
     }
 
     try {
       setIsUploading(true);
-      setError(null);
       
       const newImageUrl = await userService.uploadProfileImage(userId, file);
       onImageUpdate(newImageUrl);
       setShowActions(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      setError('Failed to upload image. Please try again.');
+      
+      // Provide more specific error messages based on the error
+      let errorMessage = 'Failed to upload image. Please try again.';
+      
+      if (error?.message) {
+        if (error.message.includes('storage')) {
+          errorMessage = 'Storage error: Unable to save the image. Please try again.';
+        } else if (error.message.includes('size')) {
+          errorMessage = 'File size error: The image is too large.';
+        } else if (error.message.includes('format') || error.message.includes('type')) {
+          errorMessage = 'File format error: Please use a supported image format.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Network error: Please check your connection and try again.';
+        } else {
+          errorMessage = `Upload failed: ${error.message}`;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -152,7 +174,7 @@ export default function ProfileImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
         onChange={handleFileSelect}
         className="hidden"
       />

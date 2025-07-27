@@ -76,8 +76,21 @@ export const userService = {
 
   async uploadProfileImage(userId: string, file: File): Promise<string> {
     try {
+      // Additional validation
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type.toLowerCase())) {
+        throw new Error(`File type "${file.type}" is not supported. Please use JPEG, PNG, WebP, or GIF.`);
+      }
+
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        throw new Error(`File size (${fileSizeMB}MB) exceeds the 10MB limit.`);
+      }
+
       // Generate unique filename
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
       const filePath = `profile-images/${fileName}`;
 
@@ -90,7 +103,8 @@ export const userService = {
         });
 
       if (uploadError) {
-        throw uploadError;
+        console.error('Supabase storage error:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
 
       // Get public URL
@@ -104,7 +118,7 @@ export const userService = {
       });
 
       return publicUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading profile image:', error);
       throw error;
     }
