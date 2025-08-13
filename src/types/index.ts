@@ -33,8 +33,15 @@ export interface RatingWithDetails extends Rating {
 }
 
 export interface CoffeeBeanWithRatings extends CoffeeBean {
-  avg_rating: number | null;
-  rating_count: number | null;
+  ratings: Array<{
+    id: string;
+    overall_rating: number;
+    user_id: string;
+  }>;
+  avg_rating?: number;
+  rating_count?: number;
+  averageRating?: number;
+  totalRatings?: number;
 }
 
 export interface Comment {

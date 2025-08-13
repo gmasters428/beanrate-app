@@ -2,9 +2,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
+type Comment = Database['public']['Tables']['comments']['Row'];
 type CommentInsert = Database['public']['Tables']['comments']['Insert'];
 
-export interface CommentWithUser extends Database['public']['Tables']['comments']['Row'] {
+export interface CommentWithUser extends Comment {
   users: {
     username: string;
     display_name: string | null;

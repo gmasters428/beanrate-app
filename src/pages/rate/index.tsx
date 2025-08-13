@@ -46,7 +46,7 @@ export default function RatePage() {
 
   const loadPopularBeans = async () => {
     try {
-      const beans = await coffeeBeansService.getCoffeeBeans(6);
+      const beans = await coffeeBeansService.getCoffeeBeansWithRatings(6);
       setPopularBeans(beans);
     } catch (error) {
       console.error("Error loading popular beans:", error);

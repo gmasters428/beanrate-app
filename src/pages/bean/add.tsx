@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -14,53 +14,87 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { ratingsService } from "@/services/ratingsService";
-import { Coffee, Upload, Star, X } from "lucide-react";
+import { Coffee, Upload, Star, X, MapPin, Calendar, DollarSign, Award, Zap, Droplets, Mountain } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 
 const addBeanSchema = z.object({
-  // Bean details
-  name: z.string().min(1, "Bean name is required"),
-  brand: z.string().min(1, "Brand/Roaster is required"),
+  // Essential Bean Details
+  name: z.string().min(1, "Bean name is required").max(100, "Name too long"),
+  brand: z.string().min(1, "Brand/Roaster is required").max(100, "Brand name too long"),
   origin: z.string().optional(),
+  region: z.string().optional(),
+  altitude: z.string().optional(),
+  processing_method: z.enum(["washed", "natural", "honey", "semi-washed", "wet-hulled", "other"]).optional(),
   roast_level: z.enum(["light", "medium-light", "medium", "medium-dark", "dark"]).optional(),
+  roast_date: z.string().optional(),
+  harvest_date: z.string().optional(),
   description: z.string().optional(),
   flavor_notes: z.array(z.string()).optional(),
   
-  // Rating details
-  overall_rating: z.number().min(1).max(5),
-  aroma_rating: z.number().min(1).max(5).optional(),
-  flavor_rating: z.number().min(1).max(5).optional(),
-  aftertaste_rating: z.number().min(1).max(5).optional(),
-  acidity_rating: z.number().min(1).max(5).optional(),
-  body_rating: z.number().min(1).max(5).optional(),
+  // Pricing & Availability
+  price: z.number().min(0).optional(),
+  price_per_unit: z.enum(["lb", "kg", "oz", "bag"]).optional(),
+  purchase_url: z.string().url().optional().or(z.literal("")),
+  is_available: z.boolean().default(true),
+  
+  // Rating Details (0.1 precision)
+  overall_rating: z.number().min(1).max(5).multipleOf(0.1),
+  aroma_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  flavor_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  aftertaste_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  acidity_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  body_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  sweetness_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  balance_rating: z.number().min(1).max(5).multipleOf(0.1).optional(),
+  
+  // Brewing Details
   brewing_method: z.string().optional(),
   grinder: z.string().optional(),
   grind_size: z.string().optional(),
-  review_text: z.string().optional(),
+  water_temp: z.number().min(80).max(100).optional(),
+  brew_ratio: z.string().optional(),
+  review_text: z.string().max(2000, "Review too long").optional(),
 });
 
 type AddBeanFormData = z.infer<typeof addBeanSchema>;
 
 const roastLevels = [
-  { value: "light", label: "Light Roast" },
-  { value: "medium-light", label: "Medium-Light Roast" },
-  { value: "medium", label: "Medium Roast" },
-  { value: "medium-dark", label: "Medium-Dark Roast" },
-  { value: "dark", label: "Dark Roast" },
+  { value: "light", label: "Light Roast", description: "Light brown, no oil on surface" },
+  { value: "medium-light", label: "Medium-Light", description: "Light brown with slight oil" },
+  { value: "medium", label: "Medium Roast", description: "Medium brown, balanced flavor" },
+  { value: "medium-dark", label: "Medium-Dark", description: "Rich brown with some oil" },
+  { value: "dark", label: "Dark Roast", description: "Dark brown with oil on surface" },
+];
+
+const processingMethods = [
+  { value: "washed", label: "Washed", description: "Clean, bright flavors" },
+  { value: "natural", label: "Natural", description: "Fruity, wine-like characteristics" },
+  { value: "honey", label: "Honey Process", description: "Sweet, complex flavors" },
+  { value: "semi-washed", label: "Semi-Washed", description: "Balanced characteristics" },
+  { value: "wet-hulled", label: "Wet-Hulled", description: "Full body, earthy notes" },
+  { value: "other", label: "Other", description: "Experimental or unique processing" },
 ];
 
 const brewingMethods = [
   "Espresso", "Pour Over", "French Press", "AeroPress", "Chemex", 
-  "V60", "Drip Coffee", "Cold Brew", "Moka Pot", "Turkish Coffee"
+  "V60", "Kalita Wave", "Drip Coffee", "Cold Brew", "Moka Pot", 
+  "Turkish Coffee", "Siphon", "Clever Dripper"
 ];
 
 const grindSizes = [
   "Extra Coarse", "Coarse", "Medium-Coarse", "Medium", 
-  "Medium-Fine", "Fine", "Extra Fine"
+  "Medium-Fine", "Fine", "Extra Fine", "Powder"
+];
+
+const commonFlavorNotes = [
+  "Chocolate", "Vanilla", "Caramel", "Nutty", "Fruity", "Floral", 
+  "Citrus", "Berry", "Wine", "Earthy", "Spicy", "Smoky",
+  "Sweet", "Tart", "Bright", "Clean", "Complex", "Balanced"
 ];
 
 export default function AddBeanPage() {
@@ -68,46 +102,105 @@ export default function AddBeanPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [flavorNoteInput, setFlavorNoteInput] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const form = useForm<AddBeanFormData>({
     resolver: zodResolver(addBeanSchema),
     defaultValues: {
-      overall_rating: 3.0,
-      aroma_rating: 3.0,
-      flavor_rating: 3.0,
-      aftertaste_rating: 3.0,
-      acidity_rating: 3.0,
-      body_rating: 3.0,
+      overall_rating: 3.5,
+      aroma_rating: 3.5,
+      flavor_rating: 3.5,
+      aftertaste_rating: 3.5,
+      acidity_rating: 3.5,
+      body_rating: 3.5,
+      sweetness_rating: 3.5,
+      balance_rating: 3.5,
       flavor_notes: [],
+      is_available: true,
+      price_per_unit: "lb",
     },
   });
 
   const flavorNotes = form.watch("flavor_notes") || [];
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    const files = Array.from(e.target.files || []);
+    addImages(files);
   };
 
-  const addFlavorNote = () => {
-    if (flavorNoteInput.trim() && !flavorNotes.includes(flavorNoteInput.trim())) {
-      form.setValue("flavor_notes", [...flavorNotes, flavorNoteInput.trim()]);
+  const addImages = (files: File[]) => {
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    if (validFiles.length === 0) return;
+
+    setImageFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 images
+    
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string].slice(0, 5));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    addImages(files);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const addFlavorNote = (note?: string) => {
+    const noteToAdd = note || flavorNoteInput.trim();
+    if (noteToAdd && !flavorNotes.includes(noteToAdd)) {
+      form.setValue("flavor_notes", [...flavorNotes, noteToAdd]);
       setFlavorNoteInput("");
     }
   };
 
   const removeFlavorNote = (note: string) => {
     form.setValue("flavor_notes", flavorNotes.filter(n => n !== note));
+  };
+
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    return (
+      <div className="flex items-center gap-0.5">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-4 w-4 ${
+              i < fullStars 
+                ? 'fill-amber-400 text-amber-400' 
+                : i === fullStars && hasHalfStar 
+                  ? 'fill-amber-400/50 text-amber-400' 
+                  : 'text-neutral-300'
+            }`}
+          />
+        ))}
+        <span className="ml-2 text-sm font-medium text-amber-600">{rating.toFixed(1)}</span>
+      </div>
+    );
   };
 
   const onSubmit = async (data: AddBeanFormData) => {
@@ -132,11 +225,11 @@ export default function AddBeanPage() {
         flavor_notes: data.flavor_notes || [],
       };
 
-      const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFile);
+      const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0]);
 
       // Create the rating
       const ratingData = {
-        user_id: user.id, // Add this line
+        user_id: user.id,
         coffee_bean_id: newBean.id,
         overall_rating: data.overall_rating,
         aroma_rating: data.aroma_rating,
@@ -153,7 +246,7 @@ export default function AddBeanPage() {
       await ratingsService.createRating(ratingData);
 
       toast({
-        title: "Success!",
+        title: "Success! ☕",
         description: "Coffee bean added successfully with your rating.",
       });
 
@@ -170,28 +263,46 @@ export default function AddBeanPage() {
     }
   };
 
-  const RatingSlider = ({ name, label }: { name: keyof AddBeanFormData; label: string }) => (
+  const EnhancedRatingSlider = ({ 
+    name, 
+    label, 
+    icon: Icon,
+    description 
+  }: { 
+    name: keyof AddBeanFormData; 
+    label: string;
+    icon?: any;
+    description?: string;
+  }) => (
     <FormField
       control={form.control}
       name={name}
       render={({ field }) => (
-        <FormItem>
+        <FormItem className="space-y-3">
           <FormLabel className="flex items-center justify-between">
-            {label}
-            <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-              {typeof field.value === "number" ? field.value.toFixed(1) : "3.0"}
-            </span>
+            <div className="flex items-center gap-2">
+              {Icon && <Icon className="h-4 w-4 text-amber-600" />}
+              <span>{label}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {renderStars(typeof field.value === "number" ? field.value : 3.5)}
+            </div>
           </FormLabel>
           <FormControl>
             <Slider
               min={1}
               max={5}
               step={0.1}
-              value={[typeof field.value === "number" ? field.value : 3]}
+              value={[typeof field.value === "number" ? field.value : 3.5]}
               onValueChange={(value) => field.onChange(value[0])}
               className="w-full"
             />
           </FormControl>
+          {description && (
+            <FormDescription className="text-xs text-muted-foreground">
+              {description}
+            </FormDescription>
+          )}
           <FormMessage />
         </FormItem>
       )}
@@ -202,11 +313,15 @@ export default function AddBeanPage() {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">
-                Please log in to add a coffee bean.
+          <Card className="max-w-md mx-auto">
+            <CardContent className="pt-6 text-center">
+              <Coffee className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">
+                Please log in to add a coffee bean and share your tasting experience.
               </p>
+              <Button onClick={() => router.push('/auth/login')}>
+                Sign In
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -216,25 +331,33 @@ export default function AddBeanPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
-            <Coffee className="h-8 w-8" />
-            Add a New Coffee Bean
-          </h1>
-          <p className="text-muted-foreground">
-            Share a new coffee bean with the community and add your first rating.
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* Hero Header */}
+        <div className="mb-8 text-center">
+          <div className="relative inline-block">
+            <div className="absolute -inset-1 bg-gradient-to-r from-amber-600 to-amber-400 rounded-lg blur opacity-25"></div>
+            <h1 className="relative text-4xl font-bold flex items-center gap-3 mb-2 bg-white px-4 py-2 rounded-lg">
+              <Coffee className="h-10 w-10 text-amber-600" />
+              Add a New Coffee Bean
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Share a new coffee bean with the community and add your detailed tasting notes.
+            Help fellow coffee enthusiasts discover their next favorite brew.
           </p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Bean Information Section */}
-            <Card>
+            {/* Essential Bean Information */}
+            <Card className="bg-gradient-to-br from-white to-amber-50/30 border-amber-200/50">
               <CardHeader>
-                <CardTitle>Bean Information</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-amber-900">
+                  <Coffee className="h-5 w-5" />
+                  Essential Bean Information
+                </CardTitle>
                 <CardDescription>
-                  Tell us about this coffee bean
+                  The basic details that identify this coffee bean
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -244,9 +367,13 @@ export default function AddBeanPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bean Name *</FormLabel>
+                        <FormLabel className="text-sm font-medium">Bean Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Ethiopian Yirgacheffe" {...field} />
+                          <Input 
+                            placeholder="e.g., Ethiopian Yirgacheffe G1" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -258,9 +385,13 @@ export default function AddBeanPage() {
                     name="brand"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Brand/Roaster *</FormLabel>
+                        <FormLabel className="text-sm font-medium">Brand/Roaster *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Blue Bottle Coffee" {...field} />
+                          <Input 
+                            placeholder="e.g., Blue Bottle Coffee" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -272,9 +403,16 @@ export default function AddBeanPage() {
                     name="origin"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Origin</FormLabel>
+                        <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                          <MapPin className="h-3 w-3" />
+                          Origin Country
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Ethiopia, Yirgacheffe" {...field} />
+                          <Input 
+                            placeholder="e.g., Ethiopia" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -283,24 +421,138 @@ export default function AddBeanPage() {
 
                   <FormField
                     control={form.control}
+                    name="region"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Region/Farm</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., Yirgacheffe, Kochere" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="altitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                          <Mountain className="h-3 w-3" />
+                          Altitude
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., 1,800-2,200m" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="processing_method"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                          <Droplets className="h-3 w-3" />
+                          Processing Method
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-white/80 border-amber-200/50">
+                              <SelectValue placeholder="Select processing method" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {processingMethods.map((method) => (
+                              <SelectItem key={method.value} value={method.value}>
+                                <div>
+                                  <div className="font-medium">{method.label}</div>
+                                  <div className="text-xs text-muted-foreground">{method.description}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <FormField
+                    control={form.control}
                     name="roast_level"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Roast Level</FormLabel>
+                        <FormLabel className="text-sm font-medium">Roast Level</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-white/80 border-amber-200/50">
                               <SelectValue placeholder="Select roast level" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {roastLevels.map((level) => (
                               <SelectItem key={level.value} value={level.value}>
-                                {level.label}
+                                <div>
+                                  <div className="font-medium">{level.label}</div>
+                                  <div className="text-xs text-muted-foreground">{level.description}</div>
+                                </div>
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="roast_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1 text-sm font-medium">
+                          <Calendar className="h-3 w-3" />
+                          Roast Date
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="harvest_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Harvest Season</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., November 2023" 
+                            className="bg-white/80 border-amber-200/50 focus:border-amber-400"
+                            {...field} 
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -312,11 +564,11 @@ export default function AddBeanPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel className="text-sm font-medium">Description</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Describe this coffee bean..."
-                          className="min-h-[100px]"
+                          placeholder="Describe this coffee bean - its story, unique characteristics, what makes it special..."
+                          className="min-h-[120px] bg-white/80 border-amber-200/50 focus:border-amber-400"
                           {...field}
                         />
                       </FormControl>
@@ -325,27 +577,51 @@ export default function AddBeanPage() {
                   )}
                 />
 
-                {/* Flavor Notes */}
-                <div className="space-y-3">
-                  <FormLabel>Flavor Notes</FormLabel>
+                {/* Enhanced Flavor Notes Section */}
+                <div className="space-y-4">
+                  <FormLabel className="text-sm font-medium">Flavor Notes & Characteristics</FormLabel>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {commonFlavorNotes.map((note) => (
+                      <Button
+                        key={note}
+                        type="button"
+                        variant={flavorNotes.includes(note) ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => addFlavorNote(note)}
+                      >
+                        {note}
+                      </Button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Add a flavor note..."
+                      placeholder="Add a custom flavor note..."
                       value={flavorNoteInput}
                       onChange={(e) => setFlavorNoteInput(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addFlavorNote())}
+                      className="bg-white/80 border-amber-200/50 focus:border-amber-400"
                     />
-                    <Button type="button" onClick={addFlavorNote} variant="outline">
-                      Add
+                    <Button 
+                      type="button" 
+                      onClick={() => addFlavorNote()} 
+                      variant="outline"
+                      className="whitespace-nowrap"
+                    >
+                      Add Note
                     </Button>
                   </div>
                   {flavorNotes.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {flavorNotes.map((note) => (
-                        <Badge key={note} variant="secondary" className="flex items-center gap-1">
+                        <Badge 
+                          key={note} 
+                          variant="secondary" 
+                          className="flex items-center gap-1 bg-amber-100 text-amber-800 hover:bg-amber-200"
+                        >
                           {note}
                           <X
-                            className="h-3 w-3 cursor-pointer"
+                            className="h-3 w-3 cursor-pointer hover:text-amber-600"
                             onClick={() => removeFlavorNote(note)}
                           />
                         </Badge>
@@ -353,143 +629,271 @@ export default function AddBeanPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Image Upload */}
-                <div className="space-y-3">
-                  <FormLabel>Bean Image</FormLabel>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="flex-1"
-                    />
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload
-                    </Button>
-                  </div>
-                  {imagePreview && (
-                    <div className="mt-4 relative w-32 h-32">
-                      <Image
-                        src={imagePreview}
-                        alt="Bean preview"
-                        fill
-                        className="object-cover rounded-lg border"
-                      />
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
 
-            {/* Rating Section */}
-            <Card>
+            {/* Enhanced Image Upload */}
+            <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-200/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5" />
-                  Your Rating
+                <CardTitle className="flex items-center gap-2 text-blue-900">
+                  <Upload className="h-5 w-5" />
+                  Bean Photos
                 </CardTitle>
                 <CardDescription>
-                  Rate this coffee bean based on your experience
+                  Upload up to 5 images of the coffee bean, packaging, or brewing setup
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <RatingSlider name="overall_rating" label="Overall Rating" />
-                
-                <Separator />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <RatingSlider name="aroma_rating" label="Aroma" />
-                  <RatingSlider name="flavor_rating" label="Flavor" />
-                  <RatingSlider name="aftertaste_rating" label="Aftertaste" />
-                  <RatingSlider name="acidity_rating" label="Acidity" />
-                  <RatingSlider name="body_rating" label="Body" />
+              <CardContent>
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragOver 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-blue-200 hover:border-blue-300'
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-blue-400" />
+                  <p className="text-lg font-medium mb-2">Drop images here or click to upload</p>
+                  <p className="text-sm text-muted-foreground mb-4">PNG, JPG up to 10MB each</p>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <Button type="button" variant="outline" asChild>
+                    <label htmlFor="image-upload" className="cursor-pointer">
+                      Choose Files
+                    </label>
+                  </Button>
                 </div>
+                
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <Image
+                          src={preview}
+                          alt={`Bean preview ${index + 1}`}
+                          width={120}
+                          height={120}
+                          className="object-cover rounded-lg border shadow-sm w-full h-24"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeImage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="brewing_method"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Brewing Method</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select method" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {brewingMethods.map((method) => (
-                              <SelectItem key={method} value={method}>
-                                {method}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="grinder"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Grinder</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Baratza Encore" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="grind_size"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Grind Size</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select size" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {grindSizes.map((size) => (
-                              <SelectItem key={size} value={size}>
-                                {size}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+            {/* Enhanced Rating Section */}
+            <Card className="bg-gradient-to-br from-white to-amber-50/30 border-amber-200/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-900">
+                  <Star className="h-5 w-5" />
+                  Your Detailed Rating & Review
+                </CardTitle>
+                <CardDescription>
+                  Rate this coffee on multiple characteristics with precision to 0.1 points (e.g., 4.6)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Overall Rating - Featured */}
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 p-6 rounded-xl border border-amber-200">
+                  <EnhancedRatingSlider 
+                    name="overall_rating" 
+                    label="Overall Rating" 
+                    icon={Award}
+                    description="Your comprehensive rating of this coffee bean"
                   />
                 </div>
+                
+                <Separator className="my-6" />
+                
+                {/* Detailed Characteristics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <EnhancedRatingSlider 
+                    name="aroma_rating" 
+                    label="Aroma" 
+                    description="The fragrance and smell intensity"
+                  />
+                  <EnhancedRatingSlider 
+                    name="flavor_rating" 
+                    label="Flavor" 
+                    description="The taste experience on your palate"
+                  />
+                  <EnhancedRatingSlider 
+                    name="aftertaste_rating" 
+                    label="Aftertaste" 
+                    description="The lingering taste after swallowing"
+                  />
+                  <EnhancedRatingSlider 
+                    name="acidity_rating" 
+                    label="Acidity" 
+                    description="The bright, tangy quality"
+                  />
+                  <EnhancedRatingSlider 
+                    name="body_rating" 
+                    label="Body" 
+                    description="The weight and mouthfeel"
+                  />
+                  <EnhancedRatingSlider 
+                    name="sweetness_rating" 
+                    label="Sweetness" 
+                    description="The natural sugar presence"
+                  />
+                  <EnhancedRatingSlider 
+                    name="balance_rating" 
+                    label="Balance" 
+                    description="How well all elements work together"
+                  />
+                </div>
 
+                <Separator className="my-6" />
+
+                {/* Brewing Details */}
+                <div className="bg-neutral-50 p-6 rounded-xl">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-blue-600" />
+                    Brewing Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="brewing_method"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Method</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select method" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {brewingMethods.map((method) => (
+                                <SelectItem key={method} value={method}>
+                                  {method}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="grinder"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Grinder</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Baratza Encore" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="grind_size"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Grind Size</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {grindSizes.map((size) => (
+                                <SelectItem key={size} value={size}>
+                                  {size}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="water_temp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Water Temp (°C)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="e.g., 92" 
+                              min="80" 
+                              max="100"
+                              {...field}
+                              onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="mt-4">
+                    <FormField
+                      control={form.control}
+                      name="brew_ratio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Brew Ratio</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 1:16 (coffee:water)" {...field} />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            The ratio of coffee to water used in brewing
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Detailed Review */}
                 <FormField
                   control={form.control}
                   name="review_text"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tasting Notes & Review</FormLabel>
+                      <FormLabel className="text-base font-semibold">Tasting Notes & Detailed Review</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Share your detailed thoughts about this coffee..."
-                          className="min-h-[120px]"
+                          placeholder="Share your detailed tasting experience, what stood out, how it compared to other coffees, brewing tips, and any other insights that would help fellow coffee enthusiasts..."
+                          className="min-h-[160px] bg-white/80 border-amber-200/50 focus:border-amber-400"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Describe the taste, aroma, and your overall experience with this coffee.
+                        Your detailed review helps other coffee lovers understand what makes this bean unique.
+                        Be specific about flavors, textures, and your overall experience.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -498,17 +902,132 @@ export default function AddBeanPage() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-4">
+            {/* Pricing & Availability */}
+            <Card className="bg-gradient-to-br from-white to-green-50/30 border-green-200/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-900">
+                  <DollarSign className="h-5 w-5" />
+                  Pricing & Availability (Optional)
+                </CardTitle>
+                <CardDescription>
+                  Help others know where to find this coffee and what to expect to pay
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Price</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            placeholder="e.g., 18.50" 
+                            {...field}
+                            onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="price_per_unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Unit</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="lb">per lb</SelectItem>
+                            <SelectItem value="kg">per kg</SelectItem>
+                            <SelectItem value="oz">per oz</SelectItem>
+                            <SelectItem value="bag">per bag</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="is_available"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium">Currently Available</FormLabel>
+                          <FormDescription className="text-xs">
+                            Is this coffee currently available for purchase?
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="purchase_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Purchase URL (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="url" 
+                          placeholder="https://example.com/coffee-bean" 
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        Link to where others can buy this coffee bean
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-4 pt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
                 disabled={isSubmitting}
+                className="px-8"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Adding Bean..." : "Add Coffee Bean"}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding Bean...
+                  </>
+                ) : (
+                  "Add Coffee Bean ☕"
+                )}
               </Button>
             </div>
           </form>

@@ -17,7 +17,7 @@ export interface CoffeeBeanWithRatings extends CoffeeBean {
 }
 
 export const coffeeBeansService = {
-  async getCoffeeBeans(limit = 50): Promise<CoffeeBeanWithRatings[]> {
+  async getCoffeeBeansWithRatings(limit = 50): Promise<CoffeeBeanWithRatings[]> {
     const { data, error } = await supabase
       .from('coffee_beans')
       .select(`
@@ -35,8 +35,12 @@ export const coffeeBeansService = {
 
     return data.map(bean => ({
       ...bean,
+      avg_rating: bean.ratings.length > 0 
+        ? bean.ratings.reduce((sum, r) => sum + Number(r.overall_rating), 0) / bean.ratings.length 
+        : 0,
+      rating_count: bean.ratings.length,
       averageRating: bean.ratings.length > 0 
-        ? bean.ratings.reduce((sum, r) => sum + r.overall_rating, 0) / bean.ratings.length 
+        ? bean.ratings.reduce((sum, r) => sum + Number(r.overall_rating), 0) / bean.ratings.length 
         : 0,
       totalRatings: bean.ratings.length
     })) as CoffeeBeanWithRatings[];
