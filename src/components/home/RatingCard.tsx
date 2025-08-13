@@ -1,147 +1,152 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Rating } from "@/types";
-import { Heart, MessageCircle, Coffee, User } from "lucide-react";
+import { RatingWithDetails } from "@/services/ratingsService";
+import { Heart, MessageCircle, Coffee, User, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface RatingCardProps {
-  rating: Rating;
+  rating: RatingWithDetails;
 }
 
 export default function RatingCard({ rating }: RatingCardProps) {
-  const { user, coffeeBean, brewMethod, tags, notes, beanImage, brewedImage, createdAt, likes, comments } = rating;
+  const renderStars = (ratingValue: string) => {
+    const numericRating = parseFloat(ratingValue);
+    return (
+      <div className="flex items-center">
+        <div className="flex">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+              key={star}
+              className={`h-4 w-4 ${
+                star <= numericRating ? "text-amber-400 fill-amber-400" : "text-gray-300"
+              }`}
+            />
+          ))}
+        </div>
+        <span className="ml-2 text-sm font-medium text-gray-700">
+          {numericRating.toFixed(1)}/5
+        </span>
+      </div>
+    );
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-4">
-      <div className="p-4 border-b border-gray-100">
+    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200/60 overflow-hidden mb-4 hover:shadow-lg hover:shadow-neutral-900/5 transition-all duration-300 hover:-translate-y-1">
+      {/* User Header */}
+      <div className="p-4 border-b border-gray-100/80">
         <div className="flex items-center">
-          <Link href={`/profile/${user.id}`}>
-            <div className="flex items-center">
-              <div className="h-10 w-10 rounded-full overflow-hidden relative">
-                {user.profileImage ? (
-                  <Image 
-                    src={user.profileImage} 
-                    alt={user.username} 
-                    fill 
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                    <User className="h-6 w-6 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <div className="ml-3">
-                <p className="font-medium text-gray-900">{user.name}</p>
-                <p className="text-sm text-gray-500">@{user.username}</p>
-              </div>
+          <Link href={`/profile/${rating.user_id}`} className="flex items-center hover:opacity-80 transition-opacity">
+            <div className="h-10 w-10 rounded-full overflow-hidden relative ring-2 ring-amber-100">
+              {rating.users?.profile_image_url ? (
+                <Image 
+                  src={rating.users.profile_image_url} 
+                  alt={rating.users.username || "User"} 
+                  fill 
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+                  <User className="h-5 w-5 text-amber-600" />
+                </div>
+              )}
+            </div>
+            <div className="ml-3">
+              <p className="font-semibold text-gray-900">
+                {rating.users?.display_name || rating.users?.username || "Coffee Enthusiast"}
+              </p>
+              <p className="text-sm text-gray-500">@{rating.users?.username || "unknown"}</p>
             </div>
           </Link>
-          <div className="ml-auto text-sm text-gray-500">
-            {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+          <div className="ml-auto text-sm text-gray-400">
+            {formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}
           </div>
         </div>
       </div>
 
+      {/* Coffee Bean Image */}
       <Link href={`/rating/${rating.id}`}>
-        <div className="relative aspect-square">
-          {brewedImage ? (
+        <div className="relative aspect-square bg-gradient-to-br from-amber-50 to-neutral-50 cursor-pointer group">
+          {rating.coffee_beans?.image_url ? (
             <Image 
-              src={brewedImage} 
-              alt={`${coffeeBean.name} brewed`} 
+              src={rating.coffee_beans.image_url} 
+              alt={rating.coffee_beans.name || "Coffee"} 
               fill
-              className="object-cover"
-            />
-          ) : beanImage ? (
-            <Image 
-              src={beanImage} 
-              alt={coffeeBean.name} 
-              fill
-              className="object-cover"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-              <Coffee className="h-12 w-12 text-gray-400" />
+            <div className="h-full w-full flex items-center justify-center">
+              <div className="text-center">
+                <Coffee className="h-16 w-16 text-amber-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No image available</p>
+              </div>
             </div>
           )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </div>
       </Link>
 
+      {/* Rating Content */}
       <div className="p-4">
-        <div className="flex items-center mb-2">
-          <div className="flex">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <svg
-                key={star}
-                className={`h-5 w-5 ${
-                  star <= rating.rating ? "text-yellow-400" : "text-gray-300"
-                }`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 15.585l-7.07 3.716 1.35-7.87L.36 7.13l7.91-1.15L10 0l1.73 5.98 7.91 1.15-5.92 5.77 1.35 7.87z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ))}
-          </div>
-          <span className="ml-2 text-sm font-medium text-gray-700">
-            {rating.rating}/5
-          </span>
+        {/* Rating Stars */}
+        <div className="mb-3">
+          {renderStars(rating.overall_rating)}
         </div>
 
-        <Link href={`/bean/${coffeeBean.id}`}>
-          <h3 className="font-bold text-lg text-gray-900 hover:text-brown-600">
-            {coffeeBean.name}
+        {/* Coffee Bean Info */}
+        <Link href={`/bean/${rating.coffee_bean_id}`} className="block mb-2 group">
+          <h3 className="font-bold text-lg text-gray-900 group-hover:text-amber-700 transition-colors line-clamp-1">
+            {rating.coffee_beans?.name || "Unknown Coffee"}
           </h3>
+          <p className="text-sm text-gray-600">
+            by {rating.coffee_beans?.brand || "Unknown Roaster"}
+          </p>
         </Link>
-        <p className="text-sm text-gray-700">by {coffeeBean.roaster}</p>
 
-        <div className="mt-2 flex items-center">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brown-100 text-brown-800">
-            {brewMethod}
-          </span>
-          {tags.slice(0, 2).map((tag, index) => (
-            <span
-              key={index}
-              className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-            >
-              {tag}
+        {/* Brewing Method & Origin */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {rating.brewing_method && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+              {rating.brewing_method}
             </span>
-          ))}
-          {tags.length > 2 && (
-            <span className="ml-2 text-xs text-gray-500">
-              +{tags.length - 2} more
+          )}
+          {rating.coffee_beans?.origin && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+              {rating.coffee_beans.origin}
+            </span>
+          )}
+          {rating.coffee_beans?.roast_level && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
+              {rating.coffee_beans.roast_level}
             </span>
           )}
         </div>
 
-        {notes && (
-          <p className="mt-2 text-gray-700 text-sm line-clamp-2">{notes}</p>
+        {/* Review Text */}
+        {rating.review_text && (
+          <p className="text-gray-700 text-sm line-clamp-3 leading-relaxed mb-4">
+            {rating.review_text}
+          </p>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="flex items-center space-x-4">
-            <button className="flex items-center text-gray-500 hover:text-red-500">
-              <Heart
-                className={`h-5 w-5 ${
-                  likes.length > 0 ? "fill-red-500 text-red-500" : ""
-                }`}
-              />
-              {likes.length > 0 && (
-                <span className="ml-1 text-sm">{likes.length}</span>
-              )}
+            <button className="flex items-center text-gray-500 hover:text-red-500 transition-colors group">
+              <Heart className="h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="ml-1 text-sm">0</span>
             </button>
-            <button className="flex items-center text-gray-500 hover:text-blue-500">
-              <MessageCircle className="h-5 w-5" />
-              {comments.length > 0 && (
-                <span className="ml-1 text-sm">{comments.length}</span>
-              )}
+            <button className="flex items-center text-gray-500 hover:text-blue-500 transition-colors group">
+              <MessageCircle className="h-5 w-5 group-hover:scale-110 transition-transform" />
+              <span className="ml-1 text-sm">0</span>
             </button>
           </div>
+          <Link 
+            href={`/rating/${rating.id}`}
+            className="text-xs text-amber-600 hover:text-amber-700 font-medium hover:underline transition-colors"
+          >
+            View Details
+          </Link>
         </div>
       </div>
     </div>

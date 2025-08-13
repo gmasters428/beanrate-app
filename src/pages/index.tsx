@@ -167,51 +167,13 @@ export default function HomePage() {
                 {ratings.map((rating, index) => (
                   <div 
                     key={rating.id}
-                    className="transform transition-all duration-300 hover:scale-[1.02]"
+                    className="transform transition-all duration-300"
                     style={{ 
                       animationDelay: `${index * 100}ms`,
                       animation: 'fadeInUp 0.6s ease-out forwards'
                     }}
                   >
-                    <RatingCard 
-                      rating={{
-                        id: rating.id,
-                        userId: rating.user_id,
-                        user: {
-                          id: rating.user_id,
-                          username: rating.users?.username || "Unknown",
-                          name: rating.users?.display_name || rating.users?.username || "Coffee Lover",
-                          email: "",
-                          profileImage: rating.users?.profile_image_url || undefined,
-                          bio: undefined,
-                          following: [],
-                          followers: [],
-                          createdAt: new Date().toISOString()
-                        },
-                        coffeeBeanId: rating.coffee_bean_id,
-                        coffeeBean: {
-                          id: rating.coffee_bean_id,
-                          name: rating.coffee_beans?.name || "Unknown Coffee",
-                          roaster: rating.coffee_beans?.brand || "Unknown Brand",
-                          origin: rating.coffee_beans?.origin || "Unknown",
-                          roastLevel: rating.coffee_beans?.roast_level || "Medium",
-                          description: undefined,
-                          imageUrl: rating.coffee_beans?.image_url || undefined,
-                          averageRating: 0,
-                          totalRatings: 0,
-                          createdAt: new Date().toISOString()
-                        },
-                        rating: rating.overall_rating,
-                        brewMethod: rating.brewing_method || "Unknown",
-                        tags: [],
-                        notes: rating.review_text || undefined,
-                        beanImage: rating.coffee_beans?.image_url || undefined,
-                        brewedImage: undefined,
-                        createdAt: rating.created_at,
-                        likes: [],
-                        comments: []
-                      }}
-                    />
+                    <RatingCard rating={rating} />
                   </div>
                 ))}
               </div>
