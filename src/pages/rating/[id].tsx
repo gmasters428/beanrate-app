@@ -1,313 +1,279 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
-import Layout from "@/components/layout/Layout";
-import { mockRatings, mockUsers } from "@/data/mockData";
-import { Rating, Comment, User } from "@/types";
-import { Heart, MessageCircle, Send, User as UserIcon } from "lucide-react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import Layout from "@/components/layout/Layout";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
+import { commentsService, CommentWithUser } from "@/services/commentsService";
+import { likesService } from "@/services/likesService";
+import { Coffee, User as UserIcon, Star, Heart, MessageCircle, Send, Trash2 } from "lucide-react";
 
-export default function RatingDetailPage() {
+export default function RatingPage() {
   const router = useRouter();
   const { id } = router.query;
-  
-  const [rating, setRating] = useState<Rating | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState("");
-  const [isLiked, setIsLiked] = useState(false);
-  
-  // In a real app, we would get the current user from auth context
-  // For now, we'll just use the first user from our mock data
-  const currentUser = mockUsers[0];
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (id) {
-      // Find the rating with the matching ID
-      const foundRating = mockRatings.find((r) => r.id === id);
-      setRating(foundRating || null);
+  const [rating, setRating] = useState<RatingWithDetails | null>(null);
+  const [comments, setComments] = useState<CommentWithUser[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRatingData = useCallback(async (ratingId: string) => {
+    try {
+      setLoading(true);
+      const [ratingData, commentsData, likesData] = await Promise.all([
+        ratingsService.getRatingById(ratingId),
+        commentsService.getCommentsByRating(ratingId),
+        likesService.getLikesByRating(ratingId),
+      ]);
       
-      if (foundRating) {
-        // Check if the current user has liked this rating
-        setIsLiked(foundRating.likes.includes(currentUser.id));
+      setRating(ratingData);
+      setComments(commentsData);
+      setLikeCount(likesData.count);
+
+      if (user && ratingData) {
+        const userHasLiked = await likesService.hasUserLikedRating(ratingData.id, user.id);
+        setHasLiked(userHasLiked);
       }
-      
+
+    } catch (error) {
+      console.error("Failed to fetch rating data:", error);
+      toast({ title: "Error", description: "Could not load the rating.", variant: "destructive" });
+    } finally {
       setLoading(false);
     }
-  }, [id, currentUser.id]);
+  }, [user, toast]);
 
-  const handleLike = () => {
-    if (!rating) return;
+  useEffect(() => {
+    if (typeof id === 'string') {
+      fetchRatingData(id);
+    }
+  }, [id, fetchRatingData]);
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !rating || !newComment.trim()) return;
     
-    // Toggle like status
-    setIsLiked(!isLiked);
-    
-    // Update likes array
-    if (isLiked) {
-      // Remove like
-      setRating({
-        ...rating,
-        likes: rating.likes.filter((userId) => userId !== currentUser.id)
+    setIsSubmittingComment(true);
+    try {
+      const createdComment = await commentsService.createComment({
+        rating_id: rating.id,
+        user_id: user.id,
+        text: newComment,
       });
-    } else {
-      // Add like
-      setRating({
-        ...rating,
-        likes: [...rating.likes, currentUser.id]
-      });
+      setComments(prev => [...prev, createdComment]);
+      setNewComment("");
+    } catch (error) {
+      console.error("Failed to post comment:", error);
+      toast({ title: "Error", description: "Could not post your comment.", variant: "destructive" });
+    } finally {
+      setIsSubmittingComment(false);
     }
   };
 
-  const handleAddComment = () => {
-    if (!rating || !commentText.trim()) return;
-    
-    // Create new comment
-    const newComment: Comment = {
-      id: `comment-${Date.now()}`,
-      userId: currentUser.id,
-      user: currentUser,
-      ratingId: rating.id,
-      content: commentText,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Add comment to rating
-    setRating({
-      ...rating,
-      comments: [...rating.comments, newComment]
-    });
-    
-    // Clear comment input
-    setCommentText("");
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await commentsService.deleteComment(commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      toast({ title: "Success", description: "Comment deleted." });
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+      toast({ title: "Error", description: "Could not delete the comment.", variant: "destructive" });
+    }
   };
 
-  if (loading) {
-    return (
-      <Layout title="Loading...">
-        <div className="max-w-md mx-auto text-center py-12">
-          <p>Loading rating...</p>
-        </div>
-      </Layout>
-    );
-  }
+  const handleLikeToggle = async () => {
+    if (!user || !rating || isLiking) return;
 
-  if (!rating) {
+    setIsLiking(true);
+    try {
+      if (hasLiked) {
+        await likesService.unlikeRating(rating.id, user.id);
+        setLikeCount(prev => prev - 1);
+        setHasLiked(false);
+      } else {
+        await likesService.likeRating(rating.id, user.id);
+        setLikeCount(prev => prev + 1);
+        setHasLiked(true);
+      }
+    } catch (error) {
+      console.error("Failed to update like status:", error);
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const renderDetailStars = (ratingValue: number) => (
+    <div className="flex items-center">
+      {[...Array(5)].map((_, i) => (
+        <Star
+          key={i}
+          className={`h-5 w-5 ${
+            i < Math.round(ratingValue) ? "text-amber-400 fill-amber-400" : "text-gray-300"
+          }`}
+        />
+      ))}
+      <span className="ml-2 text-lg font-bold text-gray-700">{ratingValue.toFixed(1)}</span>
+    </div>
+  );
+
+  const DetailRating = ({ label, value }: { label: string; value?: number | null }) => {
+    if (value === null || typeof value === 'undefined') return null;
+    const percentage = (value / 5) * 100;
     return (
-      <Layout title="Rating Not Found">
-        <div className="max-w-md mx-auto text-center py-12">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Rating Not Found</h1>
-          <p className="text-gray-600 mb-6">The rating you're looking for doesn't exist.</p>
-          <button
-            onClick={() => router.push("/")}
-            className="px-4 py-2 bg-brown-600 text-white rounded-lg hover:bg-brown-700"
-          >
-            Back to Home
-          </button>
+      <div>
+        <div className="flex justify-between items-baseline mb-1">
+          <p className="text-sm font-medium text-gray-600">{label}</p>
+          <p className="text-sm font-bold text-gray-800">{value.toFixed(1)}</p>
         </div>
-      </Layout>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="bg-amber-400 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
+        </div>
+      </div>
     );
-  }
+  };
+
+  if (loading) return <Layout><div className="text-center p-10">Loading...</div></Layout>;
+  if (!rating) return <Layout><div className="text-center p-10">Rating not found.</div></Layout>;
 
   return (
-    <Layout title={`${rating.user.name}'s Rating | BeanRate`}>
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center">
-              <div className="h-10 w-10 rounded-full overflow-hidden relative">
-                {rating.user.profileImage ? (
-                  <Image 
-                    src={rating.user.profileImage} 
-                    alt={rating.user.username} 
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                    <UserIcon className="h-6 w-6 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <div className="ml-3">
-                <p className="font-medium text-gray-900">{rating.user.name}</p>
-                <p className="text-sm text-gray-500">@{rating.user.username}</p>
-              </div>
-              <div className="ml-auto text-sm text-gray-500">
-                {formatDistanceToNow(new Date(rating.createdAt), { addSuffix: true })}
-              </div>
-            </div>
-          </div>
-          
-          {rating.brewedImage && (
-            <div className="relative aspect-square">
-              <Image 
-                src={rating.brewedImage} 
-                alt="Brewed coffee" 
-                fill
-                className="object-cover"
-              />
-            </div>
-          )}
-          
-          <div className="p-4">
-            <div className="flex items-center mb-2">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <svg
-                    key={star}
-                    className={`h-5 w-5 ${
-                      star <= rating.rating ? "text-yellow-400" : "text-gray-300"
-                    }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 15.585l-7.07 3.716 1.35-7.87L.36 7.13l7.91-1.15L10 0l1.73 5.98 7.91 1.15-5.92 5.77 1.35 7.87z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ))}
-              </div>
-              <span className="ml-2 text-sm font-medium text-gray-700">
-                {rating.rating}/5
-              </span>
-            </div>
-            
-            <h3 className="font-bold text-lg text-gray-900">
-              {rating.coffeeBean.name}
-            </h3>
-            <p className="text-sm text-gray-700">by {rating.coffeeBean.roaster}</p>
-            
-            <div className="mt-2 flex items-center">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brown-100 text-brown-800">
-                {rating.brewMethod}
-              </span>
-              {rating.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            
-            {rating.notes && (
-              <p className="mt-3 text-gray-700">{rating.notes}</p>
-            )}
-            
-            {rating.beanImage && (
-              <div className="mt-4">
-                <p className="text-xs text-gray-500 mb-1">Coffee Beans:</p>
-                <div className="relative h-40 rounded-lg overflow-hidden">
-                  <Image 
-                    src={rating.beanImage} 
-                    alt="Coffee beans" 
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-              <div className="flex items-center space-x-4">
-                <button 
-                  className={`flex items-center ${isLiked ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
-                  onClick={handleLike}
-                >
-                  <Heart className={`h-6 w-6 ${isLiked ? "fill-red-500" : ""}`} />
-                  {rating.likes.length > 0 && (
-                    <span className="ml-1">{rating.likes.length}</span>
-                  )}
-                </button>
-                <button className="flex items-center text-gray-500 hover:text-blue-500">
-                  <MessageCircle className="h-6 w-6" />
-                  {rating.comments.length > 0 && (
-                    <span className="ml-1">{rating.comments.length}</span>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4 border-t border-gray-100">
-            <h4 className="font-medium text-gray-900 mb-3">Comments</h4>
-            
-            <div className="space-y-4 mb-4">
-              {rating.comments.length > 0 ? (
-                rating.comments.map((comment) => (
-                  <div key={comment.id} className="flex">
-                    <div className="h-8 w-8 rounded-full overflow-hidden relative flex-shrink-0">
-                      {comment.user.profileImage ? (
-                        <Image 
-                          src={comment.user.profileImage} 
-                          alt={comment.user.username} 
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                          <UserIcon className="h-4 w-4 text-gray-500" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-2 flex-1">
-                      <div className="bg-gray-100 rounded-lg p-2">
-                        <p className="text-sm font-medium text-gray-900">
-                          {comment.user.name}
-                        </p>
-                        <p className="text-sm text-gray-700">{comment.content}</p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                ))
+    <Layout title={`Rating for ${rating.coffee_beans?.name}`}>
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Left Column: Image & Bean Info */}
+          <div>
+            <div className="relative aspect-square w-full rounded-xl shadow-lg overflow-hidden border mb-6">
+              {rating.coffee_beans?.image_url ? (
+                <Image src={rating.coffee_beans.image_url} alt={rating.coffee_beans.name || ""} fill className="object-cover" />
               ) : (
-                <p className="text-sm text-gray-500">No comments yet.</p>
+                <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                  <Coffee className="w-24 h-24 text-gray-300" />
+                </div>
               )}
             </div>
             
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full overflow-hidden relative flex-shrink-0">
-                {currentUser.profileImage ? (
-                  <Image 
-                    src={currentUser.profileImage} 
-                    alt={currentUser.username} 
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                    <UserIcon className="h-4 w-4 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <div className="ml-2 flex-1 relative">
-                <input
-                  type="text"
-                  className="w-full p-2 pr-10 border border-gray-300 rounded-full text-sm"
-                  placeholder="Add a comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddComment();
-                    }
-                  }}
-                />
-                <button
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-brown-600 hover:text-brown-700 disabled:text-gray-300"
-                  disabled={!commentText.trim()}
-                  onClick={handleAddComment}
-                >
-                  <Send className="h-5 w-5" />
-                </button>
+            <Link href={`/bean/${rating.coffee_bean_id}`} className="group">
+              <h2 className="text-2xl font-bold text-gray-900 group-hover:text-amber-700">{rating.coffee_beans?.name}</h2>
+              <p className="text-lg text-gray-600">by {rating.coffee_beans?.brand}</p>
+            </Link>
+            
+            <div className="flex flex-wrap gap-2 mt-4">
+              {rating.brewing_method && <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">{rating.brewing_method}</span>}
+              {rating.coffee_beans?.origin && <span className="text-xs font-medium bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full">{rating.coffee_beans.origin}</span>}
+              {rating.coffee_beans?.roast_level && <span className="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{rating.coffee_beans.roast_level}</span>}
+            </div>
+          </div>
+
+          {/* Right Column: Rating Details */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <Link href={`/profile/${rating.user_id}`} className="flex items-center group">
+                <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-amber-100">
+                  {rating.users?.profile_image_url ? (
+                    <Image src={rating.users.profile_image_url} alt={rating.users.username || ""} fill className="object-cover" />
+                  ) : (
+                    <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                      <UserIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="ml-3">
+                  <p className="font-bold text-gray-900 group-hover:text-amber-700">{rating.users?.display_name || rating.users?.username}</p>
+                  <p className="text-sm text-gray-500">{formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}</p>
+                </div>
+              </Link>
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md border">
+              <div className="mb-4">{renderDetailStars(rating.overall_rating)}</div>
+              <Separator className="my-4"/>
+              <div className="space-y-3">
+                <DetailRating label="Aroma" value={rating.aroma_rating} />
+                <DetailRating label="Flavor" value={rating.flavor_rating} />
+                <DetailRating label="Aftertaste" value={rating.aftertaste_rating} />
+                <DetailRating label="Acidity" value={rating.acidity_rating} />
+                <DetailRating label="Body" value={rating.body_rating} />
               </div>
             </div>
+
+            {rating.review_text && (
+              <div className="mt-6">
+                <h3 className="font-bold text-lg mb-2">Review</h3>
+                <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border">{rating.review_text}</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <Separator className="my-8" />
+
+        {/* Actions and Comments */}
+        <div>
+          <div className="flex items-center space-x-6 mb-6">
+            <button onClick={handleLikeToggle} disabled={!user || isLiking} className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 disabled:opacity-50 transition-colors ${hasLiked ? 'text-red-500' : ''}`}>
+              <Heart className={`w-6 h-6 ${hasLiked ? 'fill-current' : ''}`} />
+              <span className="font-semibold">{likeCount}</span>
+            </button>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <MessageCircle className="w-6 h-6" />
+              <span className="font-semibold">{comments.length}</span>
+            </div>
+          </div>
+
+          <h3 className="font-bold text-xl mb-4">Comments</h3>
+          {user ? (
+            <form onSubmit={handleCommentSubmit} className="flex items-start space-x-3 mb-6">
+              <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-grow" />
+              <Button type="submit" disabled={isSubmittingComment}>
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          ) : (
+            <p className="text-gray-500 mb-6">You must be logged in to comment.</p>
+          )}
+
+          <div className="space-y-4">
+            {comments.map(comment => (
+              <div key={comment.id} className="flex items-start space-x-3">
+                <div className="relative h-10 w-10 rounded-full overflow-hidden border">
+                  {comment.users?.profile_image_url ? (
+                    <Image src={comment.users.profile_image_url} alt={comment.users.username || ""} fill className="object-cover" />
+                  ) : (
+                    <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                      <UserIcon className="w-5 h-5 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-grow">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-baseline justify-between">
+                      <Link href={`/profile/${comment.user_id}`} className="font-bold text-sm hover:underline">{comment.users?.display_name || comment.users?.username}</Link>
+                      {user?.id === comment.user_id && (
+                        <button onClick={() => handleDeleteComment(comment.id)} className="text-gray-400 hover:text-red-500">
+                          <Trash2 className="w-3 h-3"/>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-gray-800">{comment.text}</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
+                </div>
+              </div>
+            ))}
+            {comments.length === 0 && <p className="text-gray-500">No comments yet.</p>}
           </div>
         </div>
       </div>
