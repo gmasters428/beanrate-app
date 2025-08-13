@@ -101,8 +101,14 @@ export interface Database {
           aftertaste_rating: number | null
           acidity_rating: number | null
           body_rating: number | null
+          sweetness_rating: number | null
+          balance_rating: number | null
           review_text: string | null
           brewing_method: string | null
+          grinder: string | null
+          grind_size: string | null
+          water_temp: number | null
+          brew_ratio: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -116,8 +122,14 @@ export interface Database {
           aftertaste_rating?: number | null
           acidity_rating?: number | null
           body_rating?: number | null
+          sweetness_rating?: number | null
+          balance_rating?: number | null
           review_text?: string | null
           brewing_method?: string | null
+          grinder?: string | null
+          grind_size?: string | null
+          water_temp?: number | null
+          brew_ratio?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -131,8 +143,14 @@ export interface Database {
           aftertaste_rating?: number | null
           acidity_rating?: number | null
           body_rating?: number | null
+          sweetness_rating?: number | null
+          balance_rating?: number | null
           review_text?: string | null
           brewing_method?: string | null
+          grinder?: string | null
+          grind_size?: string | null
+          water_temp?: number | null
+          brew_ratio?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
