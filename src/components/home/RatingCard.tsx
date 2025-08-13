@@ -10,8 +10,8 @@ interface RatingCardProps {
 }
 
 export default function RatingCard({ rating }: RatingCardProps) {
-  const renderStars = (ratingValue: string) => {
-    const numericRating = parseFloat(ratingValue);
+  const renderStars = (ratingValue: number | null | undefined) => {
+    const numericRating = ratingValue ?? 0;
     return (
       <div className="flex items-center">
         <div className="flex">
