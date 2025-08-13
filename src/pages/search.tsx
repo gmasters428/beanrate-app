@@ -11,18 +11,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
 import { coffeeBeansService } from "@/services/coffeeBeansService";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SearchPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"beans" | "users">("beans");
   
-  // State for beans
   const [allBeans, setAllBeans] = useState<CoffeeBeanWithRatings[]>([]);
   const [filteredBeans, setFilteredBeans] = useState<CoffeeBeanWithRatings[]>([]);
   const [beansLoading, setBeansLoading] = useState(true);
 
-  // State for users
   const [userSearchResults, setUserSearchResults] = useState<UserWithProfile[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
 
@@ -35,16 +35,16 @@ export default function SearchPage() {
     try {
       setUsersLoading(true);
       const results = await userService.searchUsers(query);
-      // Filter out current user from results
       const filteredResults = results.filter(result => result.id !== user.id);
       setUserSearchResults(filteredResults);
     } catch (error) {
       console.error("Error searching users:", error);
+      toast({ title: "Error", description: "Could not perform user search.", variant: "destructive" });
       setUserSearchResults([]);
     } finally {
       setUsersLoading(false);
     }
-  }, [user]);
+  }, [user, toast]);
 
   const fetchAllBeans = useCallback(async () => {
     try {
@@ -54,10 +54,11 @@ export default function SearchPage() {
       setFilteredBeans(beans);
     } catch (error) {
       console.error("Error fetching coffee beans:", error);
+      toast({ title: "Error", description: "Could not load coffee beans.", variant: "destructive" });
     } finally {
       setBeansLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (searchType === "beans") {
@@ -82,7 +83,7 @@ export default function SearchPage() {
     } else if (searchType === "users") {
       const debounceTimer = setTimeout(() => {
         searchUsers(searchQuery);
-      }, 300); // Debounce search
+      }, 300);
       return () => clearTimeout(debounceTimer);
     }
   }, [searchQuery, searchType, allBeans, searchUsers]);
@@ -90,16 +91,17 @@ export default function SearchPage() {
   const handleSendFriendRequest = async (userId: string) => {
     try {
       await userService.sendFriendRequest(userId);
-      // Update the user in the search results to show request sent
       setUserSearchResults(prev => 
-        prev.map(user => 
-          user.id === userId 
-            ? { ...user, friendRequestSent: true }
-            : user
+        prev.map(u => 
+          u.id === userId 
+            ? { ...u, friendRequestSent: true }
+            : u
         )
       );
+      toast({ title: "Success", description: "Friend request sent!" });
     } catch (error) {
       console.error("Error sending friend request:", error);
+      toast({ title: "Error", description: "Could not send friend request.", variant: "destructive" });
     }
   };
 
@@ -148,9 +150,7 @@ export default function SearchPage() {
         {searchType === "beans" && (
           <div className="space-y-4">
             {beansLoading ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500">Loading beans...</div>
-              </div>
+              <div className="text-center py-8 text-gray-500">Loading beans...</div>
             ) : filteredBeans.length > 0 ? (
               filteredBeans.map((bean) => (
                 <BeanCard key={bean.id} bean={bean} />
@@ -159,7 +159,7 @@ export default function SearchPage() {
               <div className="text-center py-8 bg-white rounded-lg shadow-md">
                 <Coffee className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {searchQuery ? "No coffee beans found matching your search." : "No coffee beans found."}
+                  {searchQuery ? "No coffee beans found." : "No coffee beans available."}
                 </p>
               </div>
             )}
@@ -169,9 +169,7 @@ export default function SearchPage() {
         {searchType === "users" && (
           <div className="space-y-4">
             {usersLoading ? (
-              <div className="text-center py-8">
-                <div className="text-gray-500">Searching...</div>
-              </div>
+              <div className="text-center py-8 text-gray-500">Searching...</div>
             ) : userSearchResults.length > 0 ? (
               userSearchResults.map((searchUser) => (
                 <div key={searchUser.id} className="bg-white rounded-lg shadow-md p-4">
@@ -205,9 +203,7 @@ export default function SearchPage() {
                     </div>
                     <div className="flex space-x-2">
                       <Link href={`/profile/${searchUser.id}`}>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
+                        <Button variant="outline" size="sm">View</Button>
                       </Link>
                       {user && (
                         <Button 
@@ -228,7 +224,7 @@ export default function SearchPage() {
               <div className="text-center py-8 bg-white rounded-lg shadow-md">
                 <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {searchQuery ? "No people found matching your search." : "Start typing to search for people."}
+                  {searchQuery ? "No people found." : "Start typing to search for people."}
                 </p>
               </div>
             )}
