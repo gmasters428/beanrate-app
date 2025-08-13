@@ -7,10 +7,14 @@ export type CoffeeBean = Database['public']['Tables']['coffee_beans']['Row'];
 export type Rating = Database['public']['Tables']['ratings']['Row'];
 
 // Extended types with relations for display
-export interface UserProfile extends User {
-  friend_count?: number;
-  rating_count?: number;
-  following?: boolean;
+export interface UserProfile {
+  id: string;
+  username: string;
+  display_name: string | null;
+  bio: string | null;
+  profile_image_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RatingWithDetails extends Rating {
@@ -29,9 +33,28 @@ export interface RatingWithDetails extends Rating {
 }
 
 export interface CoffeeBeanWithRatings extends CoffeeBean {
-  ratings?: RatingWithDetails[];
-  average_rating?: number;
-  rating_count?: number;
+  avg_rating: number | null;
+  rating_count: number | null;
+}
+
+export interface Comment {
+  id: string;
+  user_id: string;
+  rating_id: string;
+  text: string;
+  created_at: string;
+  users: {
+    username: string;
+    display_name: string | null;
+    profile_image_url: string | null;
+  } | null;
+}
+
+export interface Like {
+  id: string;
+  user_id: string;
+  rating_id: string;
+  created_at: string;
 }
 
 // Form types

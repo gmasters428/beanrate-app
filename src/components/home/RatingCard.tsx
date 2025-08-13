@@ -10,7 +10,7 @@ interface RatingCardProps {
 }
 
 export default function RatingCard({ rating }: RatingCardProps) {
-  const renderStars = (ratingValue: number | null | undefined) => {
+  const renderStarRating = (ratingValue: number | null | undefined) => {
     const numericRating = ratingValue ?? 0;
     return (
       <div className="flex items-center">
@@ -90,7 +90,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
       <div className="p-4">
         {/* Rating Stars */}
         <div className="mb-3">
-          {renderStars(rating.overall_rating)}
+          {renderStarRating(rating.overall_rating)}
         </div>
 
         {/* Coffee Bean Info */}

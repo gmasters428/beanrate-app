@@ -136,6 +136,7 @@ export default function AddBeanPage() {
 
       // Create the rating
       const ratingData = {
+        user_id: user.id, // Add this line
         coffee_bean_id: newBean.id,
         overall_rating: data.overall_rating,
         aroma_rating: data.aroma_rating,

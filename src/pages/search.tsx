@@ -1,66 +1,97 @@
+
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Layout from "@/components/layout/Layout";
 import SearchBar from "@/components/search/SearchBar";
 import BeanCard from "@/components/search/BeanCard";
-import { mockBeans } from "@/data/mockData";
-import { CoffeeBean } from "@/types";
+import { CoffeeBeanWithRatings } from "@/types";
 import { User as UserIcon, UserPlus, Coffee } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
+import { coffeeBeansService } from "@/services/coffeeBeansService";
 
 export default function SearchPage() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"beans" | "users">("beans");
-  const [filteredBeans, setFilteredBeans] = useState<CoffeeBean[]>([]);
-  const [searchResults, setSearchResults] = useState<UserWithProfile[]>([]);
-  const [loading, setLoading] = useState(false);
+  
+  // State for beans
+  const [allBeans, setAllBeans] = useState<CoffeeBeanWithRatings[]>([]);
+  const [filteredBeans, setFilteredBeans] = useState<CoffeeBeanWithRatings[]>([]);
+  const [beansLoading, setBeansLoading] = useState(true);
+
+  // State for users
+  const [userSearchResults, setUserSearchResults] = useState<UserWithProfile[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   const searchUsers = useCallback(async (query: string) => {
-    if (!user) return;
+    if (!user || query.trim() === "") {
+        setUserSearchResults([]);
+        return;
+    };
     
     try {
-      setLoading(true);
+      setUsersLoading(true);
       const results = await userService.searchUsers(query);
       // Filter out current user from results
       const filteredResults = results.filter(result => result.id !== user.id);
-      setSearchResults(filteredResults);
+      setUserSearchResults(filteredResults);
     } catch (error) {
       console.error("Error searching users:", error);
-      setSearchResults([]);
+      setUserSearchResults([]);
     } finally {
-      setLoading(false);
+      setUsersLoading(false);
     }
   }, [user]);
+
+  const fetchAllBeans = useCallback(async () => {
+    try {
+      setBeansLoading(true);
+      const beans = await coffeeBeansService.getCoffeeBeansWithRatings();
+      setAllBeans(beans);
+      setFilteredBeans(beans);
+    } catch (error) {
+      console.error("Error fetching coffee beans:", error);
+    } finally {
+      setBeansLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (searchType === "beans") {
+      fetchAllBeans();
+    }
+  }, [searchType, fetchAllBeans]);
 
   useEffect(() => {
     if (searchType === "beans") {
       if (searchQuery.trim() === "") {
-        setFilteredBeans(mockBeans);
+        setFilteredBeans(allBeans);
       } else {
-        const filtered = mockBeans.filter(
+        const lowercasedQuery = searchQuery.toLowerCase();
+        const filtered = allBeans.filter(
           (bean) =>
-            bean.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            bean.roaster.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            bean.origin.toLowerCase().includes(searchQuery.toLowerCase())
+            bean.name.toLowerCase().includes(lowercasedQuery) ||
+            bean.brand.toLowerCase().includes(lowercasedQuery) ||
+            (bean.origin && bean.origin.toLowerCase().includes(lowercasedQuery))
         );
         setFilteredBeans(filtered);
       }
-    } else if (searchType === "users" && searchQuery.trim() !== "") {
-      searchUsers(searchQuery);
-    } else {
-      setSearchResults([]);
+    } else if (searchType === "users") {
+      const debounceTimer = setTimeout(() => {
+        searchUsers(searchQuery);
+      }, 300); // Debounce search
+      return () => clearTimeout(debounceTimer);
     }
-  }, [searchQuery, searchType, searchUsers]);
+  }, [searchQuery, searchType, allBeans, searchUsers]);
 
   const handleSendFriendRequest = async (userId: string) => {
     try {
       await userService.sendFriendRequest(userId);
       // Update the user in the search results to show request sent
-      setSearchResults(prev => 
+      setUserSearchResults(prev => 
         prev.map(user => 
           user.id === userId 
             ? { ...user, friendRequestSent: true }
@@ -108,15 +139,19 @@ export default function SearchPage() {
             onChange={setSearchQuery}
             placeholder={
               searchType === "beans" 
-                ? "Search coffee beans, roasters, origins..." 
-                : "Search for people by name or email..."
+                ? "Search coffee beans, brands, origins..." 
+                : "Search for people by name or username..."
             }
           />
         </div>
 
         {searchType === "beans" && (
           <div className="space-y-4">
-            {filteredBeans.length > 0 ? (
+            {beansLoading ? (
+              <div className="text-center py-8">
+                <div className="text-gray-500">Loading beans...</div>
+              </div>
+            ) : filteredBeans.length > 0 ? (
               filteredBeans.map((bean) => (
                 <BeanCard key={bean.id} bean={bean} />
               ))
@@ -124,7 +159,7 @@ export default function SearchPage() {
               <div className="text-center py-8 bg-white rounded-lg shadow-md">
                 <Coffee className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {searchQuery ? "No coffee beans found matching your search." : "Start typing to search for coffee beans."}
+                  {searchQuery ? "No coffee beans found matching your search." : "No coffee beans found."}
                 </p>
               </div>
             )}
@@ -133,12 +168,12 @@ export default function SearchPage() {
 
         {searchType === "users" && (
           <div className="space-y-4">
-            {loading ? (
+            {usersLoading ? (
               <div className="text-center py-8">
                 <div className="text-gray-500">Searching...</div>
               </div>
-            ) : searchResults.length > 0 ? (
-              searchResults.map((searchUser) => (
+            ) : userSearchResults.length > 0 ? (
+              userSearchResults.map((searchUser) => (
                 <div key={searchUser.id} className="bg-white rounded-lg shadow-md p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
