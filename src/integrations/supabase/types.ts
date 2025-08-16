@@ -15,10 +15,19 @@ export interface Database {
           name: string
           brand: string
           origin: string | null
+          region: string | null
+          altitude: string | null
+          processing_method: string | null
           roast_level: string | null
+          roast_date: string | null
+          harvest_date: string | null
           flavor_notes: string[] | null
           description: string | null
           image_url: string | null
+          price: number | null
+          price_per_unit: string | null
+          purchase_url: string | null
+          is_available: boolean | null
           created_at: string | null
           updated_at: string | null
         }
@@ -27,10 +36,19 @@ export interface Database {
           name: string
           brand: string
           origin?: string | null
+          region?: string | null
+          altitude?: string | null
+          processing_method?: string | null
           roast_level?: string | null
+          roast_date?: string | null
+          harvest_date?: string | null
           flavor_notes?: string[] | null
           description?: string | null
           image_url?: string | null
+          price?: number | null
+          price_per_unit?: string | null
+          purchase_url?: string | null
+          is_available?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -39,10 +57,19 @@ export interface Database {
           name?: string
           brand?: string
           origin?: string | null
+          region?: string | null
+          altitude?: string | null
+          processing_method?: string | null
           roast_level?: string | null
+          roast_date?: string | null
+          harvest_date?: string | null
           flavor_notes?: string[] | null
           description?: string | null
           image_url?: string | null
+          price?: number | null
+          price_per_unit?: string | null
+          purchase_url?: string | null
+          is_available?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
