@@ -76,7 +76,8 @@ export default function SearchPage() {
           (bean) =>
             bean.name.toLowerCase().includes(lowercasedQuery) ||
             bean.brand.toLowerCase().includes(lowercasedQuery) ||
-            (bean.origin && bean.origin.toLowerCase().includes(lowercasedQuery))
+            (bean.origin && bean.origin.toLowerCase().includes(lowercasedQuery)) ||
+            (bean.region && bean.region.toLowerCase().includes(lowercasedQuery))
         );
         setFilteredBeans(filtered);
       }
