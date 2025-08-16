@@ -183,7 +183,12 @@ export default function RatePage() {
   );
 
   const handleSubmitRating = async () => {
+    console.log('Starting rating submission...');
+    console.log('User:', user);
+    console.log('Selected bean:', selectedBean);
+    
     if (!user) {
+      console.log('No user found, showing auth error');
       toast({
         title: "Authentication Required",
         description: "Please log in to submit a rating.",
@@ -193,6 +198,7 @@ export default function RatePage() {
     }
 
     if (!selectedBean) {
+      console.log('No bean selected, showing error');
       toast({
         title: "Missing Information",
         description: "Please select a coffee bean to rate.",
@@ -202,8 +208,11 @@ export default function RatePage() {
     }
 
     setIsSubmitting(true);
+    console.log('Setting isSubmitting to true');
+    
     try {
-      await ratingsService.createRating({
+      const ratingData = {
+        user_id: user.id,
         coffee_bean_id: selectedBean.id,
         overall_rating: overallRating,
         aroma_rating: aromaRating,
@@ -219,22 +228,31 @@ export default function RatePage() {
         water_temp: waterTemp,
         brew_ratio: brewRatio || undefined,
         review_text: notes || undefined,
-      });
+      };
+      
+      console.log('About to submit rating data:', ratingData);
+      
+      const result = await ratingsService.createRating(ratingData);
+      console.log('Rating submission successful:', result);
 
+      // Show the requested success popup
       toast({
-        title: "Success! ☕",
-        description: "Your detailed rating has been submitted successfully.",
+        title: "Rating Submitted! ☕",
+        description: "Your detailed coffee rating has been posted successfully.",
       });
 
-      router.push(`/bean/${selectedBean.id}`);
+      // Redirect to profile page as requested
+      console.log('Redirecting to profile page...');
+      router.push("/profile");
     } catch (error) {
       console.error("Error submitting rating:", error);
       toast({
         title: "Error",
-        description: "Failed to submit rating. Please try again.",
+        description: `Failed to submit rating: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
+      console.log('Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };

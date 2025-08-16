@@ -97,13 +97,20 @@ export const ratingsService = {
   },
 
   async createRating(rating: RatingInsert): Promise<Rating> {
+    console.log('Creating rating with data:', rating);
+    
     const { data, error } = await supabase
       .from('ratings')
       .insert([rating])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Rating creation error:', error);
+      throw error;
+    }
+    
+    console.log('Rating created successfully:', data);
     return data;
   },
 
