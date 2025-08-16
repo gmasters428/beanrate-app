@@ -215,17 +215,30 @@ export default function AddBeanPage() {
 
     setIsSubmitting(true);
     try {
-      // Create the coffee bean
+      console.log("Form data being submitted:", data); // Debug log
+      
+      // Create the coffee bean with all fields
       const beanData = {
         name: data.name,
         brand: data.brand,
         origin: data.origin,
+        region: data.region,
+        altitude: data.altitude,
+        processing_method: data.processing_method,
         roast_level: data.roast_level,
+        roast_date: data.roast_date,
+        harvest_date: data.harvest_date,
         description: data.description,
         flavor_notes: data.flavor_notes || [],
+        price: data.price,
+        price_per_unit: data.price_per_unit,
+        purchase_url: data.purchase_url,
+        is_available: data.is_available,
       };
 
+      console.log("Bean data being sent to service:", beanData); // Debug log
       const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0]);
+      console.log("Coffee bean created:", newBean); // Debug log
 
       // Create the rating
       const ratingData = {
@@ -237,12 +250,17 @@ export default function AddBeanPage() {
         aftertaste_rating: data.aftertaste_rating,
         acidity_rating: data.acidity_rating,
         body_rating: data.body_rating,
+        sweetness_rating: data.sweetness_rating,
+        balance_rating: data.balance_rating,
         brewing_method: data.brewing_method,
         grinder: data.grinder,
         grind_size: data.grind_size,
+        water_temp: data.water_temp,
+        brew_ratio: data.brew_ratio,
         review_text: data.review_text,
       };
 
+      console.log("Rating data being sent to service:", ratingData); // Debug log
       await ratingsService.createRating(ratingData);
 
       toast({
@@ -253,9 +271,16 @@ export default function AddBeanPage() {
       router.push(`/bean/${newBean.id}`);
     } catch (error) {
       console.error("Error adding coffee bean:", error);
+      
+      // More detailed error handling
+      let errorMessage = "Failed to add coffee bean. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = `Failed to add coffee bean: ${error.message}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add coffee bean. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
