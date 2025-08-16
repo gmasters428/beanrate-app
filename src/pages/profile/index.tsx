@@ -51,6 +51,18 @@ export default function ProfilePage() {
     }
   }, [user, loading, router, loadProfileData]);
 
+  // Add a useEffect to refresh data when the page comes into focus (returning from rating submission)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        loadProfileData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user, loadProfileData]);
+
   const handleImageUpdate = async (newImageUrl: string | null) => {
     setProfileImageUrl(newImageUrl);
     await refreshUser();
