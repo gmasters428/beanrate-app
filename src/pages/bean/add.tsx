@@ -360,7 +360,7 @@ export default function AddBeanPage() {
         description: `"${data.name}" by ${data.brand} has been added to your collection!`,
       });
 
-      console.log("🔄 Redirecting to bean page:", `/bean/${newBean.id}`);
+      console.log("🔄 Redirectinging to bean page:", `/bean/${newBean.id}`);
       
       // Add a small delay to let the user see the success message
       setTimeout(() => {
@@ -395,6 +395,60 @@ export default function AddBeanPage() {
       });
     } finally {
       console.log('✅ Setting isSubmitting to false');
+      setIsSubmitting(false);
+    }
+  };
+
+  // TEST SUBMISSION FUNCTION
+  const testSubmit = async () => {
+    console.log('🧪 TEST SUBMISSION STARTED');
+    toast({
+      title: "🧪 Test Submission",
+      description: "Testing direct service calls...",
+    });
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Test with minimal data
+      const testBeanData = {
+        name: "Test Coffee Bean " + Date.now(),
+        brand: "Test Roaster",
+        origin: "Test Origin",
+        flavor_notes: ["Test Note"],
+      };
+      
+      console.log('🧪 Creating test bean:', testBeanData);
+      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
+      console.log('✅ Test bean created:', testBean);
+      
+      // Test rating creation
+      const testRatingData = {
+        user_id: user!.id,
+        coffee_bean_id: testBean.id,
+        overall_rating: 4.5,
+      };
+      
+      console.log('🧪 Creating test rating:', testRatingData);
+      const testRating = await ratingsService.createRating(testRatingData);
+      console.log('✅ Test rating created:', testRating);
+      
+      toast({
+        title: "✅ Test Success!",
+        description: "Services are working correctly!",
+      });
+      
+      // Navigate to the test bean
+      router.push(`/bean/${testBean.id}`);
+      
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      toast({
+        title: "❌ Test Failed",
+        description: `Error: ${error}`,
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -1142,6 +1196,17 @@ export default function AddBeanPage() {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4 pt-6">
+              {/* TEST BUTTON - Remove after debugging */}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={testSubmit}
+                disabled={isSubmitting}
+                className="px-4"
+              >
+                🧪 Test Submit
+              </Button>
+              
               <Button
                 type="button"
                 variant="outline"
