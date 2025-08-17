@@ -215,6 +215,7 @@ export default function AddBeanPage() {
   const onSubmit = async (data: AddBeanFormData) => {
     console.log('=== FORM SUBMISSION STARTED ===');
     console.log('Raw form data:', data);
+    console.log('Button clicked - form submission initiated');
     
     if (!user) {
       console.log('❌ No user found');
@@ -228,24 +229,40 @@ export default function AddBeanPage() {
 
     console.log('✅ User authenticated:', user.id);
     
-    // Log form validation state
+    // Force validation trigger and get fresh form state
+    const isValidForm = await form.trigger();
     const formState = form.formState;
-    console.log('Form validation state:', {
-      isValid: formState.isValid,
-      errors: formState.errors,
+    const currentErrors = form.formState.errors;
+    
+    console.log('Form validation details:', {
+      isValidForm,
+      formStateIsValid: formState.isValid,
+      errors: currentErrors,
+      errorCount: Object.keys(currentErrors).length,
       isSubmitting: formState.isSubmitting,
     });
     
-    // If form has validation errors, show them
-    if (!formState.isValid) {
-      console.log('❌ Form validation failed:', formState.errors);
+    // Show specific validation errors
+    if (!isValidForm || Object.keys(currentErrors).length > 0) {
+      console.log('❌ Form validation failed:', currentErrors);
+      
+      // Find the first error to show user
+      const firstErrorField = Object.keys(currentErrors)[0];
+      const firstError = currentErrors[firstErrorField as keyof typeof currentErrors];
+      
       toast({
         title: "Form Validation Error",
-        description: "Please check all required fields and fix any errors before submitting.",
+        description: firstError?.message || "Please check all required fields and fix any errors before submitting.",
         variant: "destructive",
       });
       return;
     }
+
+    // Show immediate feedback that submission started
+    toast({
+      title: "Processing...",
+      description: "Adding your coffee bean and rating. This may take a moment.",
+    });
 
     setIsSubmitting(true);
     console.log('✅ Setting isSubmitting to true');
@@ -298,9 +315,10 @@ export default function AddBeanPage() {
 
       console.log("⭐ Rating data being sent to service:", ratingData);
       
+      let rating;
       try {
-        const ratingResult = await ratingsService.createRating(ratingData);
-        console.log("✅ Rating created successfully:", ratingResult);
+        rating = await ratingsService.createRating(ratingData);
+        console.log("✅ Rating created successfully:", rating);
       } catch (ratingError) {
         console.error("❌ Rating creation failed:", ratingError);
         // Show warning but don't fail the entire process
@@ -311,18 +329,16 @@ export default function AddBeanPage() {
         });
       }
 
-      // Show the requested success popup
+      // Show success feedback with better UX
       toast({
-        title: "Rating Submitted! ☕",
-        description: "Your coffee bean and rating have been posted successfully.",
+        title: "Success! ☕",
+        description: `"${data.name}" by ${data.brand} has been added to your collection!`,
       });
 
-      console.log("🔄 Redirecting to profile page as requested...");
+      console.log("🔄 Redirecting to bean page:", `/bean/${newBean.id}`);
       
-      // Give the toast time to show before redirecting
-      setTimeout(() => {
-        router.push("/profile");
-      }, 1000);
+      // Redirect to the newly created bean page instead of profile
+      router.push(`/bean/${newBean.id}`);
       
     } catch (error) {
       console.error("❌ Error during submission:", error);
@@ -334,6 +350,13 @@ export default function AddBeanPage() {
         console.log("Error message:", error.message);
         console.log("Error stack:", error.stack);
         errorMessage = `Failed to add coffee bean: ${error.message}`;
+        
+        // Check for specific error types
+        if (error.message.includes('duplicate') || error.message.includes('already exists')) {
+          errorMessage = "A coffee bean with this name and brand already exists. Please use a different name or check existing beans.";
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        }
       }
       
       toast({
