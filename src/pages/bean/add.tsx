@@ -20,7 +20,7 @@ import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { ratingsService } from "@/services/ratingsService";
 import { Coffee, Upload, Star, X, MapPin, Calendar, DollarSign, Award, Zap, Droplets, Mountain } from "lucide-react";
 import Layout from "@/components/layout/Layout";
-import { supabase } from "@/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 const addBeanSchema = z.object({
   // Essential Bean Details
