@@ -101,6 +101,7 @@ export default function AddBeanPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitAttempts, setSubmitAttempts] = useState(0);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [flavorNoteInput, setFlavorNoteInput] = useState("");
@@ -121,17 +122,8 @@ export default function AddBeanPage() {
       is_available: true,
       price_per_unit: "lb",
     },
-    mode: "onChange", // Enable real-time validation
+    mode: "onChange",
   });
-
-  // Debug form state
-  const watchedValues = form.watch();
-  console.log('Current form values:', watchedValues);
-  
-  const formErrors = form.formState.errors;
-  if (Object.keys(formErrors).length > 0) {
-    console.log('Form validation errors:', formErrors);
-  }
 
   const flavorNotes = form.watch("flavor_notes") || [];
 
@@ -144,7 +136,7 @@ export default function AddBeanPage() {
     const validFiles = files.filter(file => file.type.startsWith('image/'));
     if (validFiles.length === 0) return;
 
-    setImageFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 images
+    setImageFiles(prev => [...prev, ...validFiles].slice(0, 5));
     
     validFiles.forEach(file => {
       const reader = new FileReader();
@@ -212,73 +204,112 @@ export default function AddBeanPage() {
     );
   };
 
-  const onSubmit = async (data: AddBeanFormData) => {
-    console.log('=== FORM SUBMISSION STARTED ===');
-    console.log('Raw form data:', data);
-    console.log('Button clicked - form submission initiated');
+  // TEST SUBMISSION FUNCTION for isolated testing
+  const testSubmit = async () => {
+    console.log('🧪 TEST SUBMISSION STARTED - Direct Service Test');
     
-    // Immediate visual feedback
-    toast({
-      title: "🔄 Form Submitted",
-      description: "Processing your coffee bean submission...",
-    });
-    
-    if (!user) {
-      console.log('❌ No user found');
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to add a coffee bean.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('✅ User authenticated:', user.id);
-    
-    // Set loading state immediately
+    setSubmitAttempts(prev => prev + 1);
     setIsSubmitting(true);
-    console.log('✅ Setting isSubmitting to true');
     
     try {
-      // Force validation trigger and get fresh form state
-      const isValidForm = await form.trigger();
-      const formState = form.formState;
-      const currentErrors = form.formState.errors;
-      
-      console.log('Form validation details:', {
-        isValidForm,
-        formStateIsValid: formState.isValid,
-        errors: currentErrors,
-        errorCount: Object.keys(currentErrors).length,
-        isSubmitting: formState.isSubmitting,
+      toast({
+        title: "🧪 Testing Services",
+        description: "Creating test coffee bean and rating...",
       });
-      
-      // Show specific validation errors
-      if (!isValidForm || Object.keys(currentErrors).length > 0) {
-        console.log('❌ Form validation failed:', currentErrors);
-        
-        // Find the first error to show user
-        const firstErrorField = Object.keys(currentErrors)[0];
-        const firstError = currentErrors[firstErrorField as keyof typeof currentErrors];
-        
-        toast({
-          title: "❌ Form Validation Error",
-          description: firstError?.message || "Please check all required fields and fix any errors before submitting.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
+
+      if (!user) {
+        throw new Error("User not authenticated");
       }
 
-      // Show immediate feedback that validation passed
+      const testBeanData = {
+        name: "Test Coffee Bean " + Date.now(),
+        brand: "Test Roaster",
+        origin: "Test Origin",
+        flavor_notes: ["Test Note"],
+        description: "This is a test submission to verify form functionality",
+      };
+      
+      console.log('🧪 Creating test bean:', testBeanData);
+      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
+      console.log('✅ Test bean created:', testBean);
+      
+      const testRatingData = {
+        user_id: user.id,
+        coffee_bean_id: testBean.id,
+        overall_rating: 4.5,
+        review_text: "Test rating to verify form submission is working correctly.",
+      };
+      
+      console.log('🧪 Creating test rating:', testRatingData);
+      const testRating = await ratingsService.createRating(testRatingData);
+      console.log('✅ Test rating created:', testRating);
+      
       toast({
-        title: "✅ Validation Passed",
-        description: "Creating coffee bean and rating...",
+        title: "✅ Test Successful!",
+        description: "Form submission is working correctly. Redirecting to the test bean page...",
       });
 
-      console.log("📝 Creating coffee bean with data:", data);
+      setTimeout(() => {
+        router.push(`/bean/${testBean.id}`);
+      }, 1500);
       
-      // Create the coffee bean with all fields
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      toast({
+        title: "❌ Test Failed",
+        description: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ENHANCED FORM SUBMISSION with bullet-proof error handling
+  const onSubmit = async (data: AddBeanFormData) => {
+    // Immediate feedback to show button click was registered
+    console.log('🚀 FORM SUBMISSION INITIATED');
+    console.log('📊 Submission attempt:', submitAttempts + 1);
+    console.log('👤 User:', user?.id);
+    console.log('📝 Form data received:', data);
+    
+    setSubmitAttempts(prev => prev + 1);
+    
+    // Critical: Set loading state immediately to prevent double submissions
+    if (isSubmitting) {
+      console.log('⚠️ Already submitting, ignoring duplicate request');
+      return;
+    }
+    
+    setIsSubmitting(true);
+
+    try {
+      // Step 1: Authentication check
+      if (!user) {
+        throw new Error("You must be logged in to add a coffee bean");
+      }
+      
+      console.log('✅ User authenticated');
+      
+      // Step 2: Show initial feedback
+      toast({
+        title: "🚀 Processing Submission",
+        description: "Validating form and creating coffee bean...",
+      });
+      
+      // Step 3: Form validation
+      const isValid = await form.trigger();
+      const errors = form.formState.errors;
+      
+      if (!isValid || Object.keys(errors).length > 0) {
+        console.log('❌ Form validation failed:', errors);
+        const firstError = Object.values(errors)[0];
+        throw new Error(firstError?.message || "Please check all required fields");
+      }
+      
+      console.log('✅ Form validation passed');
+      
+      // Step 4: Prepare bean data
       const beanData = {
         name: data.name,
         brand: data.brand,
@@ -296,24 +327,24 @@ export default function AddBeanPage() {
         purchase_url: data.purchase_url || null,
         is_available: data.is_available ?? true,
       };
-
-      console.log("☕ Bean data being sent to service:", beanData);
       
-      let newBean;
-      try {
-        newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0]);
-        console.log("✅ Coffee bean created successfully:", newBean);
-        
-        toast({
-          title: "☕ Bean Created",
-          description: `Coffee bean "${data.name}" created successfully!`,
-        });
-      } catch (beanError) {
-        console.error("❌ Bean creation failed:", beanError);
-        throw new Error(`Failed to create coffee bean: ${beanError}`);
-      }
-
-      // Create the rating with better error handling
+      console.log('☕ Creating bean with data:', beanData);
+      
+      // Step 5: Create coffee bean
+      toast({
+        title: "☕ Creating Coffee Bean",
+        description: "Adding your coffee bean to the database...",
+      });
+      
+      const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0] || null);
+      console.log('✅ Coffee bean created:', newBean);
+      
+      // Step 6: Create rating
+      toast({
+        title: "⭐ Adding Rating",
+        description: "Saving your detailed rating...",
+      });
+      
       const ratingData = {
         user_id: user.id,
         coffee_bean_id: newBean.id,
@@ -332,125 +363,70 @@ export default function AddBeanPage() {
         brew_ratio: data.brew_ratio || null,
         review_text: data.review_text || null,
       };
-
-      console.log("⭐ Rating data being sent to service:", ratingData);
       
-      let rating;
-      try {
-        rating = await ratingsService.createRating(ratingData);
-        console.log("✅ Rating created successfully:", rating);
-        
-        toast({
-          title: "⭐ Rating Added",
-          description: "Your rating has been saved successfully!",
-        });
-      } catch (ratingError) {
-        console.error("❌ Rating creation failed:", ratingError);
-        // Show warning but don't fail the entire process
-        toast({
-          title: "⚠️ Partial Success",
-          description: "Coffee bean added successfully, but there was an issue with the rating. You can add a rating later.",
-          variant: "destructive",
-        });
-      }
-
-      // Show success feedback with better UX
+      console.log('⭐ Creating rating with data:', ratingData);
+      const rating = await ratingsService.createRating(ratingData);
+      console.log('✅ Rating created:', rating);
+      
+      // Step 7: Success!
       toast({
         title: "🎉 Success!",
-        description: `"${data.name}" by ${data.brand} has been added to your collection!`,
+        description: `"${data.name}" by ${data.brand} has been added successfully!`,
       });
-
-      console.log("🔄 Redirectinging to bean page:", `/bean/${newBean.id}`);
       
-      // Add a small delay to let the user see the success message
+      console.log('🎉 Submission completed successfully');
+      console.log('🔄 Redirecting to bean page:', `/bean/${newBean.id}`);
+      
+      // Redirect with delay for user to see success message
       setTimeout(() => {
         router.push(`/bean/${newBean.id}`);
-      }, 1000);
+      }, 2000);
       
     } catch (error) {
-      console.error("❌ Critical error during submission:", error);
+      console.error('💥 SUBMISSION ERROR:', error);
       
-      // More detailed error handling
-      let errorMessage = "Failed to add coffee bean. Please try again.";
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      
       if (error instanceof Error) {
-        console.log("Error name:", error.name);
-        console.log("Error message:", error.message);
-        console.log("Error stack:", error.stack);
-        errorMessage = `Failed to add coffee bean: ${error.message}`;
+        errorMessage = error.message;
         
-        // Check for specific error types
+        // Specific error handling
         if (error.message.includes('duplicate') || error.message.includes('already exists')) {
-          errorMessage = "A coffee bean with this name and brand already exists. Please use a different name or check existing beans.";
+          errorMessage = "A coffee bean with this name and brand already exists.";
         } else if (error.message.includes('network') || error.message.includes('fetch')) {
           errorMessage = "Network error. Please check your connection and try again.";
-        } else if (error.message.includes('validation')) {
-          errorMessage = "Form validation error. Please check all fields and try again.";
+        } else if (error.message.includes('authentication') || error.message.includes('logged in')) {
+          errorMessage = "Please log in to add a coffee bean.";
         }
       }
       
       toast({
-        title: "❌ Error",
+        title: "❌ Submission Failed",
         description: errorMessage,
         variant: "destructive",
       });
+      
     } finally {
-      console.log('✅ Setting isSubmitting to false');
       setIsSubmitting(false);
+      console.log('🏁 Form submission process completed');
     }
   };
 
-  // TEST SUBMISSION FUNCTION
-  const testSubmit = async () => {
-    console.log('🧪 TEST SUBMISSION STARTED');
-    toast({
-      title: "🧪 Test Submission",
-      description: "Testing direct service calls...",
-    });
+  // Enhanced form submission handler with extra safety
+  const handleFormSubmit = async (e?: React.FormEvent) => {
+    console.log('🔥 Form submit handler called');
     
-    setIsSubmitting(true);
-    
-    try {
-      // Test with minimal data
-      const testBeanData = {
-        name: "Test Coffee Bean " + Date.now(),
-        brand: "Test Roaster",
-        origin: "Test Origin",
-        flavor_notes: ["Test Note"],
-      };
-      
-      console.log('🧪 Creating test bean:', testBeanData);
-      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
-      console.log('✅ Test bean created:', testBean);
-      
-      // Test rating creation
-      const testRatingData = {
-        user_id: user!.id,
-        coffee_bean_id: testBean.id,
-        overall_rating: 4.5,
-      };
-      
-      console.log('🧪 Creating test rating:', testRatingData);
-      const testRating = await ratingsService.createRating(testRatingData);
-      console.log('✅ Test rating created:', testRating);
-      
-      toast({
-        title: "✅ Test Success!",
-        description: "Services are working correctly!",
-      });
-      
-      // Navigate to the test bean
-      router.push(`/bean/${testBean.id}`);
-      
-    } catch (error) {
-      console.error('❌ Test failed:', error);
-      toast({
-        title: "❌ Test Failed",
-        description: `Error: ${error}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    
+    // Get current form data
+    const formData = form.getValues();
+    console.log('📋 Current form data:', formData);
+    
+    // Call our enhanced submit function
+    await onSubmit(formData);
   };
 
   const EnhancedRatingSlider = ({ 
@@ -522,6 +498,18 @@ export default function AddBeanPage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* Debug Info */}
+        {submitAttempts > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              Debug: Submission attempts: {submitAttempts} | 
+              User ID: {user?.id?.slice(0, 8)}... | 
+              Form valid: {form.formState.isValid ? '✅' : '❌'} |
+              Errors: {Object.keys(form.formState.errors).length}
+            </p>
+          </div>
+        )}
+
         {/* Hero Header */}
         <div className="mb-8 text-center">
           <div className="relative inline-block">
@@ -1196,15 +1184,22 @@ export default function AddBeanPage() {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4 pt-6">
-              {/* TEST BUTTON - Remove after debugging */}
+              {/* Test Submit Button for debugging */}
               <Button
                 type="button"
                 variant="secondary"
                 onClick={testSubmit}
                 disabled={isSubmitting}
-                className="px-4"
+                className="px-6"
               >
-                🧪 Test Submit
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                    Testing...
+                  </>
+                ) : (
+                  "🧪 Test Submit"
+                )}
               </Button>
               
               <Button
@@ -1216,15 +1211,17 @@ export default function AddBeanPage() {
               >
                 Cancel
               </Button>
+              
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600"
+                onClick={handleFormSubmit}
+                className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 relative"
               >
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Adding Bean...
+                    Processing...
                   </>
                 ) : (
                   "Add Coffee Bean ☕"
