@@ -20,6 +20,7 @@ import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { ratingsService } from "@/services/ratingsService";
 import { Coffee, Upload, Star, X, MapPin, Calendar, DollarSign, Award, Zap, Droplets, Mountain } from "lucide-react";
 import Layout from "@/components/layout/Layout";
+import { supabase } from "@/supabase";
 
 const addBeanSchema = z.object({
   // Essential Bean Details
@@ -221,47 +222,93 @@ export default function AddBeanPage() {
         throw new Error("User not authenticated");
       }
 
+      // SIMPLIFIED TEST DATA - minimal required fields only
       const testBeanData = {
-        name: "Test Coffee Bean " + Date.now(),
-        brand: "Test Roaster",
+        name: "Service Test Bean " + Date.now(),
+        brand: "Service Test Roaster",
         origin: "Test Origin",
-        flavor_notes: ["Test Note"],
-        description: "This is a test submission to verify form functionality",
+        description: "Testing service layer functionality"
       };
       
-      console.log('🧪 Creating test bean:', testBeanData);
-      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
-      console.log('✅ Test bean created:', testBean);
+      console.log('🧪 Step 1: Testing bean creation with minimal data:', testBeanData);
       
+      // Test 1: Direct Supabase client test
+      console.log('🧪 Step 1a: Testing direct Supabase client connection...');
+      const { data: connectionTest, error: connectionError } = await supabase
+        .from('coffee_beans')
+        .select('count')
+        .limit(1);
+      
+      if (connectionError) {
+        console.error('❌ Supabase connection failed:', connectionError);
+        throw new Error(`Connection test failed: ${connectionError.message}`);
+      }
+      
+      console.log('✅ Supabase connection test passed');
+      
+      // Test 2: Bean creation via service
+      console.log('🧪 Step 2: Testing coffeeBeansService.createCoffeeBean...');
+      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
+      console.log('✅ Service bean creation successful:', testBean);
+      
+      // Test 3: Rating creation via service
+      console.log('🧪 Step 3: Testing ratingsService.createRating...');
       const testRatingData = {
         user_id: user.id,
         coffee_bean_id: testBean.id,
-        overall_rating: 4.5,
-        review_text: "Test rating to verify form submission is working correctly.",
+        overall_rating: 4.2,
+        review_text: "Service test rating - verifying end-to-end functionality"
       };
       
-      console.log('🧪 Creating test rating:', testRatingData);
+      console.log('🧪 Step 3a: Rating data prepared:', testRatingData);
       const testRating = await ratingsService.createRating(testRatingData);
-      console.log('✅ Test rating created:', testRating);
+      console.log('✅ Service rating creation successful:', testRating);
+      
+      // Test 4: Verification - can we retrieve what we just created?
+      console.log('🧪 Step 4: Verifying data retrieval...');
+      const retrievedBean = await coffeeBeansService.getCoffeeBeanById(testBean.id);
+      const retrievedRating = await ratingsService.getRatingById(testRating.id);
+      
+      console.log('✅ Bean retrieval successful:', retrievedBean);
+      console.log('✅ Rating retrieval successful:', retrievedRating);
       
       toast({
-        title: "✅ Test Successful!",
-        description: "Form submission is working correctly. Redirecting to the test bean page...",
+        title: "🎉 All Tests Passed!",
+        description: `Successfully created and verified: "${testBean.name}" by ${testBean.brand}`,
       });
 
+      console.log('🧪 SERVICE TEST COMPLETE - All operations successful');
+      console.log(`🔄 Redirecting to: /bean/${testBean.id}`);
+      
+      // Redirect to the test bean page
       setTimeout(() => {
         router.push(`/bean/${testBean.id}`);
-      }, 1500);
+      }, 2000);
       
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      console.error('💥 SERVICE TEST FAILED at step:', error);
+      
+      // Enhanced error reporting
+      let errorDetails = `Unknown error: ${String(error)}`;
+      
+      if (error instanceof Error) {
+        errorDetails = error.message;
+        console.error('🔍 Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+      
       toast({
-        title: "❌ Test Failed",
-        description: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        title: "❌ Service Test Failed",
+        description: errorDetails,
         variant: "destructive",
       });
+      
     } finally {
       setIsSubmitting(false);
+      console.log('🏁 Service test cleanup completed');
     }
   };
 
