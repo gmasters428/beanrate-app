@@ -122,7 +122,36 @@ export default function AddBeanPage() {
       is_available: true,
       price_per_unit: "lb",
     },
+    mode: "onChange", // Enable real-time validation
   });
+
+  // Debug form state
+  const watchedValues = form.watch();
+  console.log('Current form values:', watchedValues);
+  
+  const formErrors = form.formState.errors;
+  if (Object.keys(formErrors).length > 0) {
+    console.log('Form validation errors:', formErrors);
+  }
+
+  // Add a test button click handler
+  const handleButtonClick = () => {
+    console.log('=== BUTTON CLICKED ===');
+    console.log('Form state before submission:', {
+      isValid: form.formState.isValid,
+      errors: form.formState.errors,
+      isSubmitting: form.formState.isSubmitting,
+      isDirty: form.formState.isDirty,
+    });
+    
+    // Trigger form validation manually
+    form.trigger().then((isValid) => {
+      console.log('Manual validation result:', isValid);
+      if (!isValid) {
+        console.log('Validation errors after trigger:', form.formState.errors);
+      }
+    });
+  };
 
   const flavorNotes = form.watch("flavor_notes") || [];
 
@@ -204,7 +233,11 @@ export default function AddBeanPage() {
   };
 
   const onSubmit = async (data: AddBeanFormData) => {
+    console.log('=== FORM SUBMISSION STARTED ===');
+    console.log('Raw form data:', data);
+    
     if (!user) {
+      console.log('❌ No user found');
       toast({
         title: "Authentication Required",
         description: "Please log in to add a coffee bean.",
@@ -213,68 +246,97 @@ export default function AddBeanPage() {
       return;
     }
 
+    console.log('✅ User authenticated:', user.id);
+    
+    // Log form validation state
+    const formState = form.formState;
+    console.log('Form validation state:', {
+      isValid: formState.isValid,
+      errors: formState.errors,
+      isSubmitting: formState.isSubmitting,
+    });
+    
+    // If form has validation errors, show them
+    if (!formState.isValid) {
+      console.log('❌ Form validation failed:', formState.errors);
+      toast({
+        title: "Form Validation Error",
+        description: "Please check all required fields and fix any errors before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+    console.log('✅ Setting isSubmitting to true');
+    
     try {
-      console.log("Form data being submitted:", data); // Debug log
+      console.log("📝 Creating coffee bean with data:", data);
       
       // Create the coffee bean with all fields
       const beanData = {
         name: data.name,
         brand: data.brand,
-        origin: data.origin,
-        region: data.region,
-        altitude: data.altitude,
-        processing_method: data.processing_method,
-        roast_level: data.roast_level,
-        roast_date: data.roast_date,
-        harvest_date: data.harvest_date,
-        description: data.description,
+        origin: data.origin || null,
+        region: data.region || null,
+        altitude: data.altitude || null,
+        processing_method: data.processing_method || null,
+        roast_level: data.roast_level || null,
+        roast_date: data.roast_date || null,
+        harvest_date: data.harvest_date || null,
+        description: data.description || null,
         flavor_notes: data.flavor_notes || [],
-        price: data.price,
-        price_per_unit: data.price_per_unit,
-        purchase_url: data.purchase_url,
-        is_available: data.is_available,
+        price: data.price || null,
+        price_per_unit: data.price_per_unit || null,
+        purchase_url: data.purchase_url || null,
+        is_available: data.is_available ?? true,
       };
 
-      console.log("Bean data being sent to service:", beanData); // Debug log
+      console.log("☕ Bean data being sent to service:", beanData);
       const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0]);
-      console.log("Coffee bean created:", newBean); // Debug log
+      console.log("✅ Coffee bean created successfully:", newBean);
 
       // Create the rating
       const ratingData = {
         user_id: user.id,
         coffee_bean_id: newBean.id,
         overall_rating: data.overall_rating,
-        aroma_rating: data.aroma_rating,
-        flavor_rating: data.flavor_rating,
-        aftertaste_rating: data.aftertaste_rating,
-        acidity_rating: data.acidity_rating,
-        body_rating: data.body_rating,
-        sweetness_rating: data.sweetness_rating,
-        balance_rating: data.balance_rating,
-        brewing_method: data.brewing_method,
-        grinder: data.grinder,
-        grind_size: data.grind_size,
-        water_temp: data.water_temp,
-        brew_ratio: data.brew_ratio,
-        review_text: data.review_text,
+        aroma_rating: data.aroma_rating || null,
+        flavor_rating: data.flavor_rating || null,
+        aftertaste_rating: data.aftertaste_rating || null,
+        acidity_rating: data.acidity_rating || null,
+        body_rating: data.body_rating || null,
+        sweetness_rating: data.sweetness_rating || null,
+        balance_rating: data.balance_rating || null,
+        brewing_method: data.brewing_method || null,
+        grinder: data.grinder || null,
+        grind_size: data.grind_size || null,
+        water_temp: data.water_temp || null,
+        brew_ratio: data.brew_ratio || null,
+        review_text: data.review_text || null,
       };
 
-      console.log("Rating data being sent to service:", ratingData); // Debug log
+      console.log("⭐ Rating data being sent to service:", ratingData);
       await ratingsService.createRating(ratingData);
+      console.log("✅ Rating created successfully");
 
+      // Show success toast
       toast({
         title: "Success! ☕",
         description: "Coffee bean added successfully with your rating.",
       });
 
+      console.log("🔄 Redirecting to bean page...");
       router.push(`/bean/${newBean.id}`);
     } catch (error) {
-      console.error("Error adding coffee bean:", error);
+      console.error("❌ Error during submission:", error);
       
       // More detailed error handling
       let errorMessage = "Failed to add coffee bean. Please try again.";
       if (error instanceof Error) {
+        console.log("Error name:", error.name);
+        console.log("Error message:", error.message);
+        console.log("Error stack:", error.stack);
         errorMessage = `Failed to add coffee bean: ${error.message}`;
       }
       
@@ -284,6 +346,7 @@ export default function AddBeanPage() {
         variant: "destructive",
       });
     } finally {
+      console.log('✅ Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -1043,6 +1106,7 @@ export default function AddBeanPage() {
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
+                onClick={handleButtonClick}
                 className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600"
               >
                 {isSubmitting ? (
