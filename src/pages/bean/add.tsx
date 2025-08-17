@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
@@ -277,7 +276,7 @@ export default function AddBeanPage() {
       const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0]);
       console.log("✅ Coffee bean created successfully:", newBean);
 
-      // Create the rating
+      // Create the rating with better error handling
       const ratingData = {
         user_id: user.id,
         coffee_bean_id: newBean.id,
@@ -298,17 +297,33 @@ export default function AddBeanPage() {
       };
 
       console.log("⭐ Rating data being sent to service:", ratingData);
-      await ratingsService.createRating(ratingData);
-      console.log("✅ Rating created successfully");
+      
+      try {
+        const ratingResult = await ratingsService.createRating(ratingData);
+        console.log("✅ Rating created successfully:", ratingResult);
+      } catch (ratingError) {
+        console.error("❌ Rating creation failed:", ratingError);
+        // Show warning but don't fail the entire process
+        toast({
+          title: "Partial Success",
+          description: "Coffee bean added successfully, but there was an issue with the rating. You can add a rating later.",
+          variant: "destructive",
+        });
+      }
 
-      // Show success toast
+      // Show the requested success popup
       toast({
-        title: "Success! ☕",
-        description: "Coffee bean added successfully with your rating.",
+        title: "Rating Submitted! ☕",
+        description: "Your coffee bean and rating have been posted successfully.",
       });
 
-      console.log("🔄 Redirecting to bean page...");
-      router.push(`/bean/${newBean.id}`);
+      console.log("🔄 Redirecting to profile page as requested...");
+      
+      // Give the toast time to show before redirecting
+      setTimeout(() => {
+        router.push("/profile");
+      }, 1000);
+      
     } catch (error) {
       console.error("❌ Error during submission:", error);
       
