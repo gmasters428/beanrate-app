@@ -134,25 +134,6 @@ export default function AddBeanPage() {
     console.log('Form validation errors:', formErrors);
   }
 
-  // Add a test button click handler
-  const handleButtonClick = () => {
-    console.log('=== BUTTON CLICKED ===');
-    console.log('Form state before submission:', {
-      isValid: form.formState.isValid,
-      errors: form.formState.errors,
-      isSubmitting: form.formState.isSubmitting,
-      isDirty: form.formState.isDirty,
-    });
-    
-    // Trigger form validation manually
-    form.trigger().then((isValid) => {
-      console.log('Manual validation result:', isValid);
-      if (!isValid) {
-        console.log('Validation errors after trigger:', form.formState.errors);
-      }
-    });
-  };
-
   const flavorNotes = form.watch("flavor_notes") || [];
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1106,7 +1087,6 @@ export default function AddBeanPage() {
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                onClick={handleButtonClick}
                 className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600"
               >
                 {isSubmitting ? (
