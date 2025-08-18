@@ -336,7 +336,7 @@ export default function AddBeanPage() {
         throw new Error("You must be logged in to add a coffee bean");
       }
       
-      console.log('✅ User authenticated');
+      console.log('✅ User authenticated:', user.id);
       
       // Step 2: Show initial feedback
       toast({
@@ -344,78 +344,115 @@ export default function AddBeanPage() {
         description: "Validating form and creating coffee bean...",
       });
       
-      // Step 3: Form validation
+      // Step 3: Enhanced form validation with explicit error handling
+      console.log('🔍 Starting form validation...');
       const isValid = await form.trigger();
       const errors = form.formState.errors;
       
+      console.log('📋 Form validation result:', { isValid, errors });
+      
       if (!isValid || Object.keys(errors).length > 0) {
         console.log('❌ Form validation failed:', errors);
-        const firstError = Object.values(errors)[0];
-        throw new Error(firstError?.message || "Please check all required fields");
+        const firstErrorKey = Object.keys(errors)[0];
+        const firstError = errors[firstErrorKey as keyof typeof errors];
+        const errorMessage = firstError?.message || "Please check all required fields";
+        throw new Error(`Validation Error: ${errorMessage}`);
       }
       
       console.log('✅ Form validation passed');
       
-      // Step 4: Prepare bean data
+      // Step 4: Sanitize and prepare bean data with explicit type conversion
+      console.log('🧹 Sanitizing form data...');
       const beanData = {
-        name: data.name,
-        brand: data.brand,
-        origin: data.origin || null,
-        region: data.region || null,
-        altitude: data.altitude || null,
+        name: String(data.name || '').trim(),
+        brand: String(data.brand || '').trim(),
+        origin: data.origin ? String(data.origin).trim() : null,
+        region: data.region ? String(data.region).trim() : null,
+        altitude: data.altitude ? String(data.altitude).trim() : null,
         processing_method: data.processing_method || null,
         roast_level: data.roast_level || null,
         roast_date: data.roast_date || null,
-        harvest_date: data.harvest_date || null,
-        description: data.description || null,
-        flavor_notes: data.flavor_notes || [],
-        price: data.price || null,
+        harvest_date: data.harvest_date ? String(data.harvest_date).trim() : null,
+        description: data.description ? String(data.description).trim() : null,
+        flavor_notes: Array.isArray(data.flavor_notes) ? data.flavor_notes : [],
+        price: typeof data.price === 'number' ? data.price : null,
         price_per_unit: data.price_per_unit || null,
-        purchase_url: data.purchase_url || null,
-        is_available: data.is_available ?? true,
+        purchase_url: data.purchase_url ? String(data.purchase_url).trim() : null,
+        is_available: Boolean(data.is_available ?? true),
       };
       
-      console.log('☕ Creating bean with data:', beanData);
+      // Validate required fields
+      if (!beanData.name || !beanData.brand) {
+        throw new Error("Bean name and brand are required");
+      }
       
-      // Step 5: Create coffee bean
+      console.log('☕ Creating bean with sanitized data:', beanData);
+      
+      // Step 5: Create coffee bean with enhanced error handling
       toast({
         title: "☕ Creating Coffee Bean",
         description: "Adding your coffee bean to the database...",
       });
       
-      const newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0] || null);
-      console.log('✅ Coffee bean created:', newBean);
+      let newBean;
+      try {
+        newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0] || null);
+        console.log('✅ Coffee bean created successfully:', newBean);
+      } catch (beanError) {
+        console.error('💥 Bean creation failed:', beanError);
+        throw new Error(`Failed to create coffee bean: ${beanError instanceof Error ? beanError.message : 'Unknown error'}`);
+      }
       
-      // Step 6: Create rating
+      // Step 6: Create rating with enhanced error handling and type safety
       toast({
         title: "⭐ Adding Rating",
         description: "Saving your detailed rating...",
       });
       
+      console.log('⭐ Preparing rating data...');
       const ratingData = {
-        user_id: user.id,
-        coffee_bean_id: newBean.id,
-        overall_rating: data.overall_rating,
-        aroma_rating: data.aroma_rating || null,
-        flavor_rating: data.flavor_rating || null,
-        aftertaste_rating: data.aftertaste_rating || null,
-        acidity_rating: data.acidity_rating || null,
-        body_rating: data.body_rating || null,
-        sweetness_rating: data.sweetness_rating || null,
-        balance_rating: data.balance_rating || null,
-        brewing_method: data.brewing_method || null,
-        grinder: data.grinder || null,
-        grind_size: data.grind_size || null,
-        water_temp: data.water_temp || null,
-        brew_ratio: data.brew_ratio || null,
-        review_text: data.review_text || null,
+        user_id: String(user.id),
+        coffee_bean_id: String(newBean.id),
+        overall_rating: Number(data.overall_rating) || 3.5,
+        aroma_rating: data.aroma_rating ? Number(data.aroma_rating) : null,
+        flavor_rating: data.flavor_rating ? Number(data.flavor_rating) : null,
+        aftertaste_rating: data.aftertaste_rating ? Number(data.aftertaste_rating) : null,
+        acidity_rating: data.acidity_rating ? Number(data.acidity_rating) : null,
+        body_rating: data.body_rating ? Number(data.body_rating) : null,
+        sweetness_rating: data.sweetness_rating ? Number(data.sweetness_rating) : null,
+        balance_rating: data.balance_rating ? Number(data.balance_rating) : null,
+        brewing_method: data.brewing_method ? String(data.brewing_method).trim() : null,
+        grinder: data.grinder ? String(data.grinder).trim() : null,
+        grind_size: data.grind_size ? String(data.grind_size).trim() : null,
+        water_temp: data.water_temp ? Number(data.water_temp) : null,
+        brew_ratio: data.brew_ratio ? String(data.brew_ratio).trim() : null,
+        review_text: data.review_text ? String(data.review_text).trim() : null,
       };
       
-      console.log('⭐ Creating rating with data:', ratingData);
-      const rating = await ratingsService.createRating(ratingData);
-      console.log('✅ Rating created:', rating);
+      console.log('⭐ Creating rating with sanitized data:', ratingData);
       
-      // Step 7: Success!
+      let rating;
+      try {
+        rating = await ratingsService.createRating(ratingData);
+        console.log('✅ Rating created successfully:', rating);
+      } catch (ratingError) {
+        console.error('💥 Rating creation failed:', ratingError);
+        console.warn('⚠️ Bean was created but rating failed - this is recoverable');
+        // Don't throw error here - bean was successfully created
+        toast({
+          title: "⚠️ Partial Success",
+          description: `Coffee bean "${data.name}" was created, but rating failed. You can add a rating later.`,
+          variant: "destructive",
+        });
+        
+        // Still redirect to the bean page
+        setTimeout(() => {
+          router.push(`/bean/${newBean.id}`);
+        }, 3000);
+        return;
+      }
+      
+      // Step 7: Complete Success!
       toast({
         title: "🎉 Success!",
         description: `"${data.name}" by ${data.brand} has been added successfully!`,
@@ -436,6 +473,11 @@ export default function AddBeanPage() {
       
       if (error instanceof Error) {
         errorMessage = error.message;
+        console.error('🔍 Detailed error info:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
         
         // Specific error handling
         if (error.message.includes('duplicate') || error.message.includes('already exists')) {
@@ -444,6 +486,8 @@ export default function AddBeanPage() {
           errorMessage = "Network error. Please check your connection and try again.";
         } else if (error.message.includes('authentication') || error.message.includes('logged in')) {
           errorMessage = "Please log in to add a coffee bean.";
+        } else if (error.message.includes('Validation Error')) {
+          errorMessage = error.message.replace('Validation Error: ', '');
         }
       }
       
