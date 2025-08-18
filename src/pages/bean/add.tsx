@@ -566,6 +566,129 @@ export default function AddBeanPage() {
     />
   );
 
+  // COMPREHENSIVE TEST FUNCTION - bypasses image upload to test core functionality
+  const comprehensiveTest = async () => {
+    console.log('🔧 COMPREHENSIVE TEST - Testing Core Submission Without Images');
+    
+    setSubmitAttempts(prev => prev + 1);
+    setIsSubmitting(true);
+    
+    try {
+      toast({
+        title: "🔧 Testing Core Functionality",
+        description: "Testing bean + rating creation without image upload...",
+      });
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Test with current form data, but no images
+      const currentFormData = form.getValues();
+      console.log('📋 Current form data for test:', currentFormData);
+      
+      // Step 1: Validate form data
+      console.log('🔍 Testing form validation...');
+      const isValid = await form.trigger();
+      const errors = form.formState.errors;
+      
+      if (!isValid || Object.keys(errors).length > 0) {
+        console.log('❌ Form validation failed:', errors);
+        throw new Error(`Form validation failed: ${JSON.stringify(errors)}`);
+      }
+      
+      console.log('✅ Form validation passed');
+      
+      // Step 2: Sanitize bean data (NO IMAGE)
+      const beanData = {
+        name: String(currentFormData.name || 'Test Bean ' + Date.now()).trim(),
+        brand: String(currentFormData.brand || 'Test Roaster').trim(),
+        origin: currentFormData.origin ? String(currentFormData.origin).trim() : 'Test Origin',
+        region: currentFormData.region ? String(currentFormData.region).trim() : null,
+        altitude: currentFormData.altitude ? String(currentFormData.altitude).trim() : null,
+        processing_method: currentFormData.processing_method || null,
+        roast_level: currentFormData.roast_level || null,
+        roast_date: currentFormData.roast_date || null,
+        harvest_date: currentFormData.harvest_date ? String(currentFormData.harvest_date).trim() : null,
+        description: currentFormData.description ? String(currentFormData.description).trim() : 'Comprehensive test submission',
+        flavor_notes: Array.isArray(currentFormData.flavor_notes) ? currentFormData.flavor_notes : [],
+        price: typeof currentFormData.price === 'number' ? currentFormData.price : null,
+        price_per_unit: currentFormData.price_per_unit || null,
+        purchase_url: currentFormData.purchase_url ? String(currentFormData.purchase_url).trim() : null,
+        is_available: Boolean(currentFormData.is_available ?? true),
+      };
+      
+      console.log('☕ Testing bean creation with data:', beanData);
+      
+      // Step 3: Create bean (NO IMAGE UPLOAD)
+      const testBean = await coffeeBeansService.createCoffeeBean(beanData, null);
+      console.log('✅ Bean created successfully:', testBean);
+      
+      // Step 4: Create rating
+      const ratingData = {
+        user_id: String(user.id),
+        coffee_bean_id: String(testBean.id),
+        overall_rating: Number(currentFormData.overall_rating) || 4.0,
+        aroma_rating: currentFormData.aroma_rating ? Number(currentFormData.aroma_rating) : null,
+        flavor_rating: currentFormData.flavor_rating ? Number(currentFormData.flavor_rating) : null,
+        aftertaste_rating: currentFormData.aftertaste_rating ? Number(currentFormData.aftertaste_rating) : null,
+        acidity_rating: currentFormData.acidity_rating ? Number(currentFormData.acidity_rating) : null,
+        body_rating: currentFormData.body_rating ? Number(currentFormData.body_rating) : null,
+        sweetness_rating: currentFormData.sweetness_rating ? Number(currentFormData.sweetness_rating) : null,
+        balance_rating: currentFormData.balance_rating ? Number(currentFormData.balance_rating) : null,
+        brewing_method: currentFormData.brewing_method ? String(currentFormData.brewing_method).trim() : null,
+        grinder: currentFormData.grinder ? String(currentFormData.grinder).trim() : null,
+        grind_size: currentFormData.grind_size ? String(currentFormData.grind_size).trim() : null,
+        water_temp: currentFormData.water_temp ? Number(currentFormData.water_temp) : null,
+        brew_ratio: currentFormData.brew_ratio ? String(currentFormData.brew_ratio).trim() : null,
+        review_text: currentFormData.review_text ? String(currentFormData.review_text).trim() : 'Comprehensive test rating',
+      };
+      
+      console.log('⭐ Testing rating creation with data:', ratingData);
+      
+      const testRating = await ratingsService.createRating(ratingData);
+      console.log('✅ Rating created successfully:', testRating);
+      
+      // Step 5: Success!
+      toast({
+        title: "🎉 Core Test Passed!",
+        description: `Bean "${testBean.name}" and rating created successfully! Redirecting...`,
+      });
+      
+      console.log('🔧 COMPREHENSIVE TEST PASSED - Core functionality working');
+      console.log(`🔄 Redirecting to: /bean/${testBean.id}`);
+      
+      // Redirect after success
+      setTimeout(() => {
+        router.push(`/bean/${testBean.id}`);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('💥 COMPREHENSIVE TEST FAILED:', error);
+      
+      let errorMessage = `Core test failed: ${String(error)}`;
+      
+      if (error instanceof Error) {
+        errorMessage = `Core test failed: ${error.message}`;
+        console.error('🔍 Test error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+      
+      toast({
+        title: "❌ Core Test Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+    } finally {
+      setIsSubmitting(false);
+      console.log('🏁 Comprehensive test completed');
+    }
+  };
+
   if (!user) {
     return (
       <Layout>
@@ -1275,7 +1398,25 @@ export default function AddBeanPage() {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4 pt-6">
-              {/* Test Submit Button for debugging */}
+              {/* Comprehensive Test Button - tests core functionality without images */}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={comprehensiveTest}
+                disabled={isSubmitting}
+                className="px-6 bg-green-100 hover:bg-green-200 text-green-800"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                    Testing...
+                  </>
+                ) : (
+                  "🔧 Test Core (No Images)"
+                )}
+              </Button>
+
+              {/* Original Test Submit Button for debugging */}
               <Button
                 type="button"
                 variant="secondary"
