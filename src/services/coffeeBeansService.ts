@@ -101,34 +101,52 @@ export const coffeeBeansService = {
   async createCoffeeBean(bean: CoffeeBeanInsert, imageFile?: File | null): Promise<CoffeeBean> {
     let imageUrl = null;
 
-    // Upload image if provided
+    // Upload image if provided - with enhanced error handling
     if (imageFile) {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `coffee-beans/${fileName}`;
+      try {
+        console.log('🖼️ Uploading image file:', imageFile.name, 'Size:', imageFile.size);
+        
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `coffee-beans/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, imageFile);
+        console.log('📁 Uploading to path:', filePath);
 
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        throw uploadError;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) {
+          console.warn('⚠️ Image upload failed (non-critical):', uploadError);
+          console.warn('📄 Continuing without image - bean will be created successfully');
+          // Don't throw error - just continue without image
+        } else {
+          console.log('✅ Image uploaded successfully:', uploadData);
+          
+          // Get public URL only if upload succeeded
+          const { data: { publicUrl } } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+
+          imageUrl = publicUrl;
+          console.log('🔗 Public URL generated:', publicUrl);
+        }
+      } catch (error) {
+        console.warn('⚠️ Image upload error caught (non-critical):', error);
+        console.warn('📄 Continuing without image - bean will be created successfully');
+        // Continue without image rather than failing entire submission
       }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      imageUrl = publicUrl;
+    } else {
+      console.log('📝 No image provided - creating bean without image');
     }
 
-    // Create the coffee bean with image URL
+    // Create the coffee bean with or without image URL
     const beanData = {
       ...bean,
       image_url: imageUrl,
     };
+
+    console.log('☕ Creating coffee bean with final data:', beanData);
 
     const { data, error } = await supabase
       .from('coffee_beans')
@@ -136,7 +154,12 @@ export const coffeeBeansService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Coffee bean creation failed:', error);
+      throw error;
+    }
+    
+    console.log('✅ Coffee bean created successfully:', data);
     return data;
   },
 
