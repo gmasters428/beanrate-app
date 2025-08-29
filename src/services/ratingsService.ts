@@ -16,6 +16,7 @@ export interface RatingWithDetails extends Rating {
     brand: string;
     origin: string | null;
     roast_level: string | null;
+    variety: string | null;
     image_url: string | null;
   } | null;
 }
@@ -36,6 +37,7 @@ export const ratingsService = {
           brand,
           origin,
           roast_level,
+          variety,
           image_url
         )
       `)
@@ -61,6 +63,7 @@ export const ratingsService = {
           brand,
           origin,
           roast_level,
+          variety,
           image_url
         )
       `)
@@ -86,6 +89,7 @@ export const ratingsService = {
           brand,
           origin,
           roast_level,
+          variety,
           image_url
         )
       `)
@@ -150,6 +154,7 @@ export const ratingsService = {
           brand,
           origin,
           roast_level,
+          variety,
           image_url
         )
       `)
