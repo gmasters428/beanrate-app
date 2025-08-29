@@ -5,13 +5,14 @@ import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Coffee, TrendingUp, Users, Sparkles } from "lucide-react";
+import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
+import Link from "next/link";
 
 export default function HomePage() {
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"following" | "trending">("trending");
+  const [activeTab, setActiveTab] = useState<"trending" | "recent" | "following">("trending");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -23,7 +24,6 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       
-      // Add a shorter timeout for better UX
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout - please check your connection')), 8000)
       );
@@ -40,9 +40,8 @@ export default function HomePage() {
     }
   };
 
-  const handleTabChange = (tab: "following" | "trending") => {
+  const handleTabChange = (tab: "trending" | "recent" | "following") => {
     setActiveTab(tab);
-    // Add subtle loading state for tab changes
     setLoading(true);
     setTimeout(() => loadRatings(), 100);
   };
@@ -53,8 +52,8 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <Layout title="BeanRate - Home">
-        <div className="max-w-md mx-auto">
+      <Layout title="BeanRate - Discover Great Coffee">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <div className="relative">
               <div className="animate-spin">
@@ -64,7 +63,7 @@ export default function HomePage() {
                 <Sparkles className="h-3 w-3 text-amber-400" />
               </div>
             </div>
-            <div className="text-gray-500 animate-pulse">Loading delicious ratings...</div>
+            <div className="text-gray-500 animate-pulse">Loading coffee discoveries...</div>
           </div>
         </div>
       </Layout>
@@ -73,8 +72,8 @@ export default function HomePage() {
 
   if (error) {
     return (
-      <Layout title="BeanRate - Home">
-        <div className="max-w-md mx-auto">
+      <Layout title="BeanRate - Discover Great Coffee">
+        <div className="max-w-2xl mx-auto px-4">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <Coffee className="h-12 w-12 text-gray-400" />
             <div className="text-center">
@@ -91,86 +90,120 @@ export default function HomePage() {
   }
 
   return (
-    <Layout title="BeanRate - Home">
-      <div className="max-w-md mx-auto">
-        {/* Welcome Header */}
-        <div className="text-center mb-6 px-4">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <Coffee className="h-6 w-6 text-amber-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Welcome to BeanRate</h1>
+    <Layout title="BeanRate - Discover Great Coffee">
+      <div className="max-w-2xl mx-auto px-4">
+        {/* Header */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-40 -mx-4 px-4 pb-4 mb-6 border-b border-gray-100">
+          <div className="flex items-center justify-between py-4">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Coffee Discovery</h1>
+              <p className="text-sm text-gray-500">Find your next favorite beans</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Link href="/search">
+                <Button variant="outline" size="sm" className="hover:bg-amber-50 hover:border-amber-300">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" className="hover:bg-amber-50 hover:border-amber-300">
+                <Filter className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <p className="text-gray-600 text-sm">Discover amazing coffee through community ratings</p>
-        </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 mb-6 mx-4">
-          <button
-            className={`flex-1 py-3 text-center font-medium transition-all duration-300 ${
-              activeTab === "following"
-                ? "text-amber-600 border-b-2 border-amber-600 bg-amber-50/50"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-            onClick={() => handleTabChange("following")}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <Users className="h-4 w-4" />
-              <span>Following</span>
-            </div>
-          </button>
-          <button
-            className={`flex-1 py-3 text-center font-medium transition-all duration-300 ${
-              activeTab === "trending"
-                ? "text-amber-600 border-b-2 border-amber-600 bg-amber-50/50"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-            onClick={() => handleTabChange("trending")}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Trending</span>
-            </div>
-          </button>
+          {/* Tab Navigation */}
+          <div className="flex bg-gray-50 rounded-lg p-1">
+            <button
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                activeTab === "trending"
+                  ? "bg-white text-amber-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => handleTabChange("trending")}
+            >
+              <div className="flex items-center justify-center space-x-1.5">
+                <TrendingUp className="h-4 w-4" />
+                <span>Trending</span>
+              </div>
+            </button>
+            <button
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                activeTab === "recent"
+                  ? "bg-white text-amber-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => handleTabChange("recent")}
+            >
+              <div className="flex items-center justify-center space-x-1.5">
+                <Coffee className="h-4 w-4" />
+                <span>Recent</span>
+              </div>
+            </button>
+            {user && (
+              <button
+                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                  activeTab === "following"
+                    ? "bg-white text-amber-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => handleTabChange("following")}
+              >
+                <div className="flex items-center justify-center space-x-1.5">
+                  <Users className="h-4 w-4" />
+                  <span>Following</span>
+                </div>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content */}
-        <div className="space-y-4 px-4">
+        <div className="space-y-3">
           {ratings.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16">
               <div className="relative mb-6">
-                <Coffee className="h-16 w-16 text-gray-300 mx-auto" />
+                <Coffee className="h-20 w-20 text-gray-300 mx-auto" />
                 <div className="absolute -top-2 -right-2 animate-bounce">
-                  <Sparkles className="h-6 w-6 text-amber-400" />
+                  <Sparkles className="h-8 w-8 text-amber-400" />
                 </div>
               </div>
-              <p className="text-gray-500 mb-2 text-lg font-medium">No ratings yet!</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">No coffee ratings yet!</h2>
               {user ? (
-                <p className="text-sm text-gray-400 mb-6">
-                  Be the first to rate a coffee bean and share your experience with the community.
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  Be the first to rate a coffee bean and help others discover great coffee. Your reviews help fellow coffee lovers make better choices.
                 </p>
               ) : (
-                <p className="text-sm text-gray-400 mb-6">
-                  Sign in to start rating coffee beans and see personalized content from fellow coffee lovers.
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  Join our community of coffee enthusiasts to discover amazing beans and share your tasting experiences.
                 </p>
               )}
-              <Button 
-                onClick={() => window.location.href = user ? '/rate' : '/auth/login'}
-                className="bg-amber-600 hover:bg-amber-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                <Coffee className="h-4 w-4 mr-2" />
-                {user ? 'Rate Your First Coffee' : 'Join BeanRate'}
-              </Button>
+              <div className="flex items-center justify-center space-x-3">
+                <Button 
+                  onClick={() => window.location.href = user ? '/rate' : '/auth/login'}
+                  className="bg-amber-600 hover:bg-amber-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  <Coffee className="h-4 w-4 mr-2" />
+                  {user ? 'Rate Your First Bean' : 'Join BeanRate'}
+                </Button>
+                <Link href="/search">
+                  <Button variant="outline" className="hover:bg-amber-50 hover:border-amber-300">
+                    <Search className="h-4 w-4 mr-2" />
+                    Browse Beans
+                  </Button>
+                </Link>
+              </div>
             </div>
           ) : (
             <>
               {/* Ratings Feed */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {ratings.map((rating, index) => (
                   <div 
                     key={rating.id}
                     className="transform transition-all duration-300"
                     style={{ 
-                      animationDelay: `${index * 100}ms`,
-                      animation: 'fadeInUp 0.6s ease-out forwards'
+                      animationDelay: `${index * 50}ms`,
+                      animation: 'fadeInUp 0.4s ease-out forwards'
                     }}
                   >
                     <RatingCard rating={rating} />
@@ -178,32 +211,42 @@ export default function HomePage() {
                 ))}
               </div>
               
-              {/* Load More Button */}
+              {/* Load More */}
               {ratings.length >= 20 && (
-                <div className="text-center py-6">
+                <div className="text-center py-8">
                   <Button 
                     variant="outline" 
                     onClick={loadRatings}
-                    className="w-full hover:bg-amber-50 hover:border-amber-300 transition-all duration-200"
+                    className="hover:bg-amber-50 hover:border-amber-300 transition-all duration-200"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Load More Ratings
+                    Discover More Coffee
                   </Button>
                 </div>
               )}
 
-              {/* Floating Action Button for Rating */}
-              {user && (
-                <div className="fixed bottom-6 right-6 z-50">
+              {/* Quick Actions */}
+              <div className="fixed bottom-6 right-6 z-50 flex flex-col space-y-3">
+                <Link href="/search">
                   <Button
-                    onClick={() => window.location.href = '/rate'}
-                    className="bg-amber-600 hover:bg-amber-700 rounded-full w-14 h-14 shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200"
+                    variant="outline"
+                    className="rounded-full w-12 h-12 shadow-lg hover:shadow-xl bg-white hover:bg-amber-50 hover:border-amber-300 transition-all duration-200"
                     size="sm"
                   >
-                    <Coffee className="h-6 w-6" />
+                    <Search className="h-5 w-5" />
                   </Button>
-                </div>
-              )}
+                </Link>
+                {user && (
+                  <Link href="/rate">
+                    <Button
+                      className="bg-amber-600 hover:bg-amber-700 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200"
+                      size="sm"
+                    >
+                      <Coffee className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -213,7 +256,7 @@ export default function HomePage() {
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
