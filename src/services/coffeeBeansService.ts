@@ -84,7 +84,13 @@ export const coffeeBeansService = {
           user_id
         )
       `)
-      .or(`name.ilike.%${query}%,brand.ilike.%${query}%,origin.ilike.%${query}%,region.ilike.%${query}%,description.ilike.%${query}%`)
+      .or(
+        `name.ilike.%${query}%,` +
+        `brand.ilike.%${query}%,` +
+        `origin.ilike.%${query}%,` +
+        `region.ilike.%${query}%,` +
+        `description.ilike.%${query}%`
+      )
       .order('created_at', { ascending: false });
 
     if (error) throw error;
