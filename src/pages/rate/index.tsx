@@ -41,7 +41,7 @@ export default function RatePage() {
   const [showSearch, setShowSearch] = useState(!beanId);
   const [isSearching, setIsSearching] = useState(false);
   
-  // Enhanced rating system with decimal precision
+  // Rating system with decimal precision
   const [overallRating, setOverallRating] = useState<number>(3.5);
   const [aromaRating, setAromaRating] = useState<number>(3.5);
   const [flavorRating, setFlavorRating] = useState<number>(3.5);
@@ -145,7 +145,7 @@ export default function RatePage() {
     );
   };
 
-  const EnhancedRatingSlider = ({ 
+  const RatingSlider = ({ 
     label, 
     value,
     onChange,
@@ -183,12 +183,7 @@ export default function RatePage() {
   );
 
   const handleSubmitRating = async () => {
-    console.log('Starting rating submission...');
-    console.log('User:', user);
-    console.log('Selected bean:', selectedBean);
-    
     if (!user) {
-      console.log('No user found, showing auth error');
       toast({
         title: "Authentication Required",
         description: "Please log in to submit a rating.",
@@ -198,7 +193,6 @@ export default function RatePage() {
     }
 
     if (!selectedBean) {
-      console.log('No bean selected, showing error');
       toast({
         title: "Missing Information",
         description: "Please select a coffee bean to rate.",
@@ -208,7 +202,6 @@ export default function RatePage() {
     }
 
     setIsSubmitting(true);
-    console.log('Setting isSubmitting to true');
     
     try {
       const ratingData = {
@@ -230,22 +223,18 @@ export default function RatePage() {
         review_text: notes || undefined,
       };
       
-      console.log('About to submit rating data:', ratingData);
-      
       const result = await ratingsService.createRating(ratingData);
-      console.log('Rating submission successful:', result);
 
-      // Show the requested success popup
       toast({
-  title: "Rating Submitted! ☕",
-  description: "Redirecting to your rating...",
-});
+        title: "Rating Submitted! ☕",
+        description: "Redirecting to your rating...",
+      });
 
-if (result?.id) {
-  await router.push(`/rating/${result.id}`);   // <-- go to the rating detail page
-} else {
-  await router.push("/profile");               // safety fallback
-}
+      if (result?.id) {
+        await router.push(`/rating/${result.id}`);
+      } else {
+        await router.push("/profile");
+      }
     } catch (error) {
       console.error("Error submitting rating:", error);
       toast({
@@ -254,7 +243,6 @@ if (result?.id) {
         variant: "destructive",
       });
     } finally {
-      console.log('Setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -282,7 +270,7 @@ if (result?.id) {
   return (
     <Layout title="BeanRate - Rate a Coffee Bean">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Hero Header */}
+        {/* Header */}
         <div className="mb-8 text-center">
           <div className="relative inline-block">
             <div className="absolute -inset-1 bg-gradient-to-r from-amber-600 to-amber-400 rounded-lg blur opacity-25"></div>
@@ -292,7 +280,7 @@ if (result?.id) {
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Share your detailed tasting experience with precision ratings down to 0.1 points.
+            Share your detailed tasting experience with precision ratings.
           </p>
         </div>
 
@@ -329,15 +317,15 @@ if (result?.id) {
                 </div>
               </form>
               
-              {searchResults.length > 0 ? (
+              {searchResults.length > 0 && (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {searchResults.map((bean) => (
                     <div
                       key={bean.id}
-                      className="flex items-center p-4 hover:bg-blue-50/50 rounded-xl cursor-pointer transition-colors border border-blue-100"
+                      className="flex items-center p-4 hover:bg-blue-50/50 rounded-xl cursor-pointer transition-all duration-200 border border-blue-100 hover:border-blue-300 hover:shadow-md"
                       onClick={() => handleSelectBean(bean)}
                     >
-                      <div className="h-12 w-12 relative rounded-lg overflow-hidden">
+                      <div className="h-12 w-12 relative rounded-lg overflow-hidden shadow-sm">
                         {bean.image_url ? (
                           <Image 
                             src={bean.image_url} 
@@ -377,7 +365,9 @@ if (result?.id) {
                     </div>
                   ))}
                 </div>
-              ) : searchQuery ? (
+              )}
+              
+              {searchQuery && searchResults.length === 0 && !isSearching && (
                 <div className="text-center py-8">
                   <Coffee className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                   <p className="text-muted-foreground mb-4">No coffee beans found matching "{searchQuery}"</p>
@@ -387,7 +377,7 @@ if (result?.id) {
                     </Link>
                   </Button>
                 </div>
-              ) : null}
+              )}
               
               {popularBeans.length > 0 && (
                 <>
@@ -439,13 +429,13 @@ if (result?.id) {
           </Card>
         ) : (
           <div className="space-y-8">
-            {/* Selected Bean Display */}
+            {/* Selected Bean */}
             {selectedBean && (
               <Card className="bg-gradient-to-br from-white to-amber-50/30 border-amber-200/50">
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center">
-                      <div className="h-16 w-16 relative rounded-xl overflow-hidden">
+                      <div className="h-16 w-16 relative rounded-xl overflow-hidden shadow-md">
                         {selectedBean.image_url ? (
                           <Image 
                             src={selectedBean.image_url} 
@@ -490,6 +480,7 @@ if (result?.id) {
                         setSelectedBean(null);
                         setShowSearch(true);
                       }}
+                      className="hover:bg-amber-100"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -498,7 +489,7 @@ if (result?.id) {
               </Card>
             )}
 
-            {/* Enhanced Rating Section */}
+            {/* Rating Form */}
             <Card className="bg-gradient-to-br from-white to-amber-50/30 border-amber-200/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-900">
@@ -506,13 +497,13 @@ if (result?.id) {
                   Your Detailed Rating
                 </CardTitle>
                 <CardDescription>
-                  Rate this coffee on multiple characteristics with precision to 0.1 points
+                  Rate this coffee with precision to share your tasting experience
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
-                {/* Overall Rating - Featured */}
+                {/* Overall Rating */}
                 <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 p-6 rounded-xl border border-amber-200">
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Overall Rating" 
                     value={overallRating}
                     onChange={setOverallRating}
@@ -525,44 +516,44 @@ if (result?.id) {
                 
                 {/* Detailed Characteristics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Aroma" 
                     value={aromaRating}
                     onChange={setAromaRating}
                     description="The fragrance and smell intensity"
                   />
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Flavor" 
                     value={flavorRating}
                     onChange={setFlavorRating}
                     description="The taste experience on your palate"
                   />
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Aftertaste" 
                     value={aftertasteRating}
                     onChange={setAftertasteRating}
                     description="The lingering taste after swallowing"
                   />
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Acidity" 
                     value={acidityRating}
                     onChange={setAcidityRating}
                     description="The bright, tangy quality"
                   />
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Body" 
                     value={bodyRating}
                     onChange={setBodyRating}
                     description="The weight and mouthfeel"
                   />
-                  <EnhancedRatingSlider 
+                  <RatingSlider 
                     label="Sweetness" 
                     value={sweetnessRating}
                     onChange={setSweetnessRating}
                     description="The natural sugar presence"
                   />
                   <div className="md:col-span-2">
-                    <EnhancedRatingSlider 
+                    <RatingSlider 
                       label="Balance" 
                       value={balanceRating}
                       onChange={setBalanceRating}
@@ -574,7 +565,7 @@ if (result?.id) {
                 <Separator />
 
                 {/* Brewing Details */}
-                <div className="bg-neutral-50 p-6 rounded-xl">
+                <div className="bg-neutral-50 p-6 rounded-xl border border-neutral-200">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <Zap className="h-4 w-4 text-blue-600" />
                     Brewing Details (Optional)
@@ -583,7 +574,7 @@ if (result?.id) {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Method</label>
                       <Select onValueChange={setBrewMethod} value={brewMethod}>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white">
                           <SelectValue placeholder="Select method" />
                         </SelectTrigger>
                         <SelectContent>
@@ -599,7 +590,8 @@ if (result?.id) {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Grinder</label>
                       <Input 
-                        placeholder="e.g., Baratza Encore" 
+                        placeholder="e.g., Baratza Encore"
+                        className="bg-white" 
                         value={grinder}
                         onChange={(e) => setGrinder(e.target.value)}
                       />
@@ -608,7 +600,7 @@ if (result?.id) {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Grind Size</label>
                       <Select onValueChange={setGrindSize} value={grindSize}>
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white">
                           <SelectValue placeholder="Select size" />
                         </SelectTrigger>
                         <SelectContent>
@@ -624,7 +616,8 @@ if (result?.id) {
                     <div>
                       <label className="text-sm font-medium mb-2 block">Water Temp (°C)</label>
                       <Input 
-                        type="number" 
+                        type="number"
+                        className="bg-white" 
                         placeholder="e.g., 92" 
                         min="80" 
                         max="100"
@@ -637,10 +630,10 @@ if (result?.id) {
                   <div className="mt-4">
                     <label className="text-sm font-medium mb-2 block">Brew Ratio</label>
                     <Input 
-                      placeholder="e.g., 1:16 (coffee:water)" 
+                      placeholder="e.g., 1:16 (coffee:water)"
+                      className="max-w-xs bg-white" 
                       value={brewRatio}
                       onChange={(e) => setBrewRatio(e.target.value)}
-                      className="max-w-xs"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       The ratio of coffee to water used in brewing
@@ -648,12 +641,12 @@ if (result?.id) {
                   </div>
                 </div>
 
-                {/* Detailed Review */}
+                {/* Review */}
                 <div>
                   <label className="text-base font-semibold mb-3 block">Tasting Notes & Review</label>
                   <Textarea
                     placeholder="Share your detailed tasting experience, what stood out, how it compared to other coffees, brewing tips, and any other insights..."
-                    className="min-h-[140px] bg-white/80 border-amber-200/50 focus:border-amber-400"
+                    className="min-h-[120px] bg-white/80 border-amber-200/50 focus:border-amber-400"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
@@ -664,7 +657,7 @@ if (result?.id) {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
+            {/* Submit Section */}
             <div className="flex justify-end gap-4">
               <Button
                 variant="outline"
@@ -675,12 +668,12 @@ if (result?.id) {
                 disabled={isSubmitting}
                 className="px-8"
               >
-                Back to Search
+                Change Bean
               </Button>
               <Button 
                 onClick={handleSubmitRating}
                 disabled={!selectedBean || isSubmitting}
-                className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600"
+                className="px-8 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 {isSubmitting ? (
                   <>
