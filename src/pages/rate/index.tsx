@@ -237,13 +237,15 @@ export default function RatePage() {
 
       // Show the requested success popup
       toast({
-        title: "Rating Submitted! ☕",
-        description: "Your detailed coffee rating has been posted successfully.",
-      });
+  title: "Rating Submitted! ☕",
+  description: "Redirecting to your rating...",
+});
 
-      // Redirect to profile page as requested
-      console.log('Redirecting to profile page...');
-      router.push("/profile");
+if (result?.id) {
+  await router.push(`/rating/${result.id}`);   // <-- go to the rating detail page
+} else {
+  await router.push("/profile");               // safety fallback
+}
     } catch (error) {
       console.error("Error submitting rating:", error);
       toast({
