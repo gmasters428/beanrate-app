@@ -94,10 +94,14 @@ export const ratingsService = {
         )
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
-    return data as RatingWithDetails;
+    if (error) {
+      console.error('Error fetching rating by ID:', error);
+      throw error;
+    }
+    
+    return data as RatingWithDetails | null;
   },
 
   async createRating(rating: RatingInsert): Promise<Rating> {
