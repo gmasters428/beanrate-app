@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
+import DeleteAccountDialog from "@/components/profile/DeleteAccountDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Save, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Save, User as UserIcon, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
@@ -127,6 +128,11 @@ export default function ProfileAccountPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAccountDeleted = () => {
+    // Redirect to home page after account deletion
+    router.push("/");
   };
 
   if (loading) {
@@ -262,6 +268,73 @@ export default function ProfileAccountPage() {
                 )}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Account Security Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Account Security</CardTitle>
+            <p className="text-sm text-gray-600">Manage your email, password, and account settings.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Email Address</p>
+                  <p className="text-xs text-gray-600">{user.email}</p>
+                </div>
+                <Link href="/auth/reset-password">
+                  <Button variant="outline" size="sm">
+                    Change Email
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Password</p>
+                  <p className="text-xs text-gray-600">Last updated recently</p>
+                </div>
+                <Link href="/auth/reset-password">
+                  <Button variant="outline" size="sm">
+                    Change Password
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="mt-6 border-red-200 bg-red-50/30">
+          <CardHeader>
+            <CardTitle className="text-lg text-red-600 flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              Danger Zone
+            </CardTitle>
+            <p className="text-sm text-red-600">
+              These actions are permanent and cannot be undone.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 bg-white border border-red-200 rounded-lg">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Delete Account</h4>
+                    <p className="text-sm text-gray-600">
+                      Permanently remove your account and all associated data. This action cannot be undone.
+                    </p>
+                  </div>
+                  <DeleteAccountDialog
+                    userId={user.id}
+                    userEmail={user.email}
+                    onAccountDeleted={handleAccountDeleted}
+                  />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
