@@ -369,6 +369,109 @@ export const userService = {
 
     if (error) throw error;
     return count || 0;
+  },
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    try {
+      // Start a transaction-like cleanup process
+      // Note: Supabase doesn't support full transactions, so we'll do cascading deletes
+      
+      // 1. Delete all user's ratings
+      const { error: ratingsError } = await supabase
+        .from("ratings")
+        .delete()
+        .eq("user_id", userId);
+      
+      if (ratingsError) {
+        console.error("Error deleting ratings:", ratingsError);
+        throw new Error("Failed to delete user ratings");
+      }
+
+      // 2. Delete all user's comments  
+      const { error: commentsError } = await supabase
+        .from("comments")
+        .delete()
+        .eq("user_id", userId);
+      
+      if (commentsError) {
+        console.error("Error deleting comments:", commentsError);
+        throw new Error("Failed to delete user comments");
+      }
+
+      // 3. Delete all user's likes
+      const { error: likesError } = await supabase
+        .from("likes")
+        .delete()
+        .eq("user_id", userId);
+      
+      if (likesError) {
+        console.error("Error deleting likes:", likesError);
+        throw new Error("Failed to delete user likes");
+      }
+
+      // 4. Delete all friendships where user is involved
+      const { error: friendshipsError } = await supabase
+        .from("friendships")
+        .delete()
+        .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`);
+      
+      if (friendshipsError) {
+        console.error("Error deleting friendships:", friendshipsError);
+        throw new Error("Failed to delete user friendships");
+      }
+
+      // 5. Delete user preferences
+      const { error: preferencesError } = await supabase
+        .from("user_preferences")
+        .delete()
+        .eq("user_id", userId);
+      
+      if (preferencesError) {
+        console.error("Error deleting preferences:", preferencesError);
+        // Don't throw here as preferences might not exist
+      }
+
+      // 6. Delete profile image from storage if it exists
+      const user = await this.getUserProfile(userId);
+      if (user?.profile_image_url) {
+        try {
+          const url = new URL(user.profile_image_url);
+          const pathParts = url.pathname.split('/');
+          const filePath = pathParts.slice(-2).join('/');
+          
+          await supabase.storage
+            .from('profile-images')
+            .remove([filePath]);
+        } catch (storageError) {
+          console.warn("Could not delete profile image:", storageError);
+          // Don't fail the whole process for storage cleanup
+        }
+      }
+
+      // 7. Delete the user profile record
+      const { error: userError } = await supabase
+        .from("users")
+        .delete()
+        .eq("id", userId);
+      
+      if (userError) {
+        console.error("Error deleting user profile:", userError);
+        throw new Error("Failed to delete user profile");
+      }
+
+      // 8. Finally, delete the auth user (this should be last)
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) {
+        console.error("Error deleting auth user:", authError);
+        // Note: This might fail if we don't have admin privileges
+        // In that case, we'll rely on the user profile deletion
+      }
+
+    } catch (error) {
+      console.error("Error deleting user account:", error);
+      throw error;
+    }
   }
 };
 
