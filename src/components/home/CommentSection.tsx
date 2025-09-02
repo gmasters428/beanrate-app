@@ -292,9 +292,9 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
           <div className="border-t border-gray-200 p-4">
             <div className="flex gap-3">
               <div className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-br from-amber-100 to-amber-200 shrink-0">
-                {user.profileImage ? (
+                {user.profile_image_url ? (
                   <Image
-                    src={user.profileImage}
+                    src={user.profile_image_url}
                     alt={user.username || "You"}
                     width={32}
                     height={32}
