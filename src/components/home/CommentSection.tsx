@@ -51,7 +51,6 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
         user_id: user.id,
         rating_id: ratingId,
         text: newComment.trim(),
-        parent_id: null
       });
       
       setComments([...comments, comment]);
@@ -295,7 +294,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
               <div className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-br from-amber-100 to-amber-200 shrink-0">
                 {user.user_metadata?.profile_image_url ? (
                   <Image
-                    src={user.user_metadata.profile_image_url}
+                    src={user.user_metadata.profile_image_url as string}
                     alt={user.user_metadata?.username || "You"}
                     width={32}
                     height={32}

@@ -76,26 +76,37 @@ export interface Database {
       }
       comments: {
         Row: {
+          created_at: string
           id: string
-          user_id: string
           rating_id: string
           text: string
-          created_at: string
+          user_id: string
+          parent_id: string | null
         }
         Insert: {
+          created_at?: string
           id?: string
-          user_id: string
           rating_id: string
           text: string
-          created_at?: string
+          user_id: string
+          parent_id?: string | null
         }
         Update: {
+          created_at?: string
           id?: string
-          user_id?: string
           rating_id?: string
           text?: string
-          created_at?: string
+          user_id?: string
+          parent_id?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       follows: {
         Row: {

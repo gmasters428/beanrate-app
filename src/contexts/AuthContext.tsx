@@ -1,29 +1,31 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
-import { authService, AuthUser } from "@/services/authService";
-import { userService } from "@/services/userService";
+import type { User } from "@supabase/supabase-js";
+import authService from "@/services/authService";
+import userService from "@/services/userService";
 
 interface AuthContextType {
-  user: AuthUser | null;
+  user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<any>;
-  signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  signIn?: (email: string, password: string) => Promise<void>;
+  signOut?: () => Promise<void>;
+  refreshUser?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signUp: async () => {},
-  signIn: async () => {},
-  signOut: async () => {},
-  refreshUser: async () => {}
 });
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
@@ -32,24 +34,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setUser(currentUser);
     } catch (error) {
       console.error("Error refreshing user:", error);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await authService.signOut();
       setUser(null);
-    } catch (error) {
-      console.error("Error signing out:", error);
     }
-  };
-
-  const signUp = async (email: string, password: string, username: string) => {
-    return authService.signUp(email, password, username);
   };
 
   const signIn = async (email: string, password: string) => {
-    return authService.signIn(email, password);
+    await authService.signIn(email, password);
+    await refreshUser();
+  };
+
+  const signOut = async () => {
+    await authService.signOut();
+    setUser(null);
   };
 
   useEffect(() => {
@@ -106,7 +102,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signIn, 
+      signOut, 
+      refreshUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );
