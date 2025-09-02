@@ -7,12 +7,11 @@ import {
   ReactNode,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
-import authService from "@/services/authService";
+import authService, { AuthUser } from "@/services/authService";
 import userService from "@/services/userService";
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
   signIn?: (email: string, password: string) => Promise<void>;
   signOut?: () => Promise<void>;
@@ -25,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
