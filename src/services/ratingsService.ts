@@ -27,7 +27,7 @@ export const ratingsService = {
       .from('ratings')
       .select(`
         *,
-        users (
+        users!fk_ratings_user_id (
           username,
           display_name,
           profile_image_url
@@ -53,7 +53,7 @@ export const ratingsService = {
       .from('ratings')
       .select(`
         *,
-        users (
+        users!fk_ratings_user_id (
           username,
           display_name,
           profile_image_url
@@ -79,7 +79,7 @@ export const ratingsService = {
       .from('ratings')
       .select(`
         *,
-        users (
+        users!fk_ratings_user_id (
           username,
           display_name,
           profile_image_url
@@ -148,7 +148,7 @@ export const ratingsService = {
       .from('ratings')
       .select(`
         *,
-        users (
+        users!fk_ratings_user_id (
           username,
           display_name,
           profile_image_url
