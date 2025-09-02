@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -15,95 +14,39 @@ export interface CommentWithUser extends Comment {
 
 export const commentsService = {
   async getCommentsByRating(ratingId: string): Promise<CommentWithUser[]> {
-    try {
-      // First, let's try a simple connection test
-      const { data: testData, error: testError } = await supabase
-        .from('comments')
-        .select('id')
-        .limit(1);
+    const { data, error } = await supabase
+      .from('comments')
+      .select(`
+        *,
+        users!comments_user_id_fkey (
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .eq('rating_id', ratingId)
+      .order('created_at', { ascending: true });
 
-      if (testError) {
-        console.error('Connection test failed:', testError);
-        throw testError;
-      }
-
-      // Now try the main query with the relationship
-      const { data, error } = await supabase
-        .from('comments')
-        .select(`
-          *,
-          users (
-            username,
-            display_name,
-            profile_image_url
-          )
-        `)
-        .eq('rating_id', ratingId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Comments query failed:', error);
-        // If the relationship query fails, fall back to a manual join approach
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('comments')
-          .select('*')
-          .eq('rating_id', ratingId)
-          .order('created_at', { ascending: true });
-
-        if (commentsError) throw commentsError;
-
-        // Get user data separately for each comment
-        const commentsWithUsers = await Promise.all(
-          commentsData.map(async (comment) => {
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('username, display_name, profile_image_url')
-              .eq('id', comment.user_id)
-              .single();
-
-            return {
-              ...comment,
-              users: userError ? null : userData
-            } as CommentWithUser;
-          })
-        );
-
-        return commentsWithUsers;
-      }
-
-      return data as CommentWithUser[];
-    } catch (error) {
-      console.error('Error in getCommentsByRating:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return data as CommentWithUser[];
   },
 
   async createComment(comment: CommentInsert): Promise<CommentWithUser> {
-    try {
-      // Insert the comment first
-      const { data, error } = await supabase
-        .from('comments')
-        .insert([comment])
-        .select('*')
-        .single();
+    const { data, error } = await supabase
+      .from('comments')
+      .insert([comment])
+      .select(`
+        *,
+        users!comments_user_id_fkey (
+          username,
+          display_name,
+          profile_image_url
+        )
+      `)
+      .single();
 
-      if (error) throw error;
-
-      // Get the user data separately to ensure we have it
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('username, display_name, profile_image_url')
-        .eq('id', data.user_id)
-        .single();
-
-      return {
-        ...data,
-        users: userError ? null : userData
-      } as CommentWithUser;
-    } catch (error) {
-      console.error('Error in createComment:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return data as CommentWithUser;
   },
 
   async deleteComment(id: string): Promise<void> {
@@ -115,3 +58,5 @@ export const commentsService = {
     if (error) throw error;
   },
 };
+
+export default commentsService;
