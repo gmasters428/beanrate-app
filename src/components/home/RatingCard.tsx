@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { RatingWithDetails } from "@/services/ratingsService";
-import { Heart, MessageCircle, Coffee, User, Star, MapPin, Thermometer } from "lucide-react";
+import { MessageCircle, Coffee, User, Star, MapPin, Thermometer } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import CommentSection from "./CommentSection";
 import commentsService from "@/services/commentsService";
+import CoffeeBeanButton from "@/components/ui/coffee-bean-button";
 
 interface RatingCardProps {
   rating: RatingWithDetails;
@@ -181,12 +182,20 @@ export default function RatingCard({ rating }: RatingCardProps) {
           {/* Action Buttons */}
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
             <div className="flex items-center space-x-4">
-              <button className="flex items-center text-gray-400 hover:text-red-500 transition-colors group/heart">
-                <div className="p-2 rounded-lg hover:bg-red-50 transition-colors">
-                  <Heart className="h-4 w-4" />
-                </div>
-                <span className="ml-1 text-sm">Like</span>
-              </button>
+              <div className="flex items-center group/bean">
+                <CoffeeBeanButton
+                  isLiked={false}
+                  onClick={() => {
+                    // TODO: Implement like functionality
+                    console.log('Coffee bean liked!');
+                  }}
+                  size="md"
+                  className="hover:bg-amber-50"
+                />
+                <span className="ml-1 text-sm text-gray-400 group-hover/bean:text-amber-600 transition-colors">
+                  Like
+                </span>
+              </div>
               <button 
                 onClick={handleCommentClick}
                 className="flex items-center text-gray-400 hover:text-blue-500 transition-colors group/comment"
