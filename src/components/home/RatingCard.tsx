@@ -7,6 +7,8 @@ import { MessageCircle, Coffee, User, Star, MapPin, Thermometer } from "lucide-r
 import { formatDistanceToNow } from "date-fns";
 import CommentSection from "./CommentSection";
 import commentsService from "@/services/commentsService";
+import { likesService } from "@/services/likesService";
+import { useAuth } from "@/contexts/AuthContext";
 import CoffeeBeanButton from "@/components/ui/coffee-bean-button";
 
 interface RatingCardProps {
@@ -16,10 +18,15 @@ interface RatingCardProps {
 export default function RatingCard({ rating }: RatingCardProps) {
   const [isCommentSectionOpen, setIsCommentSectionOpen] = useState(false);
   const [commentCount, setCommentCount] = useState<number>(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [likesLoading, setLikesLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadCommentCount();
-  }, [rating.id]);
+    loadLikeData();
+  }, [rating.id, user]);
 
   const loadCommentCount = async () => {
     try {
@@ -38,6 +45,51 @@ export default function RatingCard({ rating }: RatingCardProps) {
     setIsCommentSectionOpen(false);
     // Refresh comment count when closing
     loadCommentCount();
+  };
+
+  const loadLikeData = async () => {
+    try {
+      setLikesLoading(true);
+      
+      // Get like count
+      const { count } = await likesService.getLikesByRating(rating.id);
+      setLikeCount(count);
+      
+      // Check if current user has liked this rating
+      if (user) {
+        const hasLiked = await likesService.hasUserLikedRating(rating.id, user.id);
+        setIsLiked(hasLiked);
+      }
+    } catch (error) {
+      console.error("Error loading like data:", error);
+    } finally {
+      setLikesLoading(false);
+    }
+  };
+
+  const handleLikeClick = async () => {
+    if (!user) {
+      // Redirect to login or show login prompt
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        // Unlike the rating
+        await likesService.unlikeRating(rating.id, user.id);
+        setIsLiked(false);
+        setLikeCount(prev => prev - 1);
+      } else {
+        // Like the rating
+        await likesService.likeRating(rating.id, user.id);
+        setIsLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      // Revert optimistic updates on error
+      await loadLikeData();
+    }
   };
 
   const renderStarRating = (ratingValue: number | null | undefined) => {
@@ -184,16 +236,18 @@ export default function RatingCard({ rating }: RatingCardProps) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center group/bean">
                 <CoffeeBeanButton
-                  isLiked={false}
-                  onClick={() => {
-                    // TODO: Implement like functionality
-                    console.log('Coffee bean liked!');
-                  }}
+                  isLiked={isLiked}
+                  onClick={handleLikeClick}
                   size="md"
-                  className="hover:bg-amber-50"
+                  likeCount={likeCount}
+                  className={!user ? "opacity-50 cursor-not-allowed" : ""}
                 />
-                <span className="ml-1 text-sm text-gray-400 group-hover/bean:text-amber-600 transition-colors">
-                  Like
+                <span className={`ml-2 text-sm transition-colors ${
+                  isLiked 
+                    ? "text-amber-600 font-medium" 
+                    : "text-gray-400 group-hover/bean:text-amber-600"
+                }`}>
+                  {isLiked ? "Liked" : "Like"}
                 </span>
               </div>
               <button 
