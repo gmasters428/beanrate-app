@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -10,10 +11,13 @@ export interface CommentWithUser extends Comment {
     display_name: string | null;
     profile_image_url: string | null;
   } | null;
+  replies?: CommentWithUser[];
+  reply_count?: number;
 }
 
 export const commentsService = {
   async getCommentsByRating(ratingId: string): Promise<CommentWithUser[]> {
+    // Get all comments for this rating
     const { data, error } = await supabase
       .from('comments')
       .select(`
@@ -28,7 +32,38 @@ export const commentsService = {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return data as CommentWithUser[];
+
+    // Organize comments into threaded structure
+    const comments = data as CommentWithUser[];
+    const topLevelComments: CommentWithUser[] = [];
+    const commentMap = new Map<string, CommentWithUser>();
+
+    // First pass: create map and identify top-level comments
+    comments.forEach(comment => {
+      comment.replies = [];
+      commentMap.set(comment.id, comment);
+      
+      if (!comment.parent_id) {
+        topLevelComments.push(comment);
+      }
+    });
+
+    // Second pass: organize replies under parent comments
+    comments.forEach(comment => {
+      if (comment.parent_id) {
+        const parent = commentMap.get(comment.parent_id);
+        if (parent) {
+          parent.replies!.push(comment);
+        }
+      }
+    });
+
+    // Add reply count to each comment
+    topLevelComments.forEach(comment => {
+      comment.reply_count = comment.replies?.length || 0;
+    });
+
+    return topLevelComments;
   },
 
   async createComment(comment: CommentInsert): Promise<CommentWithUser> {
@@ -46,7 +81,12 @@ export const commentsService = {
       .single();
 
     if (error) throw error;
-    return data as CommentWithUser;
+    
+    const result = data as CommentWithUser;
+    result.replies = [];
+    result.reply_count = 0;
+    
+    return result;
   },
 
   async deleteComment(id: string): Promise<void> {
@@ -57,6 +97,16 @@ export const commentsService = {
 
     if (error) throw error;
   },
+
+  async getCommentCount(ratingId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('rating_id', ratingId);
+
+    if (error) throw error;
+    return count || 0;
+  }
 };
 
 export default commentsService;
