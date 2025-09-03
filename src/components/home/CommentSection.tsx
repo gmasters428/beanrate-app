@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageCircle, Send, Reply, User, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import commentsService, { CommentWithUser } from "@/services/commentsService";
@@ -24,49 +24,104 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Refs for cleanup and preventing memory leaks
+  const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup on unmount or when modal closes
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Reset mounted ref when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      loadComments();
+      mountedRef.current = true;
+    } else {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     }
-  }, [isOpen, ratingId]);
+  }, [isOpen]);
 
-  const loadComments = async () => {
+  // Safe state updater that checks if component is still mounted
+  const safeSetState = useCallback(<T>(setter: (value: T | ((prev: T) => T)) => void, value: T | ((prev: T) => T)) => {
+    if (mountedRef.current) {
+      setter(value);
+    }
+  }, []);
+
+  const loadComments = useCallback(async () => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
     try {
-      setLoading(true);
+      safeSetState(setLoading, true);
       const data = await commentsService.getCommentsByRating(ratingId);
-      setComments(data);
+      safeSetState(setComments, data);
     } catch (error) {
-      console.error("Error loading comments:", error);
+      // Only log error if it's not due to abort and component is mounted
+      if (!abortControllerRef.current?.signal.aborted && mountedRef.current) {
+        console.error("Error loading comments:", error);
+      }
     } finally {
-      setLoading(false);
+      safeSetState(setLoading, false);
     }
-  };
+  }, [ratingId, safeSetState]);
 
-  const handleSubmitComment = async () => {
-    if (!user || !newComment.trim()) return;
+  // Load comments when modal opens with debouncing
+  useEffect(() => {
+    if (isOpen && mountedRef.current) {
+      const loadTimeout = setTimeout(() => {
+        if (mountedRef.current) {
+          loadComments();
+        }
+      }, 100);
+
+      return () => clearTimeout(loadTimeout);
+    }
+  }, [isOpen, loadComments]);
+
+  const handleSubmitComment = useCallback(async () => {
+    if (!user || !newComment.trim() || !mountedRef.current) return;
 
     try {
-      setSubmitting(true);
+      safeSetState(setSubmitting, true);
       const comment = await commentsService.createComment({
         user_id: user.id,
         rating_id: ratingId,
         text: newComment.trim(),
       });
       
-      setComments([...comments, comment]);
-      setNewComment("");
+      if (mountedRef.current) {
+        safeSetState(setComments, (prev: CommentWithUser[]) => [...prev, comment]);
+        safeSetState(setNewComment, "");
+      }
     } catch (error) {
-      console.error("Error creating comment:", error);
+      if (mountedRef.current) {
+        console.error("Error creating comment:", error);
+      }
     } finally {
-      setSubmitting(false);
+      safeSetState(setSubmitting, false);
     }
-  };
+  }, [user, newComment, ratingId, safeSetState]);
 
-  const handleSubmitReply = async (parentId: string) => {
-    if (!user || !replyText.trim()) return;
+  const handleSubmitReply = useCallback(async (parentId: string) => {
+    if (!user || !replyText.trim() || !mountedRef.current) return;
 
     try {
-      setSubmitting(true);
+      safeSetState(setSubmitting, true);
       const reply = await commentsService.createComment({
         user_id: user.id,
         rating_id: ratingId,
@@ -74,53 +129,76 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
         parent_id: parentId
       });
 
-      // Add reply to the parent comment
-      setComments(comments.map(comment => {
-        if (comment.id === parentId) {
-          return {
-            ...comment,
-            replies: [...(comment.replies || []), reply],
-            reply_count: (comment.reply_count || 0) + 1
-          };
-        }
-        return comment;
-      }));
-      
-      setReplyText("");
-      setReplyingTo(null);
-    } catch (error) {
-      console.error("Error creating reply:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string, isReply: boolean = false, parentId?: string) => {
-    try {
-      await commentsService.deleteComment(commentId);
-      
-      if (isReply && parentId) {
-        // Remove reply from parent comment
-        setComments(comments.map(comment => {
+      if (mountedRef.current) {
+        // Add reply to the parent comment
+        safeSetState(setComments, (prev: CommentWithUser[]) => prev.map(comment => {
           if (comment.id === parentId) {
             return {
               ...comment,
-              replies: comment.replies?.filter(reply => reply.id !== commentId) || [],
-              reply_count: Math.max((comment.reply_count || 1) - 1, 0)
+              replies: [...(comment.replies || []), reply],
+              reply_count: (comment.reply_count || 0) + 1
             };
           }
           return comment;
         }));
-      } else {
-        // Remove top-level comment
-        setComments(comments.filter(comment => comment.id !== commentId));
+        
+        safeSetState(setReplyText, "");
+        safeSetState(setReplyingTo, null);
       }
     } catch (error) {
-      console.error("Error deleting comment:", error);
+      if (mountedRef.current) {
+        console.error("Error creating reply:", error);
+      }
+    } finally {
+      safeSetState(setSubmitting, false);
     }
-  };
+  }, [user, replyText, ratingId, safeSetState]);
 
-  if (!isOpen) return null;
+  const handleDeleteComment = useCallback(async (commentId: string, isReply: boolean = false, parentId?: string) => {
+    if (!mountedRef.current) return;
+
+    try {
+      await commentsService.deleteComment(commentId);
+      
+      if (mountedRef.current) {
+        if (isReply && parentId) {
+          // Remove reply from parent comment
+          safeSetState(setComments, (prev: CommentWithUser[]) => prev.map(comment => {
+            if (comment.id === parentId) {
+              return {
+                ...comment,
+                replies: comment.replies?.filter(reply => reply.id !== commentId) || [],
+                reply_count: Math.max((comment.reply_count || 1) - 1, 0)
+              };
+            }
+            return comment;
+          }));
+        } else {
+          // Remove top-level comment
+          safeSetState(setComments, (prev: CommentWithUser[]) => prev.filter(comment => comment.id !== commentId));
+        }
+      }
+    } catch (error) {
+      if (mountedRef.current) {
+        console.error("Error deleting comment:", error);
+      }
+    }
+  }, [safeSetState]);
+
+  const handleClose = useCallback(() => {
+    // Clean up state when closing
+    mountedRef.current = false;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setNewComment("");
+    setReplyText("");
+    setReplyingTo(null);
+    onClose();
+  }, [onClose]);
+
+  // Don't render if not open or component unmounted
+  if (!isOpen || !mountedRef.current) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
@@ -130,9 +208,11 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
           <div className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-blue-500" />
             <h3 className="font-semibold text-gray-900">Comments</h3>
-            <span className="text-sm text-gray-500">({comments.reduce((acc, comment) => acc + 1 + (comment.reply_count || 0), 0)})</span>
+            <span className="text-sm text-gray-500">
+              ({comments.reduce((acc, comment) => acc + 1 + (comment.reply_count || 0), 0)})
+            </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="sm" onClick={handleClose}>
             ✕
           </Button>
         </div>
@@ -141,7 +221,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
         <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh]">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">Loading comments...</div>
+              <div className="text-gray-500 animate-pulse">Loading comments...</div>
             </div>
           ) : comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-500">
@@ -158,7 +238,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                       {comment.users?.profile_image_url ? (
                         <Image
                           src={comment.users.profile_image_url}
-                          alt={comment.users.username}
+                          alt={comment.users.username || "User"}
                           width={32}
                           height={32}
                           className="object-cover"
@@ -185,7 +265,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                     <div className="flex items-center gap-4 mt-2 text-xs">
                       <button
                         onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                        className="text-gray-500 hover:text-blue-500 flex items-center gap-1"
+                        className="text-gray-500 hover:text-blue-500 flex items-center gap-1 transition-colors"
                       >
                         <Reply className="h-3 w-3" />
                         Reply
@@ -193,7 +273,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                       {user?.id === comment.user_id && (
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className="text-gray-500 hover:text-red-500 flex items-center gap-1"
+                          className="text-gray-500 hover:text-red-500 flex items-center gap-1 transition-colors"
                         >
                           <Trash2 className="h-3 w-3" />
                           Delete
@@ -242,7 +322,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                                 {reply.users?.profile_image_url ? (
                                   <Image
                                     src={reply.users.profile_image_url}
-                                    alt={reply.users.username}
+                                    alt={reply.users.username || "User"}
                                     width={24}
                                     height={24}
                                     className="object-cover"
@@ -269,7 +349,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                               {user?.id === reply.user_id && (
                                 <button
                                   onClick={() => handleDeleteComment(reply.id, true, comment.id)}
-                                  className="text-xs text-gray-500 hover:text-red-500 mt-1 flex items-center gap-1"
+                                  className="text-xs text-gray-500 hover:text-red-500 mt-1 flex items-center gap-1 transition-colors"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                   Delete
