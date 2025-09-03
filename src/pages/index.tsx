@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
@@ -14,41 +14,101 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"trending" | "recent" | "following">("trending");
   const { user } = useAuth();
+  
+  // Use refs to prevent memory leaks
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
+  // Cleanup on unmount
   useEffect(() => {
-    loadRatings();
-  }, [activeTab]);
+    return () => {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
-  const loadRatings = async () => {
+  const loadRatings = useCallback(async () => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    
     try {
       setLoading(true);
       setError(null);
       
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please check your connection')), 8000)
-      );
+      // Create timeout promise that cleans up properly
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutRef.current = setTimeout(() => {
+          reject(new Error('Request timeout - please check your connection'));
+        }, 10000); // Increased timeout to 10 seconds
+      });
       
       const ratingsPromise = ratingsService.getRatings(20);
       
-      const data = await Promise.race([ratingsPromise, timeoutPromise]) as RatingWithDetails[];
-      setRatings(data || []);
+      const data = await Promise.race([ratingsPromise, timeoutPromise]);
+      
+      // Clear timeout if request succeeded
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        setRatings(data || []);
+        setError(null);
+      }
     } catch (error) {
-      console.error("Error loading ratings:", error);
-      setError(error instanceof Error ? error.message : "Failed to load ratings. Please try again.");
+      // Clear timeout on error
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      
+      // Only update state if component is still mounted and error wasn't due to abort
+      if (mountedRef.current && error instanceof Error && error.name !== 'AbortError') {
+        console.error("Error loading ratings:", error);
+        setError(error.message || "Failed to load ratings. Please try again.");
+        setRatings([]); // Clear existing data on error
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const handleTabChange = (tab: "trending" | "recent" | "following") => {
+  // Initial load with debouncing
+  useEffect(() => {
+    const loadTimeout = setTimeout(() => {
+      loadRatings();
+    }, 100);
+
+    return () => clearTimeout(loadTimeout);
+  }, [loadRatings, activeTab]);
+
+  const handleTabChange = useCallback((tab: "trending" | "recent" | "following") => {
     setActiveTab(tab);
-    setLoading(true);
-    setTimeout(() => loadRatings(), 100);
-  };
+  }, []);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     loadRatings();
-  };
+  }, [loadRatings]);
 
   if (loading) {
     return (
@@ -216,7 +276,7 @@ export default function HomePage() {
                 <div className="text-center py-8">
                   <Button 
                     variant="outline" 
-                    onClick={loadRatings}
+                    onClick={handleRetry}
                     className="hover:bg-amber-50 hover:border-amber-300 transition-all duration-200"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
