@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { RatingWithDetails } from "@/services/ratingsService";
@@ -23,76 +23,139 @@ export default function RatingCard({ rating }: RatingCardProps) {
   const [likesLoading, setLikesLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    loadCommentCount();
-    loadLikeData();
-  }, [rating.id, user]);
+  // Refs for cleanup and preventing memory leaks
+  const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const loadCommentCount = async () => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Safe state updater that checks if component is still mounted
+  const safeSetState = useCallback(<T>(setter: (value: T) => void, value: T) => {
+    if (mountedRef.current) {
+      setter(value);
+    }
+  }, []);
+
+  const loadCommentCount = useCallback(async () => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
     try {
       const count = await commentsService.getCommentCount(rating.id);
-      setCommentCount(count);
+      safeSetState(setCommentCount, count);
     } catch (error) {
-      console.error("Error loading comment count:", error);
+      // Only log error if it's not due to abort
+      if (!abortControllerRef.current?.signal.aborted) {
+        console.error("Error loading comment count:", error);
+      }
     }
-  };
+  }, [rating.id, safeSetState]);
 
-  const handleCommentClick = () => {
-    setIsCommentSectionOpen(true);
-  };
-
-  const handleCommentSectionClose = () => {
-    setIsCommentSectionOpen(false);
-    // Refresh comment count when closing
-    loadCommentCount();
-  };
-
-  const loadLikeData = async () => {
+  const loadLikeData = useCallback(async () => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    
     try {
-      setLikesLoading(true);
+      safeSetState(setLikesLoading, true);
       
       // Get like count
       const { count } = await likesService.getLikesByRating(rating.id);
-      setLikeCount(count);
+      safeSetState(setLikeCount, count);
       
       // Check if current user has liked this rating
-      if (user) {
+      if (user && mountedRef.current) {
         const hasLiked = await likesService.hasUserLikedRating(rating.id, user.id);
-        setIsLiked(hasLiked);
+        safeSetState(setIsLiked, hasLiked);
       }
     } catch (error) {
-      console.error("Error loading like data:", error);
+      // Only log error if it's not due to abort
+      if (!abortControllerRef.current?.signal.aborted) {
+        console.error("Error loading like data:", error);
+      }
     } finally {
-      setLikesLoading(false);
+      safeSetState(setLikesLoading, false);
     }
-  };
+  }, [rating.id, user, safeSetState]);
 
-  const handleLikeClick = async () => {
+  // Load data on mount and user change with debouncing
+  useEffect(() => {
+    const loadTimeout = setTimeout(() => {
+      if (mountedRef.current) {
+        loadCommentCount();
+        loadLikeData();
+      }
+    }, 100);
+
+    return () => clearTimeout(loadTimeout);
+  }, [loadCommentCount, loadLikeData]);
+
+  const handleCommentClick = useCallback(() => {
+    setIsCommentSectionOpen(true);
+  }, []);
+
+  const handleCommentSectionClose = useCallback(() => {
+    setIsCommentSectionOpen(false);
+    // Refresh comment count when closing with debounce
+    setTimeout(() => {
+      if (mountedRef.current) {
+        loadCommentCount();
+      }
+    }, 100);
+  }, [loadCommentCount]);
+
+  const handleLikeClick = useCallback(async () => {
     if (!user) {
       // Redirect to login or show login prompt
       return;
     }
 
+    // Prevent multiple simultaneous requests
+    if (!mountedRef.current) return;
+
     try {
       if (isLiked) {
+        // Optimistic update
+        safeSetState(setIsLiked, false);
+        safeSetState(setLikeCount, prev => prev - 1);
+        
         // Unlike the rating
         await likesService.unlikeRating(rating.id, user.id);
-        setIsLiked(false);
-        setLikeCount(prev => prev - 1);
       } else {
+        // Optimistic update
+        safeSetState(setIsLiked, true);
+        safeSetState(setLikeCount, prev => prev + 1);
+        
         // Like the rating
         await likesService.likeRating(rating.id, user.id);
-        setIsLiked(true);
-        setLikeCount(prev => prev + 1);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
       // Revert optimistic updates on error
-      await loadLikeData();
+      if (mountedRef.current) {
+        loadLikeData();
+      }
     }
-  };
+  }, [user, isLiked, rating.id, safeSetState, loadLikeData]);
 
-  const renderStarRating = (ratingValue: number | null | undefined) => {
+  const renderStarRating = useCallback((ratingValue: number | null | undefined) => {
     const numericRating = ratingValue ?? 0;
     return (
       <div className="flex items-center gap-1">
@@ -111,7 +174,12 @@ export default function RatingCard({ rating }: RatingCardProps) {
         </span>
       </div>
     );
-  };
+  }, []);
+
+  // Early return if component is unmounted
+  if (!mountedRef.current) {
+    return null;
+  }
 
   return (
     <>
@@ -274,11 +342,13 @@ export default function RatingCard({ rating }: RatingCardProps) {
       </div>
 
       {/* Comment Section Modal */}
-      <CommentSection
-        ratingId={rating.id}
-        isOpen={isCommentSectionOpen}
-        onClose={handleCommentSectionClose}
-      />
+      {isCommentSectionOpen && (
+        <CommentSection
+          ratingId={rating.id}
+          isOpen={isCommentSectionOpen}
+          onClose={handleCommentSectionClose}
+        />
+      )}
     </>
   );
 }
