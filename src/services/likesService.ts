@@ -14,17 +14,17 @@ export const likesService = {
 
   async hasUserLikedRating(ratingId: string, userId: string) {
     if (!userId) return false;
+    
     const { data, error } = await supabase
       .from('likes')
       .select('id')
       .eq('rating_id', ratingId)
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw error;
-    }
-    return !!data;
+    if (error) throw error;
+    
+    // Return true if any likes exist, false otherwise
+    return data && data.length > 0;
   },
 
   async likeRating(ratingId: string, userId: string) {

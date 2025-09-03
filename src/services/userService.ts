@@ -278,25 +278,32 @@ export const userService = {
     const { data, error } = await supabase
       .from("friendships")
       .select("*")
-      .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUser.id})`)
-      .single();
+      .or(`and(user_one_id.eq.${currentUser.id},user_two_id.eq.${otherUserId}),and(user_one_id.eq.${otherUserId},user_two_id.eq.${currentUser.id})`);
 
-    if (error || !data) return { status: "none" };
-
-    if (data.status === "accepted") {
-      return { status: "accepted", friendshipId: data.id };
+    if (error) {
+      console.error("Error getting friendship status:", error);
+      return { status: "none" };
     }
 
-    if (data.status === "pending") {
-      if (data.action_user_id === currentUser.id) {
-        return { status: "pending_sent", friendshipId: data.id };
+    if (!data || data.length === 0) return { status: "none" };
+
+    // Take the first/most recent friendship record if multiple exist
+    const friendship = data[0];
+
+    if (friendship.status === "accepted") {
+      return { status: "accepted", friendshipId: friendship.id };
+    }
+
+    if (friendship.status === "pending") {
+      if (friendship.action_user_id === currentUser.id) {
+        return { status: "pending_sent", friendshipId: friendship.id };
       } else {
-        return { status: "pending_received", friendshipId: data.id };
+        return { status: "pending_received", friendshipId: friendship.id };
       }
     }
 
-    if (data.status === "blocked") {
-      return { status: "blocked", friendshipId: data.id };
+    if (friendship.status === "blocked") {
+      return { status: "blocked", friendshipId: friendship.id };
     }
 
     return { status: "none" };
