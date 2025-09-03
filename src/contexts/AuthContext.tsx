@@ -5,6 +5,8 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useRef,
+  useCallback,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import authService, { AuthUser } from "@/services/authService";
@@ -26,50 +28,163 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Refs for cleanup and preventing memory leaks
+  const mountedRef = useRef(true);
+  const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const refreshUser = async () => {
-    try {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error("Error refreshing user:", error);
-      setUser(null);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Safe state updater that checks if component is still mounted
+  const safeSetState = useCallback(<T>(setter: (value: T | ((prev: T) => T)) => void, value: T | ((prev: T) => T)) => {
+    if (mountedRef.current) {
+      setter(value);
     }
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
-    await authService.signIn(email, password);
-    await refreshUser();
-  };
+  const refreshUser = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
 
-  const signOut = async () => {
-    await authService.signOut();
-    setUser(null);
-  };
+    try {
+      // Add timeout for auth requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        refreshTimeoutRef.current = setTimeout(() => {
+          reject(new Error('Authentication timeout'));
+        }, 8000); // 8 second timeout
+      });
+
+      const authPromise = authService.getCurrentUser();
+      const currentUser = await Promise.race([authPromise, timeoutPromise]);
+      
+      // Clear timeout on success
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+
+      safeSetState(setUser, currentUser);
+    } catch (error) {
+      // Clear timeout on error
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+
+      if (mountedRef.current && error instanceof Error && !error.message.includes('timeout')) {
+        console.error("Error refreshing user:", error);
+        safeSetState(setUser, null);
+      }
+    }
+  }, [safeSetState]);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    if (!mountedRef.current) return;
+
+    // Clear any existing timeout
+    if (authTimeoutRef.current) {
+      clearTimeout(authTimeoutRef.current);
+    }
+
+    try {
+      // Add timeout for sign in
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        authTimeoutRef.current = setTimeout(() => {
+          reject(new Error('Sign in timeout - please check your connection'));
+        }, 10000); // 10 second timeout for sign in
+      });
+
+      const signInPromise = authService.signIn(email, password);
+      await Promise.race([signInPromise, timeoutPromise]);
+      
+      // Clear timeout on success
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+        authTimeoutRef.current = null;
+      }
+
+      await refreshUser();
+    } catch (error) {
+      // Clear timeout on error
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+        authTimeoutRef.current = null;
+      }
+      throw error; // Re-throw to let calling component handle
+    }
+  }, [refreshUser]);
+
+  const signOut = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    try {
+      // Cancel all service requests before signing out
+      try {
+        userService.cancelAllRequests();
+      } catch (error) {
+        console.warn("Error cancelling requests during sign out:", error);
+      }
+
+      await authService.signOut();
+      safeSetState(setUser, null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Force clear user state even if sign out fails
+      safeSetState(setUser, null);
+    }
+  }, [safeSetState]);
 
   useEffect(() => {
     const initializeAuth = async () => {
+      if (!mountedRef.current) return;
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.user) {
-          // Ensure user profile exists
+        if (session?.user && mountedRef.current) {
+          // Ensure user profile exists with timeout
           try {
-            await userService.createUserProfile(
+            const profileTimeout = new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                reject(new Error('Profile creation timeout'));
+              }, 8000);
+            });
+
+            const profilePromise = userService.createUserProfile(
               session.user.id,
               session.user.email || ''
             );
+
+            await Promise.race([profilePromise, profileTimeout]);
           } catch (error) {
             console.warn("Could not create/verify user profile:", error);
           }
           
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
+          if (mountedRef.current) {
+            const currentUser = await authService.getCurrentUser();
+            safeSetState(setUser, currentUser);
+          }
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
       } finally {
-        setLoading(false);
+        safeSetState(setLoading, false);
       }
     };
 
@@ -77,28 +192,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mountedRef.current) return;
+
         if (event === 'SIGNED_IN' && session?.user) {
-          // Ensure user profile exists when signing in
+          // Ensure user profile exists when signing in with timeout
           try {
-            await userService.createUserProfile(
+            const profileTimeout = new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                reject(new Error('Profile creation timeout'));
+              }, 8000);
+            });
+
+            const profilePromise = userService.createUserProfile(
               session.user.id,
               session.user.email || ''
             );
+
+            await Promise.race([profilePromise, profileTimeout]);
           } catch (error) {
             console.warn("Could not create/verify user profile:", error);
           }
           
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
+          if (mountedRef.current) {
+            const currentUser = await authService.getCurrentUser();
+            safeSetState(setUser, currentUser);
+          }
         } else if (event === 'SIGNED_OUT') {
-          setUser(null);
+          safeSetState(setUser, null);
         }
-        setLoading(false);
+        
+        safeSetState(setLoading, false);
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [safeSetState]);
+
+  // Connection recovery mechanism - retry auth on network recovery
+  useEffect(() => {
+    const handleOnline = () => {
+      if (mountedRef.current && !user && !loading) {
+        console.log("Network recovered, attempting to restore authentication...");
+        // Debounce the refresh attempt
+        const timeout = setTimeout(() => {
+          if (mountedRef.current) {
+            refreshUser();
+          }
+        }, 1000);
+
+        return () => clearTimeout(timeout);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user, loading, refreshUser]);
 
   return (
     <AuthContext.Provider value={{ 
