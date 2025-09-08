@@ -1,4 +1,4 @@
-
+<![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -76,30 +76,31 @@ export const ratingsService = {
   async getRatings(limit = 20): Promise<RatingWithDetails[]> {
     const requestKey = `getRatings_${limit}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .select(`
-        *,
-        users!fk_ratings_user_id (
-          username,
-          display_name,
-          profile_image_url
-        ),
-        coffee_beans (
-          name,
-          brand,
-          origin,
-          roast_level,
-          variety,
-          image_url
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select(`
+                *,
+                users!fk_ratings_user_id (
+                username,
+                display_name,
+                profile_image_url
+                ),
+                coffee_beans (
+                name,
+                brand,
+                origin,
+                roast_level,
+                variety,
+                image_url
+                )
+            `)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
         if (error) throw error;
         return data as RatingWithDetails[];
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -107,30 +108,31 @@ export const ratingsService = {
   async getRatingsByUser(userId: string): Promise<RatingWithDetails[]> {
     const requestKey = `getRatingsByUser_${userId}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .select(`
-        *,
-        users!fk_ratings_user_id (
-          username,
-          display_name,
-          profile_image_url
-        ),
-        coffee_beans (
-          name,
-          brand,
-          origin,
-          roast_level,
-          variety,
-          image_url
-        )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select(`
+                *,
+                users!fk_ratings_user_id (
+                username,
+                display_name,
+                profile_image_url
+                ),
+                coffee_beans (
+                name,
+                brand,
+                origin,
+                roast_level,
+                variety,
+                image_url
+                )
+            `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
         if (error) throw error;
         return data as RatingWithDetails[];
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -138,33 +140,34 @@ export const ratingsService = {
   async getRatingById(id: string): Promise<RatingWithDetails | null> {
     const requestKey = `getRatingById_${id}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .select(`
-        *,
-        users!fk_ratings_user_id (
-          username,
-          display_name,
-          profile_image_url
-        ),
-        coffee_beans (
-          name,
-          brand,
-          origin,
-          roast_level,
-          variety,
-          image_url
-        )
-      `)
-      .eq('id', id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select(`
+                *,
+                users!fk_ratings_user_id (
+                username,
+                display_name,
+                profile_image_url
+                ),
+                coffee_beans (
+                name,
+                brand,
+                origin,
+                roast_level,
+                variety,
+                image_url
+                )
+            `)
+            .eq('id', id)
+            .maybeSingle();
+
         if (error) {
-          console.error('Error fetching rating by ID:', error);
-          throw error;
+            console.error('Error fetching rating by ID:', error);
+            throw error;
         }
         return data as RatingWithDetails | null;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -174,20 +177,21 @@ export const ratingsService = {
     
     console.log('Creating rating with data:', rating);
     
-    const queryPromise = supabase
-      .from('ratings')
-      .insert([rating])
-      .select()
-      .single()
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .insert([rating])
+            .select()
+            .single();
+
         if (error) {
-          console.error('Rating creation error:', error);
-          throw error;
+            console.error('Rating creation error:', error);
+            throw error;
         }
         
         console.log('Rating created successfully:', data);
         return data;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -195,16 +199,16 @@ export const ratingsService = {
   async updateRating(id: string, updates: RatingUpdate): Promise<Rating> {
     const requestKey = `updateRating_${id}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
         if (error) throw error;
         return data;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -212,13 +216,13 @@ export const ratingsService = {
   async deleteRating(id: string): Promise<void> {
     const requestKey = `deleteRating_${id}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .delete()
-      .eq('id', id)
-      .then(({ error }) => {
+    const queryPromise = (async () => {
+        const { error } = await supabase
+            .from('ratings')
+            .delete()
+            .eq('id', id);
         if (error) throw error;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -226,30 +230,31 @@ export const ratingsService = {
   async getRatingsByBean(beanId: string): Promise<RatingWithDetails[]> {
     const requestKey = `getRatingsByBean_${beanId}`;
     
-    const queryPromise = supabase
-      .from('ratings')
-      .select(`
-        *,
-        users!fk_ratings_user_id (
-          username,
-          display_name,
-          profile_image_url
-        ),
-        coffee_beans (
-          name,
-          brand,
-          origin,
-          roast_level,
-          variety,
-          image_url
-        )
-      `)
-      .eq('coffee_bean_id', beanId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('ratings')
+            .select(`
+                *,
+                users!fk_ratings_user_id (
+                username,
+                display_name,
+                profile_image_url
+                ),
+                coffee_beans (
+                name,
+                brand,
+                origin,
+                roast_level,
+                variety,
+                image_url
+                )
+            `)
+            .eq('coffee_bean_id', beanId)
+            .order('created_at', { ascending: false });
+
         if (error) throw error;
         return data as RatingWithDetails[];
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -269,3 +274,4 @@ export const ratingsService = {
 };
 
 export default ratingsService;
+]]>

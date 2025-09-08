@@ -51,7 +51,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
   }, [isOpen]);
 
   // Safe state updater that checks if component is still mounted
-  const safeSetState = useCallback(<T>(setter: (value: T | ((prev: T) => T)) => void, value: T | ((prev: T) => T)) => {
+  const safeSetState = useCallback(<T,>(setter: (value: T | ((prev: T) => T)) => void, value: T | ((prev: T) => T)) => {
     if (mountedRef.current) {
       setter(value);
     }

@@ -38,7 +38,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
   }, []);
 
   // Safe state updater that checks if component is still mounted
-  const safeSetState = useCallback(<T>(setter: (value: T) => void, value: T) => {
+  const safeSetState = useCallback(<T,>(setter: (value: T) => void, value: T) => {
     if (mountedRef.current) {
       setter(value);
     }
@@ -197,7 +197,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
                   className="object-cover"
                 />
               ) : (
-                <div className="h-full w-full bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
+                <div className="h-full w-full bg-gradient-to-br from-amber-100 to-neutral-100 flex items-center justify-center">
                   <User className="h-4 w-4 text-amber-600" />
                 </div>
               )}
