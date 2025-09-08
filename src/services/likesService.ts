@@ -1,4 +1,4 @@
-
+<![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 
 // Connection management - track active requests
@@ -51,67 +51,70 @@ const executeWithTimeout = async <T>(
 };
 
 export const likesService = {
-  async getLikesByRating(ratingId: string) {
+  async getLikesByRating(ratingId: string): Promise<{ likes: any[], count: number }> {
     const requestKey = `getLikesByRating_${ratingId}`;
     
-    const queryPromise = supabase
-      .from('likes')
-      .select('*', { count: 'exact' })
-      .eq('rating_id', ratingId)
-      .then(({ data, error, count }) => {
+    const queryPromise = (async () => {
+        const { data, error, count } = await supabase
+            .from('likes')
+            .select('*', { count: 'exact' })
+            .eq('rating_id', ratingId);
+
         if (error) throw error;
         return { likes: data, count: count ?? 0 };
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
 
-  async hasUserLikedRating(ratingId: string, userId: string) {
+  async hasUserLikedRating(ratingId: string, userId: string): Promise<boolean> {
     if (!userId) return false;
     
     const requestKey = `hasUserLikedRating_${ratingId}_${userId}`;
     
-    const queryPromise = supabase
-      .from('likes')
-      .select('id')
-      .eq('rating_id', ratingId)
-      .eq('user_id', userId)
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('likes')
+            .select('id')
+            .eq('rating_id', ratingId)
+            .eq('user_id', userId);
+
         if (error) throw error;
-        // Return true if any likes exist, false otherwise
         return data && data.length > 0;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
 
-  async likeRating(ratingId: string, userId: string) {
+  async likeRating(ratingId: string, userId: string): Promise<any> {
     const requestKey = `likeRating_${ratingId}_${userId}`;
     
-    const queryPromise = supabase
-      .from('likes')
-      .insert([{ rating_id: ratingId, user_id: userId }])
-      .select()
-      .single()
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('likes')
+            .insert([{ rating_id: ratingId, user_id: userId }])
+            .select()
+            .single();
+
         if (error) throw error;
         return data;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
 
-  async unlikeRating(ratingId: string, userId: string) {
+  async unlikeRating(ratingId: string, userId: string): Promise<void> {
     const requestKey = `unlikeRating_${ratingId}_${userId}`;
     
-    const queryPromise = supabase
-      .from('likes')
-      .delete()
-      .eq('rating_id', ratingId)
-      .eq('user_id', userId)
-      .then(({ error }) => {
+    const queryPromise = (async () => {
+        const { error } = await supabase
+            .from('likes')
+            .delete()
+            .eq('rating_id', ratingId)
+            .eq('user_id', userId);
+        
         if (error) throw error;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -129,3 +132,4 @@ export const likesService = {
     return activeRequests.size;
   }
 };
+]]>

@@ -1,4 +1,4 @@
-
+<![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -68,53 +68,49 @@ export const commentsService = {
   async getCommentsByRating(ratingId: string): Promise<CommentWithUser[]> {
     const requestKey = `getCommentsByRating_${ratingId}`;
     
-    const queryPromise = supabase
-      .from('comments')
-      .select(`
-        *,
-        users!comments_user_id_fkey (
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .eq('rating_id', ratingId)
-      .order('created_at', { ascending: true })
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('comments')
+            .select(`
+                *,
+                users!comments_user_id_fkey (
+                username,
+                display_name,
+                profile_image_url
+                )
+            `)
+            .eq('rating_id', ratingId)
+            .order('created_at', { ascending: true });
+
         if (error) throw error;
         
-        // Organize comments into threaded structure
         const comments = data as CommentWithUser[];
         const topLevelComments: CommentWithUser[] = [];
         const commentMap = new Map<string, CommentWithUser>();
 
-        // First pass: create map and identify top-level comments
         comments.forEach(comment => {
-          comment.replies = [];
-          commentMap.set(comment.id, comment);
-          
-          if (!comment.parent_id) {
-            topLevelComments.push(comment);
-          }
-        });
-
-        // Second pass: organize replies under parent comments
-        comments.forEach(comment => {
-          if (comment.parent_id) {
-            const parent = commentMap.get(comment.parent_id);
-            if (parent) {
-              parent.replies!.push(comment);
+            comment.replies = [];
+            commentMap.set(comment.id, comment);
+            if (!comment.parent_id) {
+                topLevelComments.push(comment);
             }
-          }
         });
 
-        // Add reply count to each comment
+        comments.forEach(comment => {
+            if (comment.parent_id) {
+                const parent = commentMap.get(comment.parent_id);
+                if (parent) {
+                    parent.replies!.push(comment);
+                }
+            }
+        });
+        
         topLevelComments.forEach(comment => {
           comment.reply_count = comment.replies?.length || 0;
         });
 
         return topLevelComments;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -122,19 +118,20 @@ export const commentsService = {
   async createComment(comment: CommentInsert): Promise<CommentWithUser> {
     const requestKey = `createComment_${Date.now()}`;
     
-    const queryPromise = supabase
-      .from('comments')
-      .insert([comment])
-      .select(`
-        *,
-        users!comments_user_id_fkey (
-          username,
-          display_name,
-          profile_image_url
-        )
-      `)
-      .single()
-      .then(({ data, error }) => {
+    const queryPromise = (async () => {
+        const { data, error } = await supabase
+            .from('comments')
+            .insert([comment])
+            .select(`
+                *,
+                users!comments_user_id_fkey (
+                username,
+                display_name,
+                profile_image_url
+                )
+            `)
+            .single();
+
         if (error) throw error;
         
         const result = data as CommentWithUser;
@@ -142,7 +139,7 @@ export const commentsService = {
         result.reply_count = 0;
         
         return result;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -150,13 +147,14 @@ export const commentsService = {
   async deleteComment(id: string): Promise<void> {
     const requestKey = `deleteComment_${id}`;
     
-    const queryPromise = supabase
-      .from('comments')
-      .delete()
-      .eq('id', id)
-      .then(({ error }) => {
+    const queryPromise = (async () => {
+        const { error } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', id);
+
         if (error) throw error;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -164,14 +162,15 @@ export const commentsService = {
   async getCommentCount(ratingId: string): Promise<number> {
     const requestKey = `getCommentCount_${ratingId}`;
     
-    const queryPromise = supabase
-      .from('comments')
-      .select('*', { count: 'exact', head: true })
-      .eq('rating_id', ratingId)
-      .then(({ count, error }) => {
+    const queryPromise = (async () => {
+        const { count, error } = await supabase
+            .from('comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('rating_id', ratingId);
+
         if (error) throw error;
         return count || 0;
-      });
+    })();
 
     return executeWithTimeout(queryPromise, requestKey);
   },
@@ -191,3 +190,4 @@ export const commentsService = {
 };
 
 export default commentsService;
+]]>
