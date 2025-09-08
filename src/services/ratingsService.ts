@@ -1,6 +1,6 @@
 <![CDATA[
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import { type Database } from "@/integrations/supabase/types";
 
 type Rating = Database['public']['Tables']['ratings']['Row'];
 type RatingInsert = Database['public']['Tables']['ratings']['Insert'];
@@ -22,254 +22,145 @@ export interface RatingWithDetails extends Rating {
   } | null;
 }
 
-// Connection management - track active requests
-const activeRequests = new Map<string, AbortController>();
-
-// Helper function to create timeout promise with proper cleanup
-const createTimeoutPromise = (timeoutMs: number): Promise<never> => {
-  return new Promise((_, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error('Request timeout - please check your connection'));
-    }, timeoutMs);
-    
-    // Store timeout ID for potential cleanup
-    return timeoutId;
-  });
-};
-
-// Helper function to execute query with timeout and cancellation
-const executeWithTimeout = async <T>(
-  queryPromise: Promise<T>,
-  requestKey: string,
-  timeoutMs: number = 8000
-): Promise<T> => {
-  // Cancel any existing request with the same key
-  if (activeRequests.has(requestKey)) {
-    activeRequests.get(requestKey)?.abort();
-  }
-
-  // Create new abort controller for this request
-  const abortController = new AbortController();
-  activeRequests.set(requestKey, abortController);
-
-  try {
-    const timeoutPromise = createTimeoutPromise(timeoutMs);
-    const result = await Promise.race([queryPromise, timeoutPromise]);
-    
-    // Clean up successful request
-    activeRequests.delete(requestKey);
-    return result;
-  } catch (error) {
-    // Clean up failed request
-    activeRequests.delete(requestKey);
-    
-    // Don't throw if request was aborted (component unmounted)
-    if (abortController.signal.aborted) {
-      throw new Error('Request cancelled');
-    }
-    
-    throw error;
-  }
-};
-
 export const ratingsService = {
   async getRatings(limit = 20): Promise<RatingWithDetails[]> {
-    const requestKey = `getRatings_${limit}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .select(`
-                *,
-                users!fk_ratings_user_id (
-                username,
-                display_name,
-                profile_image_url
-                ),
-                coffee_beans (
-                name,
-                brand,
-                origin,
-                roast_level,
-                variety,
-                image_url
-                )
-            `)
-            .order('created_at', { ascending: false })
-            .limit(limit);
+    const { data, error } = await supabase
+        .from('ratings')
+        .select(`
+            *,
+            users!fk_ratings_user_id (
+            username,
+            display_name,
+            profile_image_url
+            ),
+            coffee_beans (
+            name,
+            brand,
+            origin,
+            roast_level,
+            variety,
+            image_url
+            )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-        if (error) throw error;
-        return data as RatingWithDetails[];
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) throw error;
+    return data as RatingWithDetails[];
   },
 
   async getRatingsByUser(userId: string): Promise<RatingWithDetails[]> {
-    const requestKey = `getRatingsByUser_${userId}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .select(`
-                *,
-                users!fk_ratings_user_id (
-                username,
-                display_name,
-                profile_image_url
-                ),
-                coffee_beans (
-                name,
-                brand,
-                origin,
-                roast_level,
-                variety,
-                image_url
-                )
-            `)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('ratings')
+        .select(`
+            *,
+            users!fk_ratings_user_id (
+            username,
+            display_name,
+            profile_image_url
+            ),
+            coffee_beans (
+            name,
+            brand,
+            origin,
+            roast_level,
+            variety,
+            image_url
+            )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return data as RatingWithDetails[];
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) throw error;
+    return data as RatingWithDetails[];
   },
 
   async getRatingById(id: string): Promise<RatingWithDetails | null> {
-    const requestKey = `getRatingById_${id}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .select(`
-                *,
-                users!fk_ratings_user_id (
-                username,
-                display_name,
-                profile_image_url
-                ),
-                coffee_beans (
-                name,
-                brand,
-                origin,
-                roast_level,
-                variety,
-                image_url
-                )
-            `)
-            .eq('id', id)
-            .maybeSingle();
+    const { data, error } = await supabase
+        .from('ratings')
+        .select(`
+            *,
+            users!fk_ratings_user_id (
+            username,
+            display_name,
+            profile_image_url
+            ),
+            coffee_beans (
+            name,
+            brand,
+            origin,
+            roast_level,
+            variety,
+            image_url
+            )
+        `)
+        .eq('id', id)
+        .maybeSingle();
 
-        if (error) {
-            console.error('Error fetching rating by ID:', error);
-            throw error;
-        }
-        return data as RatingWithDetails | null;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) {
+        console.error('Error fetching rating by ID:', error);
+        throw error;
+    }
+    return data as RatingWithDetails | null;
   },
 
   async createRating(rating: RatingInsert): Promise<Rating> {
-    const requestKey = `createRating_${Date.now()}`;
-    
-    console.log('Creating rating with data:', rating);
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .insert([rating])
-            .select()
-            .single();
+    const { data, error } = await supabase
+        .from('ratings')
+        .insert([rating])
+        .select()
+        .single();
 
-        if (error) {
-            console.error('Rating creation error:', error);
-            throw error;
-        }
-        
-        console.log('Rating created successfully:', data);
-        return data;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) {
+        console.error('Rating creation error:', error);
+        throw error;
+    }
+    return data;
   },
 
   async updateRating(id: string, updates: RatingUpdate): Promise<Rating> {
-    const requestKey = `updateRating_${id}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
-        if (error) throw error;
-        return data;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    const { data, error } = await supabase
+        .from('ratings')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
   },
 
   async deleteRating(id: string): Promise<void> {
-    const requestKey = `deleteRating_${id}`;
-    
-    const queryPromise = (async () => {
-        const { error } = await supabase
-            .from('ratings')
-            .delete()
-            .eq('id', id);
-        if (error) throw error;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    const { error } = await supabase
+        .from('ratings')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
   },
 
   async getRatingsByBean(beanId: string): Promise<RatingWithDetails[]> {
-    const requestKey = `getRatingsByBean_${beanId}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('ratings')
-            .select(`
-                *,
-                users!fk_ratings_user_id (
-                username,
-                display_name,
-                profile_image_url
-                ),
-                coffee_beans (
-                name,
-                brand,
-                origin,
-                roast_level,
-                variety,
-                image_url
-                )
-            `)
-            .eq('coffee_bean_id', beanId)
-            .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('ratings')
+        .select(`
+            *,
+            users!fk_ratings_user_id (
+            username,
+            display_name,
+            profile_image_url
+            ),
+            coffee_beans (
+            name,
+            brand,
+            origin,
+            roast_level,
+            variety,
+            image_url
+            )
+        `)
+        .eq('coffee_bean_id', beanId)
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return data as RatingWithDetails[];
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
-  },
-
-  // Cleanup function to cancel all pending requests
-  cancelAllRequests(): void {
-    activeRequests.forEach((controller) => {
-      controller.abort();
-    });
-    activeRequests.clear();
-  },
-
-  // Get active request count for debugging
-  getActiveRequestCount(): number {
-    return activeRequests.size;
+    if (error) throw error;
+    return data as RatingWithDetails[];
   }
 };
 

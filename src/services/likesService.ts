@@ -1,135 +1,49 @@
 <![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 
-// Connection management - track active requests
-const activeRequests = new Map<string, AbortController>();
-
-// Helper function to create timeout promise with proper cleanup
-const createTimeoutPromise = (timeoutMs: number): Promise<never> => {
-  return new Promise((_, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error('Request timeout - please check your connection'));
-    }, timeoutMs);
-    
-    return timeoutId;
-  });
-};
-
-// Helper function to execute query with timeout and cancellation
-const executeWithTimeout = async <T>(
-  queryPromise: Promise<T>,
-  requestKey: string,
-  timeoutMs: number = 5000
-): Promise<T> => {
-  // Cancel any existing request with the same key
-  if (activeRequests.has(requestKey)) {
-    activeRequests.get(requestKey)?.abort();
-  }
-
-  // Create new abort controller for this request
-  const abortController = new AbortController();
-  activeRequests.set(requestKey, abortController);
-
-  try {
-    const timeoutPromise = createTimeoutPromise(timeoutMs);
-    const result = await Promise.race([queryPromise, timeoutPromise]);
-    
-    // Clean up successful request
-    activeRequests.delete(requestKey);
-    return result;
-  } catch (error) {
-    // Clean up failed request
-    activeRequests.delete(requestKey);
-    
-    // Don't throw if request was aborted (component unmounted)
-    if (abortController.signal.aborted) {
-      throw new Error('Request cancelled');
-    }
-    
-    throw error;
-  }
-};
-
 export const likesService = {
   async getLikesByRating(ratingId: string): Promise<{ likes: any[], count: number }> {
-    const requestKey = `getLikesByRating_${ratingId}`;
-    
-    const queryPromise = (async () => {
-        const { data, error, count } = await supabase
-            .from('likes')
-            .select('*', { count: 'exact' })
-            .eq('rating_id', ratingId);
+    const { data, error, count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact' })
+        .eq('rating_id', ratingId);
 
-        if (error) throw error;
-        return { likes: data, count: count ?? 0 };
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) throw error;
+    return { likes: data || [], count: count ?? 0 };
   },
 
   async hasUserLikedRating(ratingId: string, userId: string): Promise<boolean> {
     if (!userId) return false;
     
-    const requestKey = `hasUserLikedRating_${ratingId}_${userId}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('likes')
-            .select('id')
-            .eq('rating_id', ratingId)
-            .eq('user_id', userId);
+    const { data, error } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('rating_id', ratingId)
+        .eq('user_id', userId);
 
-        if (error) throw error;
-        return data && data.length > 0;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) throw error;
+    return data && data.length > 0;
   },
 
   async likeRating(ratingId: string, userId: string): Promise<any> {
-    const requestKey = `likeRating_${ratingId}_${userId}`;
-    
-    const queryPromise = (async () => {
-        const { data, error } = await supabase
-            .from('likes')
-            .insert([{ rating_id: ratingId, user_id: userId }])
-            .select()
-            .single();
+    const { data, error } = await supabase
+        .from('likes')
+        .insert([{ rating_id: ratingId, user_id: userId }])
+        .select()
+        .single();
 
-        if (error) throw error;
-        return data;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
+    if (error) throw error;
+    return data;
   },
 
   async unlikeRating(ratingId: string, userId: string): Promise<void> {
-    const requestKey = `unlikeRating_${ratingId}_${userId}`;
+    const { error } = await supabase
+        .from('likes')
+        .delete()
+        .eq('rating_id', ratingId)
+        .eq('user_id', userId);
     
-    const queryPromise = (async () => {
-        const { error } = await supabase
-            .from('likes')
-            .delete()
-            .eq('rating_id', ratingId)
-            .eq('user_id', userId);
-        
-        if (error) throw error;
-    })();
-
-    return executeWithTimeout(queryPromise, requestKey);
-  },
-
-  // Cleanup function to cancel all pending requests
-  cancelAllRequests(): void {
-    activeRequests.forEach((controller) => {
-      controller.abort();
-    });
-    activeRequests.clear();
-  },
-
-  // Get active request count for debugging
-  getActiveRequestCount(): number {
-    return activeRequests.size;
+    if (error) throw error;
   }
 };
 ]]>
