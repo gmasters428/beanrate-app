@@ -1,4 +1,3 @@
-<![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 
 export const likesService = {
@@ -46,4 +45,3 @@ export const likesService = {
     if (error) throw error;
   }
 };
-]]>

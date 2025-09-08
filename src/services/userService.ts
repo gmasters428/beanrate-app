@@ -1,4 +1,3 @@
-<![CDATA[
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/types";
 import { type UserProfile, type FriendshipStatus } from "@/types";
@@ -89,8 +88,8 @@ export const userService = {
     const { data, error } = await supabase
         .from("friendships")
         .select("*")
-        .or(`(user_one_id.eq.${currentUserId},user_two_id.eq.${profileUserId}),(user_one_id.eq.${profileUserId},user_two_id.eq.${currentUserId})`)
-        .maybeSingle(); // Use maybeSingle to handle zero rows gracefully
+        .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${profileUserId}),and(user_one_id.eq.${profileUserId},user_two_id.eq.${currentUserId})`)
+        .maybeSingle();
     
     if (error) {
         console.error("Error fetching friendship status:", error);
@@ -197,4 +196,3 @@ export const userService = {
 };
 
 export default userService;
-]]>
