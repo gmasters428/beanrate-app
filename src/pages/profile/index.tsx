@@ -116,12 +116,6 @@ export default function ProfilePage() {
                 </div>
               </div>
               {user?.profile?.bio && <p className="mt-2 text-gray-700 text-center">{user.profile.bio}</p>}
-              {user.preferences?.region && <p className="mt-1 text-sm text-gray-500 flex items-center justify-center gap-1"><MapPin className="h-3 w-3" />{user.preferences.region}</p>}
-              {user.preferences?.coffeeTypes && (
-                <div className="mt-2 flex flex-wrap justify-center gap-1">
-                  {user.preferences.coffeeTypes.map((type) => (<span key={type} className="px-2 py-1 bg-brown-100 text-brown-700 text-xs rounded-full">{type}</span>))}
-                </div>
-              )}
               <div className="mt-4 flex justify-center space-x-8">
                 <Link href="/profile/friends" className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors">
                   <div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div>

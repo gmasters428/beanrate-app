@@ -185,7 +185,19 @@ export const authService = {
     }
   },
 
-  async getCurrentUser(): Promise<AuthUser | null> {
+  async getCurrentUser(): Promise<{
+    id: string;
+    email: string;
+    profile: {
+      id: string;
+      username: string;
+      display_name: string;
+      bio: string;
+      profile_image_url: string;
+      created_at: string;
+      updated_at: string;
+    };
+  } | null> {
     try {
       const { data: { user }, error: userError } = await withTimeout(supabase.auth.getUser(), 10000);
       
@@ -201,39 +213,20 @@ export const authService = {
 
       if (profileError) {
         console.warn("Could not fetch user profile:", profileError.message);
+        return null;
       }
-
-      const { data: preferences, error: preferencesError } = await withTimeout(
-        supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
-        10000
-      );
-
-      if (preferencesError) {
-        console.warn("Could not fetch user preferences:", preferencesError.message);
-      }
-
-      const [followingResult, followersResult] = await Promise.all([
-        withTimeout(supabase.from('follows').select('following_id').eq('follower_id', user.id), 10000),
-        withTimeout(supabase.from('follows').select('follower_id').eq('following_id', user.id), 10000)
-      ]);
-
-      if (followingResult.error) console.warn("Could not fetch following list:", followingResult.error.message);
-      if (followersResult.error) console.warn("Could not fetch followers list:", followersResult.error.message);
 
       return {
         id: user.id,
-        username: profile?.username || user.email?.split('@')[0] || 'user',
         email: user.email || '',
-        name: profile?.display_name || profile?.username || user.email?.split('@')[0] || 'User',
-        profileImage: profile?.profile_image_url || null,
-        bio: profile?.bio || null,
-        following: followingResult.data?.map((f: any) => f.following_id) || [],
-        followers: followersResult.data?.map((f: any) => f.follower_id) || [],
-        preferences: {
-          coffeeTypes: preferences?.coffee_types || [],
-          region: preferences?.region || null,
-          firstName: preferences?.first_name || null,
-          lastName: preferences?.last_name || null,
+        profile: {
+          id: profile.id,
+          username: profile.username || user.email?.split('@')[0] || 'user',
+          display_name: profile.display_name || profile.username || user.email?.split('@')[0] || 'User',
+          bio: profile.bio || '',
+          profile_image_url: profile.profile_image_url || '',
+          created_at: profile.created_at || new Date().toISOString(),
+          updated_at: profile.updated_at || new Date().toISOString(),
         }
       };
     } catch (error) {

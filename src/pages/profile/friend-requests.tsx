@@ -14,17 +14,6 @@ export default function FriendRequestsPage() {
   const [pendingRequests, setPendingRequests] = useState<UserWithProfile[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    if (user) {
-      loadPendingRequests();
-    }
-  }, [user, loading, router]);
-
   const loadPendingRequests = async () => {
     try {
       setLoadingRequests(true);
@@ -36,6 +25,17 @@ export default function FriendRequestsPage() {
       setLoadingRequests(false);
     }
   };
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (user) {
+      loadPendingRequests();
+    }
+  }, [user, loading, router]);
 
   const handleAcceptRequest = async (requesterId: string) => {
     try {
