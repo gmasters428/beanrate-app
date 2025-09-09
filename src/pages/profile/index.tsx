@@ -29,7 +29,7 @@ export default function ProfilePage() {
     try {
       const [friendsCountResult, pendingRequests, ratings] = await Promise.all([
         userService.getFriendsCount(user.id),
-        userService.getPendingRequests(),
+        userService.getFriendRequests(user.id),
         ratingsService.getRatingsByUser(user.id),
       ]);
       setFriendsCount(friendsCountResult);

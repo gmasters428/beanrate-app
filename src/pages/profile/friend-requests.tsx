@@ -28,7 +28,7 @@ export default function FriendRequestsPage() {
   const loadPendingRequests = async () => {
     try {
       setLoadingRequests(true);
-      const requests = await userService.getPendingRequests();
+      const requests = await userService.getFriendRequests(user.id);
       setPendingRequests(requests);
     } catch (error) {
       console.error("Error loading pending requests:", error);
@@ -39,7 +39,7 @@ export default function FriendRequestsPage() {
 
   const handleAcceptRequest = async (requesterId: string) => {
     try {
-      await userService.acceptFriendRequest(requesterId);
+      await userService.acceptFriendRequest(requesterId, user.id);
       setPendingRequests(pendingRequests.filter(request => request.id !== requesterId));
     } catch (error) {
       console.error("Error accepting friend request:", error);

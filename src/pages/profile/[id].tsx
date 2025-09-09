@@ -30,7 +30,7 @@ export default function UserProfilePage() {
       setLoading(true);
       const [profile, friendship, friendsCountResult, ratings] = await Promise.all([
         userService.getUserProfile(userId),
-        currentUser ? userService.getFriendshipStatus(userId) : Promise.resolve({ status: 'none' as const }),
+        currentUser ? userService.getFriendshipStatus(currentUser.id, userId) : Promise.resolve({ status: 'none' as const }),
         userService.getFriendsCount(userId),
         ratingsService.getRatingsByUser(userId),
       ]);
@@ -77,25 +77,25 @@ export default function UserProfilePage() {
   };
 
   const handleSendFriendRequest = () => handleFriendAction(
-    () => userService.sendFriendRequest(profileUser!.id), 
+    () => userService.sendFriendRequest(currentUser!.id, profileUser!.id), 
     'pending_sent', 
     'Friend request sent.'
   );
   
   const handleAcceptFriendRequest = () => handleFriendAction(
-    () => userService.acceptFriendRequest(profileUser!.id), 
+    () => userService.acceptFriendRequest(friendshipStatus.friendshipId!, currentUser!.id), 
     'accepted', 
     'Friend request accepted.'
   );
 
   const handleRejectFriendRequest = () => handleFriendAction(
-    () => userService.rejectFriendRequest(profileUser!.id), 
+    () => userService.rejectFriendRequest(friendshipStatus.friendshipId!), 
     'none', 
     'Friend request declined.'
   );
 
   const handleRemoveFriend = () => handleFriendAction(
-    () => userService.removeFriend(profileUser!.id), 
+    () => userService.removeFriend(friendshipStatus.friendshipId!), 
     'none', 
     'Friend removed.'
   );
