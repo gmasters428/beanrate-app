@@ -49,6 +49,9 @@ export default function ProfileAccountPage() {
     coffeeTypes: [] as string[]
   });
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [privacy, setPrivacy] = useState("public");
+  const [theme, setTheme] = useState("light");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -59,12 +62,21 @@ export default function ProfileAccountPage() {
     }
 
     if (user) {
+      // Use mock preferences for now since preferences aren't in the user object
+      const mockPreferences = { 
+        firstName: "", 
+        region: "", 
+        coffeeTypes: [],
+        notifications: true, 
+        privacy: "public", 
+        theme: "light" 
+      };
+      
       setFormData({
-        firstName: user.preferences?.firstName || "",
-        region: user.preferences?.region || "",
-        coffeeTypes: user.preferences?.coffeeTypes || []
+        firstName: mockPreferences.firstName || "",
+        region: mockPreferences.region || "",
+        coffeeTypes: mockPreferences.coffeeTypes || []
       });
-      const mockPreferences = { notifications: true, privacy: "public", theme: "light" };
       setEmailNotifications(mockPreferences.notifications || false);
       setPrivacy(mockPreferences.privacy || "public");
       setTheme(mockPreferences.theme || "light");
@@ -153,9 +165,7 @@ export default function ProfileAccountPage() {
     return null;
   }
 
-  const displayName = user.preferences?.firstName 
-    ? user.preferences.firstName
-    : user.name;
+  const displayName = user?.profile?.display_name || user?.profile?.username || "User";
 
   return (
     <Layout title="BeanRate - Account Settings">
@@ -183,7 +193,7 @@ export default function ProfileAccountPage() {
               />
               <div className="text-center">
                 <h3 className="font-medium text-gray-900">{displayName}</h3>
-                <p className="text-sm text-gray-500">@{user.username}</p>
+                <p className="text-sm text-gray-500">@{user.profile.username}</p>
               </div>
             </div>
           </CardContent>
