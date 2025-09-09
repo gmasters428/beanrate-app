@@ -46,7 +46,7 @@ export default function ProfilePage() {
       router.push("/auth/login");
     }
     if (user) {
-      setProfileImageUrl(user.profileImage || null);
+      setProfileImageUrl(user.profile?.profile_image_url || null);
       loadProfileData();
     }
   }, [user, loading, router, loadProfileData]);
@@ -84,9 +84,7 @@ export default function ProfilePage() {
     );
   }
 
-  const displayName = user.preferences?.firstName && user.preferences?.lastName
-    ? `${user.preferences.firstName} ${user.preferences.lastName}`
-    : user.name;
+  const displayName = user?.profile?.display_name || user?.profile?.username || "User";
 
   return (
     <Layout title="My Profile">
