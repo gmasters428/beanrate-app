@@ -221,4 +221,42 @@ export const userService = {
         throw error;
     }
   },
+
+  async getFriendsCount(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('friendships')
+      .select('*', { count: 'exact', head: true })
+      .or(`and(user_one_id.eq.${userId},status.eq.accepted),and(user_two_id.eq.${userId},status.eq.accepted)`);
+    if (error) throw error;
+    return count ?? 0;
+  },
+
+  async getPendingRequests(userId: string): Promise<any[]> {
+    return this.getFriendRequests(userId);
+  },
+
+  async rejectFriendRequest(friendshipId: string): Promise<any> {
+    const { data, error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", friendshipId);
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePreferences(userId: string, preferences: any): Promise<any> {
+    // For now, we'll store preferences in a separate table or as JSON in user profile
+    // This is a placeholder implementation
+    const { data, error } = await supabase
+      .from("users")
+      .update({ 
+        // Store preferences as metadata for now
+        bio: JSON.stringify(preferences) 
+      })
+      .eq("id", userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
 };

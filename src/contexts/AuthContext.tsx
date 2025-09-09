@@ -1,10 +1,16 @@
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from "react";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { authService } from "@/services/authService";
 import { userService } from "@/services/userService";
 import { type UserProfile } from "@/types";
+
+type AuthUser = {
+  id: string;
+  email: string;
+  profile: UserProfile;
+} | null;
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -128,13 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!mountedRef.current) return;
 
     try {
-      // Cancel all service requests before signing out
-      try {
-        userService.cancelAllRequests();
-      } catch (error) {
-        console.warn("Error cancelling requests during sign out:", error);
-      }
-
       await authService.signOut();
       safeSetState(setUser, null);
     } catch (error) {
