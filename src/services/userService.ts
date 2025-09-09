@@ -68,6 +68,32 @@ export const userService = {
     return publicUrl;
   },
 
+  async removeProfileImage(userId: string): Promise<void> {
+    // Get the current user profile to find the image URL
+    const userProfile = await userService.getUserProfile(userId);
+    
+    if (userProfile?.profile_image_url) {
+      // Extract the file path from the URL
+      const url = userProfile.profile_image_url;
+      const urlParts = url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `profiles/${fileName}`;
+      
+      // Remove the file from storage
+      const { error: storageError } = await supabase.storage
+        .from("images")
+        .remove([filePath]);
+
+      if (storageError) {
+        console.warn('Failed to delete image from storage:', storageError);
+        // Continue with profile update even if storage deletion fails
+      }
+    }
+    
+    // Update the user profile to remove the image URL
+    await userService.updateUserProfile(userId, { profile_image_url: null });
+  },
+
   async searchUsers(query: string, currentUserId: string): Promise<UserProfile[]> {
     if (!query) return [];
     const { data, error } = await supabase
