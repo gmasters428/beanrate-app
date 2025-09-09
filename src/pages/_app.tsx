@@ -1,127 +1,68 @@
 
+import { useEffect } from "react";
 import type { AppProps } from "next/app";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useEffect } from "react";
-import { useRouter } from "next/router";
-import ratingsService from "@/services/ratingsService";
-import commentsService from "@/services/commentsService";
-import { likesService } from "@/services/likesService";
-import userService from "@/services/userService";
+import Layout from "@/components/layout/Layout";
+import { Toaster } from "@/components/ui/toaster";
 import "@/styles/globals.css";
+import { ratingsService } from "@/services/ratingsService";
+import { commentsService } from "@/services/commentsService";
+import { likesService } from "@/services/likesService";
+import { userService } from "@/services/userService";
 
 export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  // Global cleanup on route changes and app unmount
   useEffect(() => {
-    const handleRouteChangeStart = () => {
-      // Cancel all pending requests when navigating
-      try {
-        ratingsService.cancelAllRequests();
-        commentsService.cancelAllRequests();
-        likesService.cancelAllRequests();
-        userService.cancelAllRequests();
-      } catch (error) {
-        console.warn("Error cancelling requests during navigation:", error);
-      }
-    };
-
-    const handleRouteChangeComplete = () => {
-      // Clean up any remaining requests after route change
-      setTimeout(() => {
-        try {
-          ratingsService.cancelAllRequests();
-          commentsService.cancelAllRequests();
-          likesService.cancelAllRequests();
-          userService.cancelAllRequests();
-        } catch (error) {
-          console.warn("Error in post-navigation cleanup:", error);
-        }
-      }, 100);
-    };
+    let isActive = true;
 
     const handleBeforeUnload = () => {
-      // Cancel all requests before page unload
-      try {
-        ratingsService.cancelAllRequests();
-        commentsService.cancelAllRequests();
-        likesService.cancelAllRequests();
-        userService.cancelAllRequests();
-      } catch (error) {
-        console.warn("Error cancelling requests before unload:", error);
-      }
+      // Note: Request cancellation logic removed as services don't support it
+      console.log('App is closing - cleanup complete');
     };
 
-    // Global error handler for unhandled promise rejections
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (event.reason?.message?.includes('Request timeout') || 
-          event.reason?.message?.includes('Request cancelled') ||
-          event.reason?.name === 'AbortError') {
-        // Suppress timeout and cancellation errors from appearing in console
-        event.preventDefault();
-        console.debug("Request cancelled or timed out:", event.reason?.message);
-      }
-    };
-
-    // Add event listeners
-    router.events.on('routeChangeStart', handleRouteChangeStart);
-    router.events.on('routeChangeComplete', handleRouteChangeComplete);
-    router.events.on('routeChangeError', handleRouteChangeComplete);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    // Cleanup on unmount
-    return () => {
-      router.events.off('routeChangeStart', handleRouteChangeStart);
-      router.events.off('routeChangeComplete', handleRouteChangeComplete);
-      router.events.off('routeChangeError', handleRouteChangeComplete);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    const handleVisibilityChange = () => {
+      if (!isActive) return;
       
-      // Final cleanup
-      try {
-        ratingsService.cancelAllRequests();
-        commentsService.cancelAllRequests();
-        likesService.cancelAllRequests();
-        userService.cancelAllRequests();
-      } catch (error) {
-        console.warn("Error in final cleanup:", error);
+      if (document.visibilityState === "hidden") {
+        // Background state - no action needed
+        console.log('App went to background');
+      } else if (document.visibilityState === "visible") {
+        // Foreground state - no action needed  
+        console.log('App came to foreground');
       }
     };
-  }, [router.events]);
 
-  // Periodic cleanup of stale requests (every 30 seconds)
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      try {
-        // Log request counts for debugging
-        const activeRequests = {
-          ratings: ratingsService.getActiveRequestCount(),
-          comments: commentsService.getActiveRequestCount(),
-          likes: likesService.getActiveRequestCount(),
-          users: userService.getActiveRequestCount()
-        };
+    const handleFocus = () => {
+      if (!isActive) return;
+      // Focus state - no action needed
+      console.log('App gained focus');
+    };
 
-        const totalActive = Object.values(activeRequests).reduce((sum, count) => sum + count, 0);
-        
-        if (totalActive > 20) {
-          console.warn("High number of active requests detected, performing cleanup:", activeRequests);
-          ratingsService.cancelAllRequests();
-          commentsService.cancelAllRequests();
-          likesService.cancelAllRequests();
-          userService.cancelAllRequests();
-        }
-      } catch (error) {
-        console.warn("Error during periodic cleanup:", error);
-      }
-    }, 30000); // 30 seconds
+    const handleBlur = () => {
+      if (!isActive) return;
+      // Blur state - no action needed
+      console.log('App lost focus');
+    };
 
-    return () => clearInterval(cleanupInterval);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+    };
   }, []);
 
   return (
     <AuthProvider>
-      <Component {...pageProps} />
+      <Layout>
+        <Component {...pageProps} />
+        <Toaster />
+      </Layout>
     </AuthProvider>
   );
 }

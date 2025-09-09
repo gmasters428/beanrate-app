@@ -1,16 +1,10 @@
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-  useRef,
-  useCallback,
-} from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import authService, { AuthUser } from "@/services/authService";
-import userService from "@/services/userService";
+import { authService } from "@/services/authService";
+import { userService } from "@/services/userService";
+import { type UserProfile } from "@/types";
 
 interface AuthContextType {
   user: AuthUser | null;
