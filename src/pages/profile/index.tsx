@@ -7,7 +7,7 @@ import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
-import { Settings, LogOut, MapPin, Users } from "lucide-react";
+import { Settings, LogOut, MapPin, Users, UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
@@ -107,7 +107,10 @@ export default function ProfilePage() {
                 <div className="flex-1"></div>
                 <div className="flex-1 text-center">
                   <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-                  <p className="text-gray-600">@{user.username}</p>
+                  <h3 className="font-semibold text-gray-900 mb-2">@{user.profile.username}</h3>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>{user.profile?.bio || "No bio yet"}</p>
+                  </div>
                 </div>
                 <div className="flex-1 flex justify-end space-x-2">
                   <Link href="/profile/settings"><button className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><Settings className="h-5 w-5" /></button></Link>
