@@ -296,8 +296,8 @@ export default function SMTPTestPage() {
                 <h4 className="font-semibold text-gray-900 mb-2">Current User Info:</h4>
                 <div className="text-sm text-gray-700 space-y-1">
                   <p><strong>Email:</strong> {user.email}</p>
-                  <p><strong>Username:</strong> {user.username}</p>
-                  <p><strong>Name:</strong> {user.name}</p>
+                  <p><strong>Username:</strong> {user?.profile?.username}</p>
+                  <p><strong>Display Name:</strong> {user?.profile?.display_name}</p>
                 </div>
               </div>
             )}

@@ -64,7 +64,11 @@ export default function ProfileAccountPage() {
         region: user.preferences?.region || "",
         coffeeTypes: user.preferences?.coffeeTypes || []
       });
-      setProfileImageUrl(user.profileImage || null);
+      const mockPreferences = { notifications: true, privacy: "public", theme: "light" };
+      setEmailNotifications(mockPreferences.notifications || false);
+      setPrivacy(mockPreferences.privacy || "public");
+      setTheme(mockPreferences.theme || "light");
+      setProfileImageUrl(user?.profile?.profile_image_url || null);
     }
   }, [user, loading, router]);
 
