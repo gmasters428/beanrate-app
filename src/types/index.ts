@@ -5,33 +5,27 @@ import type { Database } from "@/integrations/supabase/types";
 export type User = Database['public']['Tables']['users']['Row'];
 export type CoffeeBean = Database['public']['Tables']['coffee_beans']['Row'];
 export type Rating = Database['public']['Tables']['ratings']['Row'];
+export type UserPreferences = Database["public"]["Tables"]["user_preferences"]["Row"];
 
-// Extended types with relations for display
-export interface UserProfile {
-  id: string;
-  username: string;
-  display_name: string | null;
-  bio: string | null;
-  profile_image_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 
-export interface RatingWithDetails extends Rating {
-  users: {
-    username: string;
-    display_name: string | null;
-    profile_image_url: string | null;
-  } | null;
-  coffee_beans: {
-    name: string;
-    brand: string;
-    origin: string | null;
-    roast_level: string | null;
-    variety: string | null;
-    image_url: string | null;
-  } | null;
-}
+export type UserWithProfile = UserProfile;
+
+export type FriendshipStatus = {
+  status: "none" | "accepted" | "pending_sent" | "pending_received";
+  friendshipId: string | null;
+};
+
+export type RatingWithDetails = Rating & {
+  users: UserProfile;
+  coffee_beans: CoffeeBean;
+  likes: { count: number };
+  comments: { count: number };
+};
+
+export type CommentWithUser = Comment & {
+  users: UserProfile;
+};
 
 export interface CoffeeBeanWithRatings extends CoffeeBean {
   ratings: Array<{

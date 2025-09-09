@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/types";
-import { type UserProfile, type FriendshipStatus } from "@/types";
+import { type UserProfile, type FriendshipStatus, type UserWithProfile } from "@/types";
+
+export type { UserProfile, FriendshipStatus, UserWithProfile };
 
 export const userService = {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -220,5 +222,3 @@ export const userService = {
     }
   },
 };
-
-export default userService;
