@@ -45,6 +45,9 @@ export default function ProfileSettingsPage() {
     region: "",
     coffeeTypes: [] as string[]
   });
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [privacy, setPrivacy] = useState("public");
+  const [theme, setTheme] = useState("light");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 

@@ -115,7 +115,7 @@ export default function ProfilePage() {
                   <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><LogOut className="h-5 w-5" /></button>
                 </div>
               </div>
-              {user.bio && <p className="mt-2 text-gray-700 text-center">{user.bio}</p>}
+              {user?.profile?.bio && <p className="mt-2 text-gray-700 text-center">{user.profile.bio}</p>}
               {user.preferences?.region && <p className="mt-1 text-sm text-gray-500 flex items-center justify-center gap-1"><MapPin className="h-3 w-3" />{user.preferences.region}</p>}
               {user.preferences?.coffeeTypes && (
                 <div className="mt-2 flex flex-wrap justify-center gap-1">

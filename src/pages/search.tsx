@@ -34,7 +34,7 @@ export default function SearchPage() {
     
     try {
       setUsersLoading(true);
-      const results = await userService.searchUsers(query);
+      const results = await userService.searchUsers(query, user.id);
       const filteredResults = results.filter(result => result.id !== user.id);
       setUserSearchResults(filteredResults);
     } catch (error) {
@@ -91,7 +91,7 @@ export default function SearchPage() {
 
   const handleSendFriendRequest = async (userId: string) => {
     try {
-      await userService.sendFriendRequest(userId);
+      await userService.sendFriendRequest(user.id, userId);
       setUserSearchResults(prev => 
         prev.map(u => 
           u.id === userId 
