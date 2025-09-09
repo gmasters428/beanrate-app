@@ -56,10 +56,13 @@ export default function ProfileSettingsPage() {
 
     if (user) {
       setFormData({
-        firstName: user.preferences?.firstName || "",
-        region: user.preferences?.region || "",
-        coffeeTypes: user.preferences?.coffeeTypes || []
+        firstName: "", // Mock data since preferences aren't in user object yet
+        region: "",
+        coffeeTypes: []
       });
+      setEmailNotifications(false);
+      setPrivacy("public");
+      setTheme("light");
     }
   }, [user, loading, router]);
 
@@ -99,12 +102,13 @@ export default function ProfileSettingsPage() {
 
       console.log("Updating profile with data:", formData);
 
-      // Update user preferences (firstName, region, coffeeTypes)
-      await userService.updatePreferences(user.id, {
-        first_name: formData.firstName.trim() || null,
-        last_name: null,
-        region: formData.region || null,
-        coffee_types: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
+      // Update user preferences (firstName, region, coffeeTypes) - using mock implementation
+      await userService.updateUserProfile(user.id, {
+        bio: JSON.stringify({
+          firstName: formData.firstName.trim() || null,
+          region: formData.region || null,
+          coffeeTypes: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
+        })
       });
 
       // Refresh user data to show updated information

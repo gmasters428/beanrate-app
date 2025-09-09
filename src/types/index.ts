@@ -13,7 +13,7 @@ export type UserWithProfile = UserProfile;
 
 export type FriendshipStatus = {
   status: "none" | "accepted" | "pending_sent" | "pending_received";
-  friendshipId: string | null;
+  friendshipId?: string | null;
 };
 
 export type RatingWithDetails = Rating & {
