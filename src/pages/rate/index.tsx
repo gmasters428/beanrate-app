@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +14,7 @@ import { ratingsService } from "@/services/ratingsService";
 import { Search, Coffee, X, Star, Award, Zap, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import Head from "next/head";
 
 const brewingMethods = [
   "Espresso", "Pour Over", "French Press", "AeroPress", "Chemex", 
@@ -249,7 +248,10 @@ export default function RatePage() {
 
   if (!user) {
     return (
-      <Layout title="BeanRate - Rate a Coffee Bean">
+      <>
+        <Head>
+          <title>BeanRate - Rate a Coffee Bean</title>
+        </Head>
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-md mx-auto">
             <CardContent className="pt-6 text-center">
@@ -263,12 +265,15 @@ export default function RatePage() {
             </CardContent>
           </Card>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout title="BeanRate - Rate a Coffee Bean">
+    <>
+      <Head>
+        <title>BeanRate - Rate a Coffee Bean</title>
+      </Head>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -688,6 +693,6 @@ export default function RatePage() {
           </div>
         )}
       </div>
-    </Layout>
+    </>
   );
 }
