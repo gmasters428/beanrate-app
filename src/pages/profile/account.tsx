@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import Layout from "@/components/layout/Layout";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import DeleteAccountDialog from "@/components/profile/DeleteAccountDialog";
 import { Button } from "@/components/ui/button";
@@ -153,11 +152,9 @@ export default function ProfileAccountPage() {
 
   if (loading) {
     return (
-      <Layout title="BeanRate - Loading...">
-        <div className="max-w-md mx-auto flex justify-center items-center h-64">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      </Layout>
+      <div className="max-w-md mx-auto flex justify-center items-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
     );
   }
 
@@ -168,190 +165,188 @@ export default function ProfileAccountPage() {
   const displayName = user?.profile?.display_name || user?.profile?.username || "User";
 
   return (
-    <Layout title="BeanRate - Account Settings">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center mb-6">
-          <Link href="/profile">
-            <Button variant="ghost" size="sm" className="mr-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold text-gray-900">Account Settings</h1>
-        </div>
+    <div className="max-w-md mx-auto">
+      <div className="flex items-center mb-6">
+        <Link href="/profile">
+          <Button variant="ghost" size="sm" className="mr-2">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Account Settings</h1>
+      </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Profile Picture</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center space-y-4">
-              <ProfileImageUpload
-                userId={user.id}
-                currentImageUrl={profileImageUrl}
-                onImageUpdate={handleImageUpdate}
-                size="lg"
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Profile Picture</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center space-y-4">
+            <ProfileImageUpload
+              userId={user.id}
+              currentImageUrl={profileImageUrl}
+              onImageUpdate={handleImageUpdate}
+              size="lg"
+            />
+            <div className="text-center">
+              <h3 className="font-medium text-gray-900">{displayName}</h3>
+              <p className="text-sm text-gray-500">@{user.profile.username}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Personal Information</CardTitle>
+          <p className="text-sm text-gray-600">All fields are optional. Only fill out what you're comfortable sharing.</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {saveMessage && (
+              <Alert className={saveMessage.includes("successfully") ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                <AlertDescription className={saveMessage.includes("successfully") ? "text-green-700" : "text-red-700"}>
+                  {saveMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="First name"
+                value={formData.firstName}
+                onChange={handleInputChange}
               />
-              <div className="text-center">
-                <h3 className="font-medium text-gray-900">{displayName}</h3>
-                <p className="text-sm text-gray-500">@{user.profile.username}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">Region</Label>
+              <Select value={formData.region} onValueChange={handleRegionChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region} value={region}>
+                      {region}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">We only show general regions to protect your privacy</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Coffee Preferences</Label>
+              <p className="text-xs text-gray-500">Help others discover your coffee taste profile</p>
+              <div className="grid grid-cols-2 gap-2">
+                {coffeeTypes.map((type) => (
+                  <div key={type} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={type}
+                      checked={formData.coffeeTypes.includes(type)}
+                      onCheckedChange={(checked) => 
+                        handleCoffeeTypeChange(type, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={type} className="text-sm">
+                      {type}
+                    </Label>
+                  </div>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Personal Information</CardTitle>
-            <p className="text-sm text-gray-600">All fields are optional. Only fill out what you're comfortable sharing.</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {saveMessage && (
-                <Alert className={saveMessage.includes("successfully") ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={saveMessage.includes("successfully") ? "text-green-700" : "text-red-700"}>
-                    {saveMessage}
-                  </AlertDescription>
-                </Alert>
+            <Button 
+              type="submit" 
+              className="w-full bg-brown-600 hover:bg-brown-700"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Save className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
               )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  placeholder="First name"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
+      {/* Account Security Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Account Security</CardTitle>
+          <p className="text-sm text-gray-600">Manage your email, password, and account settings.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Email Address</p>
+                <p className="text-xs text-gray-600">{user.email}</p>
+              </div>
+              <Link href="/auth/reset-password">
+                <Button variant="outline" size="sm">
+                  Change Email
+                </Button>
+              </Link>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Password</p>
+                <p className="text-xs text-gray-600">Last updated recently</p>
+              </div>
+              <Link href="/auth/reset-password">
+                <Button variant="outline" size="sm">
+                  Change Password
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="mt-6 border-red-200 bg-red-50/30">
+        <CardHeader>
+          <CardTitle className="text-lg text-red-600 flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2" />
+            Danger Zone
+          </CardTitle>
+          <p className="text-sm text-red-600">
+            These actions are permanent and cannot be undone.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-4 bg-white border border-red-200 rounded-lg">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-medium text-gray-900">Delete Account</h4>
+                  <p className="text-sm text-gray-600">
+                    Permanently remove your account and all associated data. This action cannot be undone.
+                  </p>
+                </div>
+                <DeleteAccountDialog
+                  userId={user.id}
+                  userEmail={user.email}
+                  onAccountDeleted={handleAccountDeleted}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
-                <Select value={formData.region} onValueChange={handleRegionChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region} value={region}>
-                        {region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">We only show general regions to protect your privacy</p>
-              </div>
-
-              <div className="space-y-3">
-                <Label>Coffee Preferences</Label>
-                <p className="text-xs text-gray-500">Help others discover your coffee taste profile</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {coffeeTypes.map((type) => (
-                    <div key={type} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={type}
-                        checked={formData.coffeeTypes.includes(type)}
-                        onCheckedChange={(checked) => 
-                          handleCoffeeTypeChange(type, checked as boolean)
-                        }
-                      />
-                      <Label htmlFor={type} className="text-sm">
-                        {type}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-brown-600 hover:bg-brown-700"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Account Security Section */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Account Security</CardTitle>
-            <p className="text-sm text-gray-600">Manage your email, password, and account settings.</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Email Address</p>
-                  <p className="text-xs text-gray-600">{user.email}</p>
-                </div>
-                <Link href="/auth/reset-password">
-                  <Button variant="outline" size="sm">
-                    Change Email
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Password</p>
-                  <p className="text-xs text-gray-600">Last updated recently</p>
-                </div>
-                <Link href="/auth/reset-password">
-                  <Button variant="outline" size="sm">
-                    Change Password
-                  </Button>
-                </Link>
-              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Danger Zone */}
-        <Card className="mt-6 border-red-200 bg-red-50/30">
-          <CardHeader>
-            <CardTitle className="text-lg text-red-600 flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              Danger Zone
-            </CardTitle>
-            <p className="text-sm text-red-600">
-              These actions are permanent and cannot be undone.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-white border border-red-200 rounded-lg">
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Delete Account</h4>
-                    <p className="text-sm text-gray-600">
-                      Permanently remove your account and all associated data. This action cannot be undone.
-                    </p>
-                  </div>
-                  <DeleteAccountDialog
-                    userId={user.id}
-                    userEmail={user.email}
-                    onAccountDeleted={handleAccountDeleted}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </Layout>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -113,30 +113,55 @@ export const userService = {
         return { status: "none", friendshipId: null };
     }
     
-    const { data, error } = await supabase
+    // ✅ SAFE: Use two separate queries instead of unsafe string interpolation
+    const { data: friendship1, error: error1 } = await supabase
         .from("friendships")
         .select("*")
-        .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${profileUserId}),and(user_one_id.eq.${profileUserId},user_two_id.eq.${currentUserId})`)
+        .eq("user_one_id", currentUserId)
+        .eq("user_two_id", profileUserId)
         .maybeSingle();
     
-    if (error) {
-        console.error("Error fetching friendship status:", error);
-        throw error;
+    if (error1) {
+        console.error("Error fetching friendship status (query 1):", error1);
+        throw error1;
     }
 
-    if (!data) {
-        return { status: "none", friendshipId: null };
+    if (friendship1) {
+        if (friendship1.status === "accepted") {
+            return { status: "accepted", friendshipId: friendship1.id };
+        }
+        if (friendship1.status === "pending") {
+            if (friendship1.action_user_id === currentUserId) {
+                return { status: "pending_sent", friendshipId: friendship1.id };
+            } else {
+                return { status: "pending_received", friendshipId: friendship1.id };
+            }
+        }
     }
 
-    if (data.status === "accepted") {
-        return { status: "accepted", friendshipId: data.id };
+    // Check the reverse relationship
+    const { data: friendship2, error: error2 } = await supabase
+        .from("friendships")
+        .select("*")
+        .eq("user_one_id", profileUserId)
+        .eq("user_two_id", currentUserId)
+        .maybeSingle();
+    
+    if (error2) {
+        console.error("Error fetching friendship status (query 2):", error2);
+        throw error2;
     }
 
-    if (data.status === "pending") {
-        if (data.action_user_id === currentUserId) {
-            return { status: "pending_sent", friendshipId: data.id };
-        } else {
-            return { status: "pending_received", friendshipId: data.id };
+    if (friendship2) {
+        if (friendship2.status === "accepted") {
+            return { status: "accepted", friendshipId: friendship2.id };
+        }
+        if (friendship2.status === "pending") {
+            if (friendship2.action_user_id === currentUserId) {
+                return { status: "pending_sent", friendshipId: friendship2.id };
+            } else {
+                return { status: "pending_received", friendshipId: friendship2.id };
+            }
         }
     }
     
@@ -223,12 +248,24 @@ export const userService = {
   },
 
   async getFriendsCount(userId: string): Promise<number> {
-    const { count, error } = await supabase
+    // ✅ SAFE: Use separate queries instead of unsafe string interpolation
+    const { count: count1, error: error1 } = await supabase
       .from('friendships')
       .select('*', { count: 'exact', head: true })
-      .or(`and(user_one_id.eq.${userId},status.eq.accepted),and(user_two_id.eq.${userId},status.eq.accepted)`);
-    if (error) throw error;
-    return count ?? 0;
+      .eq('user_one_id', userId)
+      .eq('status', 'accepted');
+
+    if (error1) throw error1;
+
+    const { count: count2, error: error2 } = await supabase
+      .from('friendships')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_two_id', userId)
+      .eq('status', 'accepted');
+
+    if (error2) throw error2;
+
+    return (count1 ?? 0) + (count2 ?? 0);
   },
 
   async getPendingRequests(userId: string): Promise<any[]> {

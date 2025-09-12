@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -130,11 +129,9 @@ export default function ProfileSettingsPage() {
 
   if (loading) {
     return (
-      <Layout title="BeanRate - Loading...">
-        <div className="max-w-md mx-auto flex justify-center items-center h-64">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      </Layout>
+      <div className="max-w-md mx-auto flex justify-center items-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
     );
   }
 
@@ -143,111 +140,109 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <Layout title="BeanRate - Profile Settings">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center mb-6">
-          <Link href="/profile">
-            <Button variant="ghost" size="sm" className="mr-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold text-gray-900">Profile Settings</h1>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Personal Information</CardTitle>
-            <p className="text-sm text-gray-600">All fields are optional. Only fill out what you're comfortable sharing.</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {saveMessage && (
-                <Alert className={saveMessage.includes("successfully") ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-                  <AlertDescription className={saveMessage.includes("successfully") ? "text-green-700" : "text-red-700"}>
-                    {saveMessage}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  placeholder="First name"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="region">Region</Label>
-                <Select value={formData.region} onValueChange={handleRegionChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map((region) => (
-                      <SelectItem key={region} value={region}>
-                        {region}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">We only show general regions to protect your privacy</p>
-              </div>
-
-              <div className="space-y-3">
-                <Label>Coffee Preferences</Label>
-                <p className="text-xs text-gray-500">Help others discover your coffee taste profile</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {coffeeTypes.map((type) => (
-                    <div key={type} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={type}
-                        checked={formData.coffeeTypes.includes(type)}
-                        onCheckedChange={(checked) => 
-                          handleCoffeeTypeChange(type, checked as boolean)
-                        }
-                      />
-                      <Label htmlFor={type} className="text-sm">
-                        {type}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-brown-600 hover:bg-brown-700"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <>
-                    <Save className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </form>
-            
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <Link href="/profile/account">
-                <Button variant="outline" className="w-full">
-                  Account Settings (Change Email & Password)
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="max-w-md mx-auto">
+      <div className="flex items-center mb-6">
+        <Link href="/profile">
+          <Button variant="ghost" size="sm" className="mr-2">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Profile Settings</h1>
       </div>
-    </Layout>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Personal Information</CardTitle>
+          <p className="text-sm text-gray-600">All fields are optional. Only fill out what you're comfortable sharing.</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {saveMessage && (
+              <Alert className={saveMessage.includes("successfully") ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+                <AlertDescription className={saveMessage.includes("successfully") ? "text-green-700" : "text-red-700"}>
+                  {saveMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="First name"
+                value={formData.firstName}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">Region</Label>
+              <Select value={formData.region} onValueChange={handleRegionChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your region" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map((region) => (
+                    <SelectItem key={region} value={region}>
+                      {region}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">We only show general regions to protect your privacy</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Coffee Preferences</Label>
+              <p className="text-xs text-gray-500">Help others discover your coffee taste profile</p>
+              <div className="grid grid-cols-2 gap-2">
+                {coffeeTypes.map((type) => (
+                  <div key={type} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={type}
+                      checked={formData.coffeeTypes.includes(type)}
+                      onCheckedChange={(checked) => 
+                        handleCoffeeTypeChange(type, checked as boolean)
+                      }
+                    />
+                    <Label htmlFor={type} className="text-sm">
+                      {type}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-brown-600 hover:bg-brown-700"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Save className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </form>
+          
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <Link href="/profile/account">
+              <Button variant="outline" className="w-full">
+                Account Settings (Change Email & Password)
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
