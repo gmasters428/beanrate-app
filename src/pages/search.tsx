@@ -1,8 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import Layout from "@/components/layout/Layout";
 import SearchBar from "@/components/search/SearchBar";
 import BeanCard from "@/components/search/BeanCard";
 import { CoffeeBeanWithRatings } from "@/types";
@@ -12,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
 import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { useToast } from "@/hooks/use-toast";
+import Head from "next/head";
 
 export default function SearchPage() {
   const { user } = useAuth();
@@ -107,7 +106,10 @@ export default function SearchPage() {
   };
 
   return (
-    <Layout title="BeanRate - Search">
+    <>
+      <Head>
+        <title>BeanRate - Search</title>
+      </Head>
       <div className="max-w-md mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Search</h1>
@@ -232,6 +234,6 @@ export default function SearchPage() {
           </div>
         )}
       </div>
-    </Layout>
+    </>
   );
 }
