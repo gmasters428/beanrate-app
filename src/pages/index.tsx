@@ -152,11 +152,12 @@ export default function HomePage() {
   return (
     <Layout title="BeanRate - Discover Great Coffee">
       <div className="max-w-2xl mx-auto">
-        {/* Enhanced Tab Navigation - Now the primary navigation */}
+        {/* Page Header Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm text-gray-500 mb-2">Find your next favorite beans</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Coffee Discovery</h1>
+              <p className="text-sm text-gray-500">Find your next favorite beans</p>
             </div>
             <div className="flex items-center space-x-2">
               <Link href="/search">
@@ -170,7 +171,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Enhanced Tab Design */}
+          {/* Tab Navigation */}
           <div className="bg-gradient-to-r from-neutral-50 to-white border border-neutral-200/60 rounded-2xl p-1.5 shadow-sm">
             <div className="flex">
               <button
