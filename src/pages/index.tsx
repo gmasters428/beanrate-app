@@ -1,12 +1,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
 import Link from "next/link";
+import Head from "next/head";
 
 export default function HomePage() {
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
@@ -112,7 +112,10 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <Layout title="BeanRate - Discover Great Coffee">
+      <>
+        <Head>
+          <title>BeanRate - Discover Great Coffee</title>
+        </Head>
         <div className="max-w-2xl mx-auto">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <div className="relative">
@@ -126,13 +129,16 @@ export default function HomePage() {
             <div className="text-gray-500 animate-pulse">Loading coffee discoveries...</div>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   if (error) {
     return (
-      <Layout title="BeanRate - Discover Great Coffee">
+      <>
+        <Head>
+          <title>BeanRate - Discover Great Coffee</title>
+        </Head>
         <div className="max-w-2xl mx-auto">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <Coffee className="h-12 w-12 text-gray-400" />
@@ -145,12 +151,15 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout title="BeanRate - Discover Great Coffee">
+    <>
+      <Head>
+        <title>BeanRate - Discover Great Coffee</title>
+      </Head>
       <div className="max-w-2xl mx-auto">
         {/* Page Header Section */}
         <div className="mb-6">
@@ -314,20 +323,20 @@ export default function HomePage() {
             </>
           )}
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
+        <style jsx>{`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-    </Layout>
+        `}</style>
+      </div>
+    </>
   );
 }
