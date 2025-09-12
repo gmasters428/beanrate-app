@@ -1,9 +1,7 @@
-
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
@@ -12,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
+import Head from "next/head";
 
 export default function ProfilePage() {
   const { user, signOut, loading, refreshUser } = useAuth();
@@ -76,18 +75,24 @@ export default function ProfilePage() {
 
   if (loading || !user) {
     return (
-      <Layout title="Loading...">
+      <>
+        <Head>
+          <title>Loading... - BeanRate</title>
+        </Head>
         <div className="max-w-md mx-auto flex justify-center items-center h-64">
           <div className="text-gray-500">Loading...</div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   const displayName = user?.profile?.display_name || user?.profile?.username || "User";
 
   return (
-    <Layout title="My Profile">
+    <>
+      <Head>
+        <title>My Profile - BeanRate</title>
+      </Head>
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
           <div className="bg-brown-600 h-24"></div>
@@ -154,6 +159,6 @@ export default function ProfilePage() {
         )}
         {activeTab === "beans" && <div className="text-center py-8 bg-white rounded-lg shadow-md"><p className="text-gray-500">Favorite beans feature coming soon!</p></div>}
       </div>
-    </Layout>
+    </>
   );
 }
