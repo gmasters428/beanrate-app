@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/types";
 
@@ -23,143 +24,201 @@ export interface RatingWithDetails extends Rating {
 
 export const ratingsService = {
   async getRatings(limit = 20): Promise<RatingWithDetails[]> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .select(`
-            *,
-            users!fk_ratings_user_id (
+          *,
+          users (
             username,
             display_name,
             profile_image_url
-            ),
-            coffee_beans (
+          ),
+          coffee_beans (
             name,
             brand,
             origin,
             roast_level,
             variety,
             image_url
-            )
+          )
         `)
         .order('created_at', { ascending: false })
         .limit(limit);
 
-    if (error) throw error;
-    return data as RatingWithDetails[];
+      if (error) {
+        console.error('Error fetching ratings:', error);
+        throw error;
+      }
+      
+      return data as RatingWithDetails[];
+    } catch (error) {
+      console.error('Service error in getRatings:', error);
+      throw error;
+    }
   },
 
   async getRatingsByUser(userId: string): Promise<RatingWithDetails[]> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .select(`
-            *,
-            users!fk_ratings_user_id (
+          *,
+          users (
             username,
             display_name,
             profile_image_url
-            ),
-            coffee_beans (
+          ),
+          coffee_beans (
             name,
             brand,
             origin,
             roast_level,
             variety,
             image_url
-            )
+          )
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data as RatingWithDetails[];
+      if (error) {
+        console.error('Error fetching ratings by user:', error);
+        throw error;
+      }
+      
+      return data as RatingWithDetails[];
+    } catch (error) {
+      console.error('Service error in getRatingsByUser:', error);
+      throw error;
+    }
   },
 
   async getRatingById(id: string): Promise<RatingWithDetails | null> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .select(`
-            *,
-            users!fk_ratings_user_id (
+          *,
+          users (
             username,
             display_name,
             profile_image_url
-            ),
-            coffee_beans (
+          ),
+          coffee_beans (
             name,
             brand,
             origin,
             roast_level,
             variety,
             image_url
-            )
+          )
         `)
         .eq('id', id)
         .maybeSingle();
 
-    if (error) {
+      if (error) {
         console.error('Error fetching rating by ID:', error);
         throw error;
+      }
+      
+      return data as RatingWithDetails | null;
+    } catch (error) {
+      console.error('Service error in getRatingById:', error);
+      throw error;
     }
-    return data as RatingWithDetails | null;
   },
 
   async createRating(rating: RatingInsert): Promise<Rating> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .insert([rating])
         .select()
         .single();
 
-    if (error) {
+      if (error) {
         console.error('Rating creation error:', error);
         throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Service error in createRating:', error);
+      throw error;
     }
-    return data;
   },
 
   async updateRating(id: string, updates: RatingUpdate): Promise<Rating> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .update(updates)
         .eq('id', id)
         .select()
         .single();
-    if (error) throw error;
-    return data;
+        
+      if (error) {
+        console.error('Error updating rating:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Service error in updateRating:', error);
+      throw error;
+    }
   },
 
   async deleteRating(id: string): Promise<void> {
-    const { error } = await supabase
+    try {
+      const { error } = await supabase
         .from('ratings')
         .delete()
         .eq('id', id);
-    if (error) throw error;
+        
+      if (error) {
+        console.error('Error deleting rating:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Service error in deleteRating:', error);
+      throw error;
+    }
   },
 
   async getRatingsByBean(beanId: string): Promise<RatingWithDetails[]> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('ratings')
         .select(`
-            *,
-            users!fk_ratings_user_id (
+          *,
+          users (
             username,
             display_name,
             profile_image_url
-            ),
-            coffee_beans (
+          ),
+          coffee_beans (
             name,
             brand,
             origin,
             roast_level,
             variety,
             image_url
-            )
+          )
         `)
         .eq('coffee_bean_id', beanId)
         .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data as RatingWithDetails[];
+      if (error) {
+        console.error('Error fetching ratings by bean:', error);
+        throw error;
+      }
+      
+      return data as RatingWithDetails[];
+    } catch (error) {
+      console.error('Service error in getRatingsByBean:', error);
+      throw error;
+    }
   }
 };
 
