@@ -205,7 +205,7 @@ export default function SearchPage() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <Link href={`/profile/${searchUser.id}`}>
+                      <Link href={`/profile/${searchUser.username?.replace(/^@/, '').toLowerCase()}`}>
                         <Button variant="outline" size="sm">View</Button>
                       </Link>
                       {user && (
