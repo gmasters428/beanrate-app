@@ -38,15 +38,21 @@ export default function UserProfilePage() {
       }
 
       try {
-        let userId = slugParam;
+        const raw = slugParam;
+        // Normalize: strip "@" prefix, trim, and lowercase
+        const slug = raw.replace(/^@/, '').trim().toLowerCase();
 
-        // Check if slug is already a UUID
-        if (!isUUID(slugParam)) {
-          // Slug is a username, look up the user ID
+        let userId: string | null = null;
+
+        // Check if raw param is already a UUID
+        if (isUUID(raw)) {
+          userId = raw;
+        } else if (slug) {
+          // Look up user by lowercase username (index makes this fast)
           const { data: userByName, error } = await supabase
             .from('users')
             .select('id')
-            .eq('username', slugParam)
+            .eq('username', slug)
             .maybeSingle();
 
           if (error) {
@@ -64,6 +70,12 @@ export default function UserProfilePage() {
           }
 
           userId = userByName.id;
+        }
+
+        if (!userId) {
+          setNotFound(true);
+          setLoading(false);
+          return;
         }
 
         // Set the resolved userId
