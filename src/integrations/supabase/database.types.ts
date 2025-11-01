@@ -204,7 +204,22 @@ export type Database = {
           user_one_id?: string
           user_two_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "friendships_user_one_id_fkey"
+            columns: ["user_one_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friendships_user_two_id_fkey"
+            columns: ["user_two_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       likes: {
         Row: {

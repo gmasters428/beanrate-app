@@ -1,7 +1,10 @@
 {
   "extends": "next",
+  "ignorePatterns": [
+    "src/integrations/supabase/database.types.ts",
+    "src/integrations/supabase/types.ts"
+  ],
   "rules": {
-    "react/no-unescaped-entities": "off",
-    "@typescript-eslint/no-empty-object-type": "off"
+    "react/no-unescaped-entities": "off"
   }
 }

@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
@@ -11,12 +10,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile, FriendshipStatus } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
+import { isUUID } from "@/lib/ids";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function UserProfilePage() {
   const { user: currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const { id } = router.query;
+  const { id: slugParam } = router.query;
+  
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<UserWithProfile | null>(null);
   const [userRatings, setUserRatings] = useState<RatingWithDetails[]>([]);
   const [activeTab, setActiveTab] = useState<"ratings" | "beans">("ratings");
@@ -24,10 +27,64 @@ export default function UserProfilePage() {
   const [friendsCount, setFriendsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
+  // Step 1: Resolve slug to targetUserId
+  useEffect(() => {
+    const resolveSlugToUserId = async () => {
+      // Wait for router to be ready and slugParam to be available
+      if (!router.isReady || !slugParam || typeof slugParam !== 'string') {
+        return;
+      }
+
+      try {
+        let userId = slugParam;
+
+        // Check if slug is already a UUID
+        if (!isUUID(slugParam)) {
+          // Slug is a username, look up the user ID
+          const { data: userByName, error } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', slugParam)
+            .maybeSingle();
+
+          if (error) {
+            console.error('Error resolving username:', error);
+            setNotFound(true);
+            setLoading(false);
+            return;
+          }
+
+          if (!userByName) {
+            // User not found - show 404
+            setNotFound(true);
+            setLoading(false);
+            return;
+          }
+
+          userId = userByName.id;
+        }
+
+        // Set the resolved userId
+        setTargetUserId(userId);
+      } catch (error) {
+        console.error('Error resolving slug:', error);
+        setNotFound(true);
+        setLoading(false);
+      }
+    };
+
+    resolveSlugToUserId();
+  }, [router.isReady, slugParam]);
+
+  // Step 2: Load user profile data only after targetUserId is resolved
   const loadUserProfile = useCallback(async (userId: string) => {
+    if (!userId) return;
+
     try {
       setLoading(true);
+      
       const [profile, friendship, friendsCountResult, ratings] = await Promise.all([
         userService.getUserProfile(userId),
         currentUser ? userService.getFriendshipStatus(currentUser.id, userId) : Promise.resolve({ status: 'none' as const }),
@@ -36,7 +93,7 @@ export default function UserProfilePage() {
       ]);
 
       if (!profile) {
-        router.push("/404");
+        setNotFound(true);
         return;
       }
 
@@ -47,17 +104,18 @@ export default function UserProfilePage() {
     } catch (error) {
       console.error("Error loading user profile:", error);
       toast({ title: "Error", description: "Could not load user profile.", variant: "destructive" });
-      router.push("/404");
+      setNotFound(true);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, router, toast]);
+  }, [currentUser, toast]);
 
+  // Step 3: Trigger profile load only when targetUserId is available
   useEffect(() => {
-    if (id && typeof id === 'string') {
-      loadUserProfile(id);
+    if (targetUserId) {
+      loadUserProfile(targetUserId);
     }
-  }, [id, loadUserProfile]);
+  }, [targetUserId, loadUserProfile]);
 
   const handleFriendAction = async (action: () => Promise<any>, status: FriendshipStatus['status'], message: string) => {
     if (!profileUser || !currentUser) return;
@@ -69,7 +127,7 @@ export default function UserProfilePage() {
       if (status === 'none' && friendshipStatus.status === 'accepted') setFriendsCount(prev => prev - 1);
       toast({ title: "Success", description: message });
     } catch (error) {
-      console.error(`Error with friend action:`, error);
+      console.error('Error with friend action:', error);
       toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
     } finally {
       setActionLoading(false);
@@ -100,10 +158,32 @@ export default function UserProfilePage() {
     'Friend removed.'
   );
 
-  if (authLoading || loading) {
-    return <Layout title="Loading..."><div className="text-center p-10">Loading profile...</div></Layout>;
+  // Show 404 if user not found
+  if (notFound) {
+    return (
+      <Layout title="User Not Found">
+        <div className="max-w-md mx-auto text-center py-12">
+          <UserIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h1>
+          <p className="text-gray-600 mb-6">The profile you're looking for doesn't exist.</p>
+          <Button onClick={() => router.push('/')} className="bg-brown-600 hover:bg-brown-700">
+            Go Home
+          </Button>
+        </div>
+      </Layout>
+    );
   }
 
+  // Show loading state
+  if (authLoading || loading || !targetUserId) {
+    return (
+      <Layout title="Loading...">
+        <div className="text-center p-10">Loading profile...</div>
+      </Layout>
+    );
+  }
+
+  // Profile user must be loaded by this point
   if (!profileUser) return null;
 
   const displayName = profileUser.display_name || profileUser.username;
