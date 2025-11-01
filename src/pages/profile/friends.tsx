@@ -113,7 +113,7 @@ export default function FriendsPage() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Link href={`/profile/${friend.id}`}>
+                    <Link href={`/profile/${friend.username?.replace(/^@/, '').toLowerCase()}`}>
                       <Button variant="outline" size="sm">
                         View
                       </Button>
