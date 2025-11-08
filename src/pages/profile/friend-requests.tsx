@@ -1,19 +1,38 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import { GetServerSidePropsContext } from "next";
 import { ArrowLeft, User as UserIcon, UserCheck, UserX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
+import { getServerSession } from "@/lib/supabaseServer";
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
 
 export default function FriendRequestsPage() {
   const { user, loading } = useAuth();
-  const router = useRouter();
   const [pendingRequests, setPendingRequests] = useState<UserWithProfile[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
   const loadPendingRequests = async () => {
+    if (!user) return;
+    
     try {
       setLoadingRequests(true);
       const requests = await userService.getFriendRequests(user.id);
@@ -26,17 +45,14 @@ export default function FriendRequestsPage() {
   };
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
     if (user) {
       loadPendingRequests();
     }
-  }, [user, loading, router]);
+  }, [user]);
 
   const handleAcceptRequest = async (requesterId: string) => {
+    if (!user) return;
+    
     try {
       await userService.acceptFriendRequest(requesterId, user.id);
       setPendingRequests(pendingRequests.filter(request => request.id !== requesterId));
@@ -60,10 +76,6 @@ export default function FriendRequestsPage() {
         <div className="text-gray-500">Loading...</div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   return (
