@@ -45,29 +45,6 @@ export const userService = {
     return data;
   },
 
-  async createUserProfile(userId: string, email: string): Promise<UserProfile> {
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("id", userId)
-      .single();
-
-    if (existingUser) {
-      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single();
-      if (error) throw error;
-      return data as UserProfile;
-    }
-
-    const username = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "_");
-    const { data, error } = await supabase
-      .from("users")
-      .insert({ id: userId, username, display_name: username })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  },
-
   async uploadProfileImage(userId: string, file: File): Promise<string> {
     const fileExt = file.name.split(".").pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
