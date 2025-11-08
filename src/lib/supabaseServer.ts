@@ -29,9 +29,3 @@ export function getServerSupabase(ctx: Ctx) {
     }
   );
 }
-
-export async function getServerSession(context: GetServerSidePropsContext) {
-  const supabase = createServerSupabaseClient(context);
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
-}

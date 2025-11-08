@@ -13,13 +13,17 @@ import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 type Props = {
   userId: string;
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const supabase = getServerSupabase({ req: ctx.req, res: ctx.res });
+  const supabase = getServerSupabase({ 
+    req: ctx.req as unknown as NextApiRequest, 
+    res: ctx.res as unknown as NextApiResponse 
+  });
 
   // Server-side session check (no client redirect, no client timeouts)
   const { data: { session } } = await supabase.auth.getSession();
