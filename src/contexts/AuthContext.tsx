@@ -127,6 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authTimeoutRef.current = null;
       }
 
+      // Ensure user profile exists via RPC (best-effort, ignore errors)
+      try {
+        await supabase.rpc('ensure_user_profile');
+      } catch (error) {
+        // Silently ignore profile RPC errors
+        console.debug('Profile RPC call completed with:', error);
+      }
+
       await refreshUser();
     } catch (error) {
       // Clear timeout on error
@@ -159,28 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && mountedRef.current) {
-          // Ensure user profile exists with timeout
-          try {
-            const profileTimeout = new Promise<never>((_, reject) => {
-              setTimeout(() => {
-                reject(new Error('Profile creation timeout'));
-              }, 8000);
-            });
-
-            const profilePromise = userService.createUserProfile(
-              session.user.id,
-              session.user.email || ''
-            );
-
-            await Promise.race([profilePromise, profileTimeout]);
-          } catch (error) {
-            console.warn("Could not create/verify user profile:", error);
-          }
-          
-          if (mountedRef.current) {
-            const currentUser = await authService.getCurrentUser();
-            safeSetState(setUser, currentUser);
-          }
+          const currentUser = await authService.getCurrentUser();
+          safeSetState(setUser, currentUser);
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -196,24 +184,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mountedRef.current) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Ensure user profile exists when signing in with timeout
-          try {
-            const profileTimeout = new Promise<never>((_, reject) => {
-              setTimeout(() => {
-                reject(new Error('Profile creation timeout'));
-              }, 8000);
-            });
-
-            const profilePromise = userService.createUserProfile(
-              session.user.id,
-              session.user.email || ''
-            );
-
-            await Promise.race([profilePromise, profileTimeout]);
-          } catch (error) {
-            console.warn("Could not create/verify user profile:", error);
-          }
-          
           if (mountedRef.current) {
             const currentUser = await authService.getCurrentUser();
             safeSetState(setUser, currentUser);
