@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { GetServerSidePropsContext } from "next";
+import type { GetServerSideProps, NextPage } from 'next';
 import RatingCard from "@/components/home/RatingCard";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
@@ -12,26 +12,31 @@ import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
-import { getServerSession } from "@/lib/supabaseServer";
+import { getServerSupabase } from '@/lib/supabaseServer';
 
-export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession(context);
+type Props = {
+  userId: string;
+};
+
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  const supabase = getServerSupabase({ req: ctx.req, res: ctx.res });
+
+  // Server-side session check (no client redirect, no client timeouts)
+  const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
     return {
-      redirect: {
-        destination: "/auth/login",
-        permanent: false,
-      },
+      redirect: { destination: '/auth/login', permanent: false },
     };
   }
-  
-  return {
-    props: {},
-  };
-}
 
-export default function ProfilePage() {
+  // Optional safety net (idempotent): ensure a profile row exists for this user.
+  try { await supabase.rpc('ensure_user_profile'); } catch (_) {}
+
+  return { props: { userId: session.user.id } };
+};
+
+const ProfilePage: NextPage<Props> = ({ userId }) => {
   const { user, signOut, loading, refreshUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
