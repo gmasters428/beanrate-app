@@ -15,6 +15,8 @@ import { Search, Coffee, X, Star, Award, Zap, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
+import { getServerSession } from "@/lib/supabaseServer";
+import type { GetServerSidePropsContext } from "next";
 
 const brewingMethods = [
   "Espresso", "Pour Over", "French Press", "AeroPress", "Chemex", 
@@ -26,6 +28,23 @@ const grindSizes = [
   "Extra Coarse", "Coarse", "Medium-Coarse", "Medium", 
   "Medium-Fine", "Fine", "Extra Fine", "Powder"
 ];
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
 
 export default function RatePage() {
   const router = useRouter();
@@ -245,29 +264,6 @@ export default function RatePage() {
       setIsSubmitting(false);
     }
   };
-
-  if (!user) {
-    return (
-      <>
-        <Head>
-          <title>BeanRate - Rate a Coffee Bean</title>
-        </Head>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-md mx-auto">
-            <CardContent className="pt-6 text-center">
-              <Coffee className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">
-                Please log in to rate coffee beans and share your tasting experience.
-              </p>
-              <Button onClick={() => router.push('/auth/login')}>
-                Sign In
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>
