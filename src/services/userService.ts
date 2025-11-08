@@ -203,10 +203,38 @@ export const userService = {
     return data;
   },
 
-  async getFriends(userId: string): Promise<any[]> {
-    const { data, error } = await supabase.rpc("get_friends", { p_user_id: userId });
+  async getFriends(userId: string): Promise<UserWithProfile[]> {
+    // Query friendships where current user is either user_one or user_two
+    const { data, error } = await supabase
+      .from("friendships")
+      .select(`
+        id,
+        status,
+        user_one_id,
+        user_two_id,
+        user_one:users!user_one_id(id, username, display_name, profile_image_url),
+        user_two:users!user_two_id(id, username, display_name, profile_image_url)
+      `)
+      .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
+      .eq("status", "accepted");
+
     if (error) throw error;
-    return data;
+
+    // Map the results to return "the other person" in the friendship
+    const friends = (data ?? []).map((friendship: any) => {
+      const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
+      return {
+        id: friend.id,
+        username: friend.username,
+        display_name: friend.display_name,
+        profile_image_url: friend.profile_image_url,
+        bio: null,
+        created_at: null,
+        updated_at: null
+      } as UserWithProfile;
+    });
+
+    return friends;
   },
 
   async getFriendRequests(userId: string): Promise<any[]> {
