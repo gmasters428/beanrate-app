@@ -4,6 +4,25 @@ import { type UserProfile, type FriendshipStatus, type UserWithProfile } from "@
 
 export type { UserProfile, FriendshipStatus, UserWithProfile };
 
+// Helper function to resolve avatar URL from multiple possible sources
+function resolveAvatarUrl(user: any): string | null {
+  // Prefer absolute URLs already stored
+  if (user?.profile_image_url && /^https?:\/\//i.test(user.profile_image_url)) {
+    return user.profile_image_url;
+  }
+  if (user?.avatar_url && /^https?:\/\//i.test(user.avatar_url)) {
+    return user.avatar_url;
+  }
+
+  // If only a Storage path exists (e.g., avatars/<file>), derive public URL
+  if (user?.avatar_path) {
+    const { data } = supabase.storage.from('avatars').getPublicUrl(user.avatar_path);
+    return data?.publicUrl ?? null;
+  }
+  
+  return null; // caller can fall back to placeholder
+}
+
 export const userService = {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     const { data, error } = await supabase
@@ -212,8 +231,8 @@ export const userService = {
         status,
         user_one_id,
         user_two_id,
-        user_one:users!user_one_id(id, username, display_name, profile_image_url),
-        user_two:users!user_two_id(id, username, display_name, profile_image_url)
+        user_one:users!user_one_id(id, username, display_name, profile_image_url, avatar_url, avatar_path),
+        user_two:users!user_two_id(id, username, display_name, profile_image_url, avatar_url, avatar_path)
       `)
       .or(`user_one_id.eq.${userId},user_two_id.eq.${userId}`)
       .eq("status", "accepted");
@@ -223,11 +242,13 @@ export const userService = {
     // Map the results to return "the other person" in the friendship
     const friends = (data ?? []).map((friendship: any) => {
       const friend = friendship.user_one_id === userId ? friendship.user_two : friendship.user_one;
+      const avatarUrl = resolveAvatarUrl(friend);
+      
       return {
         id: friend.id,
         username: friend.username,
         display_name: friend.display_name,
-        profile_image_url: friend.profile_image_url,
+        profile_image_url: avatarUrl,
         bio: null,
         created_at: null,
         updated_at: null,
