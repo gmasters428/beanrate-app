@@ -12,7 +12,8 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
-import { getServerSession } from "@/lib/supabaseServer";
+import { getServerSupabase } from "@/lib/supabaseServer";
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 const coffeeTypes = [
   "Arabica",
@@ -39,7 +40,12 @@ const regions = [
 ];
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession(context);
+  const supabase = getServerSupabase({ 
+    req: context.req as unknown as NextApiRequest, 
+    res: context.res as unknown as NextApiResponse 
+  });
+  
+  const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
     return {

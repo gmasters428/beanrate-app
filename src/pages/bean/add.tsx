@@ -21,7 +21,8 @@ import { ratingsService } from "@/services/ratingsService";
 import { Coffee, Upload, Star, X, MapPin, Calendar, DollarSign, Award, Zap, Droplets, Mountain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GetServerSidePropsContext } from "next";
-import { getServerSession } from "@/lib/supabaseServer";
+import { getServerSupabase } from "@/lib/supabaseServer";
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 const addBeanSchema = z.object({
   // Essential Bean Details
@@ -99,7 +100,12 @@ const commonFlavorNotes = [
 ];
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession(context);
+  const supabase = getServerSupabase({ 
+    req: context.req as unknown as NextApiRequest, 
+    res: context.res as unknown as NextApiResponse 
+  });
+  
+  const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
     return {

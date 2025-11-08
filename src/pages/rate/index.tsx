@@ -15,8 +15,9 @@ import { Search, Coffee, X, Star, Award, Zap, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
-import { getServerSession } from "@/lib/supabaseServer";
+import { getServerSupabase } from "@/lib/supabaseServer";
 import type { GetServerSidePropsContext } from "next";
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 const brewingMethods = [
   "Espresso", "Pour Over", "French Press", "AeroPress", "Chemex", 
@@ -30,7 +31,12 @@ const grindSizes = [
 ];
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession(context);
+  const supabase = getServerSupabase({ 
+    req: context.req as unknown as NextApiRequest, 
+    res: context.res as unknown as NextApiResponse 
+  });
+  
+  const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
     return {

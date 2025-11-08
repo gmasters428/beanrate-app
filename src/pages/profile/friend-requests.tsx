@@ -6,10 +6,16 @@ import { ArrowLeft, User as UserIcon, UserCheck, UserX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
-import { getServerSession } from "@/lib/supabaseServer";
+import { getServerSupabase } from "@/lib/supabaseServer";
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session = await getServerSession(context);
+  const supabase = getServerSupabase({ 
+    req: context.req as unknown as NextApiRequest, 
+    res: context.res as unknown as NextApiResponse 
+  });
+  
+  const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
     return {
