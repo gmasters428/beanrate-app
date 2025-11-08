@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { GetServerSidePropsContext } from "next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
+import { getServerSession } from "@/lib/supabaseServer";
 
 const coffeeTypes = [
   "Arabica",
@@ -36,6 +38,23 @@ const regions = [
   "International"
 ];
 
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
+
 export default function ProfileSettingsPage() {
   const { user, refreshUser, loading } = useAuth();
   const router = useRouter();
@@ -51,14 +70,9 @@ export default function ProfileSettingsPage() {
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
     if (user) {
       setFormData({
-        firstName: "", // Mock data since preferences aren't in user object yet
+        firstName: "",
         region: "",
         coffeeTypes: []
       });
@@ -66,7 +80,7 @@ export default function ProfileSettingsPage() {
       setPrivacy("public");
       setTheme("light");
     }
-  }, [user, loading, router]);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -104,7 +118,6 @@ export default function ProfileSettingsPage() {
 
       console.log("Updating profile with data:", formData);
 
-      // Update user preferences (firstName, region, coffeeTypes) - using mock implementation
       await userService.updateUserProfile(user.id, {
         bio: JSON.stringify({
           firstName: formData.firstName.trim() || null,
@@ -113,7 +126,6 @@ export default function ProfileSettingsPage() {
         })
       });
 
-      // Refresh user data to show updated information
       await refreshUser();
 
       setSaveMessage("Profile updated successfully!");
@@ -127,16 +139,12 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="max-w-md mx-auto flex justify-center items-center h-64">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   return (

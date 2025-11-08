@@ -1,15 +1,32 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
+import { GetServerSidePropsContext } from "next";
 import { ArrowLeft, User as UserIcon, UserPlus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
+import { getServerSession } from "@/lib/supabaseServer";
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
 
 export default function FriendsPage() {
   const { user, loading } = useAuth();
-  const router = useRouter();
   const [friends, setFriends] = useState<UserWithProfile[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
 
@@ -28,15 +45,10 @@ export default function FriendsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
     if (user) {
       loadFriends();
     }
-  }, [user, loading, router, loadFriends]);
+  }, [user, loadFriends]);
 
   const handleRemoveFriend = async (friendId: string, friendshipId: string) => {
     try {
@@ -53,10 +65,6 @@ export default function FriendsPage() {
         <div className="text-gray-500">Loading...</div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   return (
