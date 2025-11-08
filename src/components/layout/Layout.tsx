@@ -1,6 +1,6 @@
-
 import Head from "next/head";
 import Navbar from "./Navbar";
+import { HeaderProvider } from "./HeaderProvider";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +19,9 @@ export default function Layout({ children, title = "BeanRate - Coffee Rating App
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        <HeaderProvider>
+          <Navbar />
+        </HeaderProvider>
         <main className="pb-20 pt-4 md:pt-20 md:pb-4 px-4 max-w-screen-xl mx-auto">
           {children}
         </main>
