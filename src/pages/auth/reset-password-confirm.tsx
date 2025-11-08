@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -186,185 +184,177 @@ export default function ResetPasswordConfirmPage() {
 
   if (isValidating) {
     return (
-      <Layout title="BeanRate - Reset Password">
-        <div className="max-w-md mx-auto mt-8">
-          <Card>
-            <CardContent className="text-center py-8">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-brown-600" />
-              <p className="text-gray-600">Validating reset link...</p>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
+      <div className="max-w-md mx-auto mt-8">
+        <Card>
+          <CardContent className="text-center py-8">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-brown-600" />
+            <p className="text-gray-600">Validating reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   if (tokenError) {
     return (
-      <Layout title="BeanRate - Reset Password Error">
-        <div className="max-w-md mx-auto mt-8">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-brown-600">Reset Link Invalid</CardTitle>
-              <p className="text-gray-600">There was a problem with your password reset link</p>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <Alert variant="destructive">
-                <AlertDescription>{tokenError}</AlertDescription>
-              </Alert>
-              
-              <p className="text-sm text-gray-500">
-                This usually happens when:
-              </p>
-              <ul className="text-sm text-gray-500 text-left space-y-1">
-                <li>• The reset link has expired (links expire after 1 hour)</li>
-                <li>• The link has already been used</li>
-                <li>• The link was copied incorrectly</li>
-              </ul>
-              
-              <div className="pt-4 space-y-3">
-                <Link href="/auth/forgot-password">
-                  <Button className="w-full bg-brown-600 hover:bg-brown-700">
-                    Request New Reset Link
-                  </Button>
-                </Link>
-                
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full">
-                    Back to Sign In
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (success) {
-    return (
-      <Layout title="BeanRate - Password Reset Complete">
-        <div className="max-w-md mx-auto mt-8">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-brown-600">Password Reset Complete</CardTitle>
-              <p className="text-gray-600">Your password has been successfully updated</p>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-sm text-gray-500">
-                You can now sign in with your new password.
-              </p>
-              <p className="text-sm text-gray-500">
-                Redirecting to sign in page in a few seconds...
-              </p>
-              
-              <div className="pt-4">
-                <Link href="/auth/login">
-                  <Button className="w-full bg-brown-600 hover:bg-brown-700">
-                    Sign In Now
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <Layout title="BeanRate - Set New Password">
       <div className="max-w-md mx-auto mt-8">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-brown-600">Set New Password</CardTitle>
-            <p className="text-gray-600">Enter your new password below</p>
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-brown-600">Reset Link Invalid</CardTitle>
+            <p className="text-gray-600">There was a problem with your password reset link</p>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your new password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>Password must include:</p>
-                  <ul className="list-disc list-inside space-y-0.5 ml-2">
-                    <li>At least 10 characters</li>
-                    <li>Uppercase and lowercase letters</li>
-                    <li>At least one number</li>
-                    <li>At least one special character</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your new password"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-brown-600 hover:bg-brown-700"
-                disabled={isLoading}
-              >
-                {isLoading ? "Updating Password..." : "Update Password"}
-              </Button>
-            </form>
+          <CardContent className="text-center space-y-4">
+            <Alert variant="destructive">
+              <AlertDescription>{tokenError}</AlertDescription>
+            </Alert>
             
-            <div className="mt-6 text-center">
-              <Link href="/auth/forgot-password" className="text-sm text-brown-600 hover:text-brown-700 font-medium">
-                Need a new reset link?
+            <p className="text-sm text-gray-500">
+              This usually happens when:
+            </p>
+            <ul className="text-sm text-gray-500 text-left space-y-1">
+              <li>• The reset link has expired (links expire after 1 hour)</li>
+              <li>• The link has already been used</li>
+              <li>• The link was copied incorrectly</li>
+            </ul>
+            
+            <div className="pt-4 space-y-3">
+              <Link href="/auth/forgot-password">
+                <Button className="w-full bg-brown-600 hover:bg-brown-700">
+                  Request New Reset Link
+                </Button>
+              </Link>
+              
+              <Link href="/auth/login">
+                <Button variant="outline" className="w-full">
+                  Back to Sign In
+                </Button>
               </Link>
             </div>
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="max-w-md mx-auto mt-8">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-brown-600">Password Reset Complete</CardTitle>
+            <p className="text-gray-600">Your password has been successfully updated</p>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-gray-500">
+              You can now sign in with your new password.
+            </p>
+            <p className="text-sm text-gray-500">
+              Redirecting to sign in page in a few seconds...
+            </p>
+            
+            <div className="pt-4">
+              <Link href="/auth/login">
+                <Button className="w-full bg-brown-600 hover:bg-brown-700">
+                  Sign In Now
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto mt-8">
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-brown-600">Set New Password</CardTitle>
+          <p className="text-gray-600">Enter your new password below</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your new password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>Password must include:</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-2">
+                  <li>At least 10 characters</li>
+                  <li>Uppercase and lowercase letters</li>
+                  <li>At least one number</li>
+                  <li>At least one special character</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your new password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-brown-600 hover:bg-brown-700"
+              disabled={isLoading}
+            >
+              {isLoading ? "Updating Password..." : "Update Password"}
+            </Button>
+          </form>
+          
+          <div className="mt-6 text-center">
+            <Link href="/auth/forgot-password" className="text-sm text-brown-600 hover:text-brown-700 font-medium">
+              Need a new reset link?
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

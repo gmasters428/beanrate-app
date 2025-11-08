@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Layout from "@/components/layout/Layout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2, Coffee, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -130,90 +129,88 @@ export default function ConfirmPage() {
   }, [router.isReady, router.query, router]);
 
   return (
-    <Layout>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full">
-          <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-            <CardHeader className="text-center pb-4">
-              <div className="flex justify-center mb-4">
-                {status === 'loading' && (
-                  <div className="relative">
-                    <Coffee className="h-16 w-16 text-amber-600" />
-                    <Loader2 className="h-8 w-8 text-blue-600 absolute -top-2 -right-2 animate-spin" />
-                  </div>
-                )}
-                {status === 'success' && (
-                  <div className="bg-green-100 rounded-full p-4">
-                    <Coffee className="h-16 w-16 text-green-600" />
-                  </div>
-                )}
-                {status === 'error' && (
-                  <div className="bg-red-100 rounded-full p-4">
-                    <AlertCircle className="h-16 w-16 text-red-600" />
-                  </div>
-                )}
-              </div>
-              
-              <CardTitle className="text-2xl font-bold text-gray-900">
-                {status === 'loading' && 'Confirming Your Account...'}
-                {status === 'success' && 'Account Confirmed!'}
-                {status === 'error' && 'Confirmation Failed'}
-              </CardTitle>
-            </CardHeader>
-            
-            <CardContent className="text-center space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full">
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="text-center pb-4">
+            <div className="flex justify-center mb-4">
               {status === 'loading' && (
-                <div className="space-y-3">
-                  <p className="text-gray-600">
-                    Please wait while we verify your email address...
-                  </p>
-                  <div className="flex justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
-                  </div>
+                <div className="relative">
+                  <Coffee className="h-16 w-16 text-amber-600" />
+                  <Loader2 className="h-8 w-8 text-blue-600 absolute -top-2 -right-2 animate-spin" />
                 </div>
               )}
-              
               {status === 'success' && (
-                <div className="space-y-3">
-                  <p className="text-green-700 font-medium">
-                    Great! Your email has been verified.
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Redirecting you to complete your setup...
-                  </p>
+                <div className="bg-green-100 rounded-full p-4">
+                  <Coffee className="h-16 w-16 text-green-600" />
                 </div>
               )}
-              
               {status === 'error' && (
-                <div className="space-y-4">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800 text-sm">
-                      {errorMessage}
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <p className="text-gray-600 text-sm">
-                      You can try the following options:
-                    </p>
-                    <div className="space-y-2">
-                      <Link href="/auth/create-account">
-                        <Button variant="outline" className="w-full">
-                          Request New Confirmation Email
-                        </Button>
-                      </Link>
-                      <Link href="/auth/login">
-                        <Button variant="ghost" className="w-full">
-                          Try Signing In
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
+                <div className="bg-red-100 rounded-full p-4">
+                  <AlertCircle className="h-16 w-16 text-red-600" />
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            
+            <CardTitle className="text-2xl font-bold text-gray-900">
+              {status === 'loading' && 'Confirming Your Account...'}
+              {status === 'success' && 'Account Confirmed!'}
+              {status === 'error' && 'Confirmation Failed'}
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="text-center space-y-4">
+            {status === 'loading' && (
+              <div className="space-y-3">
+                <p className="text-gray-600">
+                  Please wait while we verify your email address...
+                </p>
+                <div className="flex justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                </div>
+              </div>
+            )}
+            
+            {status === 'success' && (
+              <div className="space-y-3">
+                <p className="text-green-700 font-medium">
+                  Great! Your email has been verified.
+                </p>
+                <p className="text-gray-600 text-sm">
+                  Redirecting you to complete your setup...
+                </p>
+              </div>
+            )}
+            
+            {status === 'error' && (
+              <div className="space-y-4">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-800 text-sm">
+                    {errorMessage}
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-gray-600 text-sm">
+                    You can try the following options:
+                  </p>
+                  <div className="space-y-2">
+                    <Link href="/auth/create-account">
+                      <Button variant="outline" className="w-full">
+                        Request New Confirmation Email
+                      </Button>
+                    </Link>
+                    <Link href="/auth/login">
+                      <Button variant="ghost" className="w-full">
+                        Try Signing In
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </Layout>
+    </div>
   );
 }
