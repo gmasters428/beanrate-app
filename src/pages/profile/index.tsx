@@ -20,24 +20,18 @@ type Props = {
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const supabase = getServerSupabase({ 
-    req: ctx.req as unknown as NextApiRequest, 
-    res: ctx.res as unknown as NextApiResponse 
-  });
-
-  // Server-side session check (no client redirect, no client timeouts)
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    return {
-      redirect: { destination: '/auth/login', permanent: false },
-    };
+  try {
+    const supabase = getServerSupabase({ req: ctx.req as any, res: ctx.res as any });
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data?.session) {
+      return { redirect: { destination: '/auth/login', permanent: false } };
+    }
+    // Do NOT call any profile-creation RPCs here; keep SSR fast and side-effect free.
+    return { props: { userId: data.session.user.id } };
+  } catch {
+    // On any SSR auth error, send user to login instead of throwing a 500
+    return { redirect: { destination: '/auth/login', permanent: false } };
   }
-
-  // Optional safety net (idempotent): ensure a profile row exists for this user.
-  try { await supabase.rpc('ensure_user_profile'); } catch (_) {}
-
-  return { props: { userId: session.user.id } };
 };
 
 const ProfilePage: NextPage<Props> = ({ userId }) => {

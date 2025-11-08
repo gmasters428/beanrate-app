@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { serialize } from 'cookie';
 
-type Ctx = { req: NextApiRequest; res: NextApiResponse; };
+type Ctx = { req: IncomingMessage & { cookies?: Record<string, string> }; res: ServerResponse & { getHeader: any; setHeader: any } };
 
 export function getServerSupabase(ctx: Ctx) {
   return createServerClient(
@@ -10,7 +10,7 @@ export function getServerSupabase(ctx: Ctx) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
     {
       cookies: {
-        get: (name: string) => ctx.req.cookies?.[name],
+        get: (name: string) => (ctx.req as any).cookies?.[name],
         set: (name: string, value: string, options: any) => {
           const cookie = serialize(name, value, options);
           const prev = ctx.res.getHeader('Set-Cookie');

@@ -20,8 +20,8 @@ export async function middleware(req: NextRequest) {
     }
   );
   
-  // Touch session to refresh cookies if necessary; no redirects here.
-  await supabase.auth.getSession();
+  // Passive: refresh cookies if needed; never throw or redirect here.
+  await supabase.auth.getSession().catch(() => null);
   
   return res;
 }
