@@ -9,7 +9,9 @@ export type UserPreferences = Database["public"]["Tables"]["user_preferences"]["
 
 export type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 
-export type UserWithProfile = UserProfile;
+export type UserWithProfile = UserProfile & {
+  friendship_id?: string;
+};
 
 export type FriendshipStatus = {
   status: "none" | "accepted" | "pending_sent" | "pending_received";
