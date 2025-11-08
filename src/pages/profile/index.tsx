@@ -186,3 +186,5 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     </>
   );
 }
+
+export default ProfilePage;
