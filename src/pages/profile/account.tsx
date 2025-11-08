@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import { GetServerSidePropsContext } from "next";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import DeleteAccountDialog from "@/components/profile/DeleteAccountDialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { ArrowLeft, Save, User as UserIcon, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/userService";
 import Link from "next/link";
+import { getServerSession } from "@/lib/supabaseServer";
 
 const coffeeTypes = [
   "Arabica",
@@ -39,6 +41,23 @@ const regions = [
   "International"
 ];
 
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
+
 export default function ProfileAccountPage() {
   const { user, refreshUser, loading } = useAuth();
   const router = useRouter();
@@ -55,13 +74,7 @@ export default function ProfileAccountPage() {
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-      return;
-    }
-
     if (user) {
-      // Use mock preferences for now since preferences aren't in the user object
       const mockPreferences = { 
         firstName: "", 
         region: "", 
@@ -81,11 +94,10 @@ export default function ProfileAccountPage() {
       setTheme(mockPreferences.theme || "light");
       setProfileImageUrl(user?.profile?.profile_image_url || null);
     }
-  }, [user, loading, router]);
+  }, [user]);
 
   const handleImageUpdate = async (newImageUrl: string | null) => {
     setProfileImageUrl(newImageUrl);
-    // Refresh user data to get updated profile
     await refreshUser();
   };
 
@@ -123,7 +135,6 @@ export default function ProfileAccountPage() {
         throw new Error("User not found");
       }
 
-      // Update user preferences
       await userService.updatePreferences(user.id, {
         first_name: formData.firstName.trim() || null,
         last_name: null,
@@ -131,7 +142,6 @@ export default function ProfileAccountPage() {
         coffee_types: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
       });
 
-      // Refresh user data to show updated information
       await refreshUser();
 
       setSaveMessage("Profile updated successfully!");
@@ -146,20 +156,15 @@ export default function ProfileAccountPage() {
   };
 
   const handleAccountDeleted = () => {
-    // Redirect to home page after account deletion
     router.push("/");
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="max-w-md mx-auto flex justify-center items-center h-64">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null;
   }
 
   const displayName = user?.profile?.display_name || user?.profile?.username || "User";
@@ -281,7 +286,6 @@ export default function ProfileAccountPage() {
         </CardContent>
       </Card>
 
-      {/* Account Security Section */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg">Account Security</CardTitle>
@@ -316,7 +320,6 @@ export default function ProfileAccountPage() {
         </CardContent>
       </Card>
 
-      {/* Danger Zone */}
       <Card className="mt-6 border-red-200 bg-red-50/30">
         <CardHeader>
           <CardTitle className="text-lg text-red-600 flex items-center">
