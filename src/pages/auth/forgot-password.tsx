@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Link from "next/link";
-import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -83,166 +82,162 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <Layout title="BeanRate - Password Reset Sent">
-        <div className="max-w-md mx-auto mt-8">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-brown-600">Check Your Email</CardTitle>
-              <p className="text-gray-600">We've sent password reset instructions to your email</p>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-sm text-gray-500">
-                We sent a password reset link to <strong>{email}</strong>
-              </p>
-              <p className="text-sm text-gray-500">
-                Click the link in the email to reset your password. If you don't see the email, check your spam folder.
-              </p>
-              
-              <Alert className="text-left">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Still not receiving emails?</strong><br />
-                  • Check your spam/junk folder<br />
-                  • Verify the email address is correct<br />
-                  • Contact support if the issue persists
-                </AlertDescription>
-              </Alert>
-              
-              <div className="pt-4">
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Sign In
-                  </Button>
-                </Link>
-              </div>
-              
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    setSuccess(false);
-                    setEmail("");
-                    setShowDiagnostics(false);
-                    setDiagnostics(null);
-                  }}
-                  className="text-sm text-brown-600 hover:text-brown-700 font-medium"
-                >
-                  Try a different email address
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <Layout title="BeanRate - Forgot Password">
       <div className="max-w-md mx-auto mt-8">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-brown-600">Reset Your Password</CardTitle>
-            <p className="text-gray-600">Enter your email to receive reset instructions</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                    setShowDiagnostics(false);
-                  }}
-                  required
-                />
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full bg-brown-600 hover:bg-brown-700"
-                disabled={isLoading}
-              >
-                {isLoading ? "Sending..." : "Send Reset Instructions"}
-              </Button>
-            </form>
-
-            {/* Diagnostics Section */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={runDiagnostics}
-                disabled={isLoading || !email}
-                className="w-full text-xs"
-              >
-                {isLoading ? "Running Diagnostics..." : "🔧 Run Email Diagnostics"}
-              </Button>
-              
-              {showDiagnostics && diagnostics && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700">Diagnostic Results:</h4>
-                  
-                  <div className="space-y-2 text-xs">
-                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.userExists.success ? 'bg-green-50' : 'bg-red-50'}`}>
-                      {diagnostics.userExists.success ? 
-                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
-                        <AlertCircle className="h-3 w-3 text-red-600" />
-                      }
-                      <span className={diagnostics.userExists.success ? 'text-green-700' : 'text-red-700'}>
-                        User Check: {diagnostics.userExists.message}
-                      </span>
-                    </div>
-                    
-                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.smtpTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
-                      {diagnostics.smtpTest.success ? 
-                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
-                        <AlertCircle className="h-3 w-3 text-red-600" />
-                      }
-                      <span className={diagnostics.smtpTest.success ? 'text-green-700' : 'text-red-700'}>
-                        SMTP: {diagnostics.smtpTest.message}
-                      </span>
-                    </div>
-                    
-                    <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.passwordResetTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
-                      {diagnostics.passwordResetTest.success ? 
-                        <CheckCircle className="h-3 w-3 text-green-600" /> : 
-                        <AlertCircle className="h-3 w-3 text-red-600" />
-                      }
-                      <span className={diagnostics.passwordResetTest.success ? 'text-green-700' : 'text-red-700'}>
-                        Email Send: {diagnostics.passwordResetTest.message}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Mail className="h-6 w-6 text-green-600" />
             </div>
-
-            <div className="mt-6 text-center">
-              <Link href="/auth/login" className="text-brown-600 hover:text-brown-700 font-medium inline-flex items-center">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Sign In
+            <CardTitle className="text-2xl font-bold text-brown-600">Check Your Email</CardTitle>
+            <p className="text-gray-600">We've sent password reset instructions to your email</p>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-gray-500">
+              We sent a password reset link to <strong>{email}</strong>
+            </p>
+            <p className="text-sm text-gray-500">
+              Click the link in the email to reset your password. If you don't see the email, check your spam folder.
+            </p>
+            
+            <Alert className="text-left">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Still not receiving emails?</strong><br />
+                • Check your spam/junk folder<br />
+                • Verify the email address is correct<br />
+                • Contact support if the issue persists
+              </AlertDescription>
+            </Alert>
+            
+            <div className="pt-4">
+              <Link href="/auth/login">
+                <Button variant="outline" className="w-full">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Sign In
+                </Button>
               </Link>
+            </div>
+            
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  setSuccess(false);
+                  setEmail("");
+                  setShowDiagnostics(false);
+                  setDiagnostics(null);
+                }}
+                className="text-sm text-brown-600 hover:text-brown-700 font-medium"
+              >
+                Try a different email address
+              </button>
             </div>
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto mt-8">
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-brown-600">Reset Your Password</CardTitle>
+          <p className="text-gray-600">Enter your email to receive reset instructions</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                  setShowDiagnostics(false);
+                }}
+                required
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-brown-600 hover:bg-brown-700"
+              disabled={isLoading}
+            >
+              {isLoading ? "Sending..." : "Send Reset Instructions"}
+            </Button>
+          </form>
+
+          {/* Diagnostics Section */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={runDiagnostics}
+              disabled={isLoading || !email}
+              className="w-full text-xs"
+            >
+              {isLoading ? "Running Diagnostics..." : "🔧 Run Email Diagnostics"}
+            </Button>
+            
+            {showDiagnostics && diagnostics && (
+              <div className="mt-4 space-y-2">
+                <h4 className="text-sm font-medium text-gray-700">Diagnostic Results:</h4>
+                
+                <div className="space-y-2 text-xs">
+                  <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.userExists.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                    {diagnostics.userExists.success ? 
+                      <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                    }
+                    <span className={diagnostics.userExists.success ? 'text-green-700' : 'text-red-700'}>
+                      User Check: {diagnostics.userExists.message}
+                    </span>
+                  </div>
+                  
+                  <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.smtpTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                    {diagnostics.smtpTest.success ? 
+                      <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                    }
+                    <span className={diagnostics.smtpTest.success ? 'text-green-700' : 'text-red-700'}>
+                      SMTP: {diagnostics.smtpTest.message}
+                    </span>
+                  </div>
+                  
+                  <div className={`flex items-center gap-2 p-2 rounded ${diagnostics.passwordResetTest.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                    {diagnostics.passwordResetTest.success ? 
+                      <CheckCircle className="h-3 w-3 text-green-600" /> : 
+                      <AlertCircle className="h-3 w-3 text-red-600" />
+                    }
+                    <span className={diagnostics.passwordResetTest.success ? 'text-green-700' : 'text-red-700'}>
+                      Email Send: {diagnostics.passwordResetTest.message}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 text-center">
+            <Link href="/auth/login" className="text-brown-600 hover:text-brown-700 font-medium inline-flex items-center">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Sign In
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
