@@ -1,8 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import Layout from "@/components/layout/Layout";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
 import { ArrowLeft, User as UserIcon, Users, UserPlus, UserCheck, UserX } from "lucide-react";
@@ -173,25 +171,21 @@ export default function UserProfilePage() {
   // Show 404 if user not found
   if (notFound) {
     return (
-      <Layout title="User Not Found">
-        <div className="max-w-md mx-auto text-center py-12">
-          <UserIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h1>
-          <p className="text-gray-600 mb-6">The profile you're looking for doesn't exist.</p>
-          <Button onClick={() => router.push('/')} className="bg-brown-600 hover:bg-brown-700">
-            Go Home
-          </Button>
-        </div>
-      </Layout>
+      <div className="max-w-md mx-auto text-center py-12">
+        <UserIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h1>
+        <p className="text-gray-600 mb-6">The profile you're looking for doesn't exist.</p>
+        <Button onClick={() => router.push('/')} className="bg-brown-600 hover:bg-brown-700">
+          Go Home
+        </Button>
+      </div>
     );
   }
 
   // Show loading state
   if (authLoading || loading || !targetUserId) {
     return (
-      <Layout title="Loading...">
-        <div className="text-center p-10">Loading profile...</div>
-      </Layout>
+      <div className="text-center p-10">Loading profile...</div>
     );
   }
 
@@ -222,43 +216,41 @@ export default function UserProfilePage() {
   };
 
   return (
-    <Layout title={`${displayName}`}>
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center mb-6">
-          <button onClick={() => router.back()} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><ArrowLeft className="h-5 w-5" /></button>
-          <h1 className="text-xl font-bold text-gray-900 ml-4">Profile</h1>
-        </div>
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-          <div className="bg-brown-600 h-24"></div>
-          <div className="px-4 pb-4 relative">
-            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
-              <div className="h-24 w-24 rounded-full border-4 border-white overflow-hidden relative bg-white">
-                {profileUser.profile_image_url ? <Image src={profileUser.profile_image_url} alt={displayName} fill className="object-cover"/> : <div className="h-full w-full bg-gray-200 flex items-center justify-center"><UserIcon className="h-12 w-12 text-gray-500" /></div>}
-              </div>
-            </div>
-            <div className="pt-16 text-center">
-              <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-              <p className="text-gray-600">@{profileUser.username}</p>
-              {profileUser.bio && <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>}
-              <div className="mt-4 flex justify-center">{renderFriendshipButton()}</div>
-              <div className="mt-4 flex justify-center space-x-8">
-                <div className="text-center"><div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div><p className="text-sm text-gray-600">Friends</p></div>
-                <div className="text-center"><p className="font-bold text-gray-900">{userRatings.length}</p><p className="text-sm text-gray-600">Ratings</p></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex border-b border-gray-200 mb-4">
-          <button className={`flex-1 py-2 text-center font-medium ${activeTab === "ratings" ? "text-brown-600 border-b-2 border-brown-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab("ratings")}>Ratings</button>
-          <button className={`flex-1 py-2 text-center font-medium ${activeTab === "beans" ? "text-brown-600 border-b-2 border-brown-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab("beans")}>Favorite Beans</button>
-        </div>
-        {activeTab === "ratings" && (
-          <div className="space-y-4">
-            {userRatings.length > 0 ? userRatings.map((rating) => <RatingCard key={rating.id} rating={rating} />) : <div className="text-center py-8 bg-white rounded-lg shadow-md"><p className="text-gray-500">No ratings yet.</p></div>}
-          </div>
-        )}
-        {activeTab === "beans" && <div className="text-center py-8 bg-white rounded-lg shadow-md"><p className="text-gray-500">Favorite beans feature coming soon!</p></div>}
+    <div className="max-w-md mx-auto">
+      <div className="flex items-center mb-6">
+        <button onClick={() => router.back()} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><ArrowLeft className="h-5 w-5" /></button>
+        <h1 className="text-xl font-bold text-gray-900 ml-4">Profile</h1>
       </div>
-    </Layout>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+        <div className="bg-brown-600 h-24"></div>
+        <div className="px-4 pb-4 relative">
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
+            <div className="h-24 w-24 rounded-full border-4 border-white overflow-hidden relative bg-white">
+              {profileUser.profile_image_url ? <Image src={profileUser.profile_image_url} alt={displayName} fill className="object-cover"/> : <div className="h-full w-full bg-gray-200 flex items-center justify-center"><UserIcon className="h-12 w-12 text-gray-500" /></div>}
+            </div>
+          </div>
+          <div className="pt-16 text-center">
+            <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
+            <p className="text-gray-600">@{profileUser.username}</p>
+            {profileUser.bio && <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>}
+            <div className="mt-4 flex justify-center">{renderFriendshipButton()}</div>
+            <div className="mt-4 flex justify-center space-x-8">
+              <div className="text-center"><div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div><p className="text-sm text-gray-600">Friends</p></div>
+              <div className="text-center"><p className="font-bold text-gray-900">{userRatings.length}</p><p className="text-sm text-gray-600">Ratings</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex border-b border-gray-200 mb-4">
+        <button className={`flex-1 py-2 text-center font-medium ${activeTab === "ratings" ? "text-brown-600 border-b-2 border-brown-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab("ratings")}>Ratings</button>
+        <button className={`flex-1 py-2 text-center font-medium ${activeTab === "beans" ? "text-brown-600 border-b-2 border-brown-600" : "text-gray-500 hover:text-gray-700"}`} onClick={() => setActiveTab("beans")}>Favorite Beans</button>
+      </div>
+      {activeTab === "ratings" && (
+        <div className="space-y-4">
+          {userRatings.length > 0 ? userRatings.map((rating) => <RatingCard key={rating.id} rating={rating} />) : <div className="text-center py-8 bg-white rounded-lg shadow-md"><p className="text-gray-500">No ratings yet.</p></div>}
+        </div>
+      )}
+      {activeTab === "beans" && <div className="text-center py-8 bg-white rounded-lg shadow-md"><p className="text-gray-500">Favorite beans feature coming soon!</p></div>}
+    </div>
   );
 }
