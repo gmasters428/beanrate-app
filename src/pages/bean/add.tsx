@@ -20,6 +20,8 @@ import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { ratingsService } from "@/services/ratingsService";
 import { Coffee, Upload, Star, X, MapPin, Calendar, DollarSign, Award, Zap, Droplets, Mountain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { GetServerSidePropsContext } from "next";
+import { getServerSession } from "@/lib/supabaseServer";
 
 const addBeanSchema = z.object({
   // Essential Bean Details
@@ -95,6 +97,23 @@ const commonFlavorNotes = [
   "Citrus", "Berry", "Wine", "Earthy", "Spicy", "Smoky",
   "Sweet", "Tart", "Bright", "Clean", "Complex", "Balanced"
 ];
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
 
 export default function AddBeanPage() {
   const router = useRouter();
