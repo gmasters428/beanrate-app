@@ -38,9 +38,9 @@ export default function FriendsPage() {
     }
   }, [user, loading, router, loadFriends]);
 
-  const handleRemoveFriend = async (friendId: string) => {
+  const handleRemoveFriend = async (friendId: string, friendshipId: string) => {
     try {
-      await userService.removeFriend(friendId);
+      await userService.removeFriend(friendshipId);
       setFriends(friends.filter(friend => friend.id !== friendId));
     } catch (error) {
       console.error("Error removing friend:", error);
@@ -117,7 +117,7 @@ export default function FriendsPage() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handleRemoveFriend(friend.id)}
+                    onClick={() => handleRemoveFriend(friend.id, friend.friendship_id)}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     Remove
