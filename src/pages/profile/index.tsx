@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { GetServerSidePropsContext } from "next";
 import RatingCard from "@/components/home/RatingCard";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
@@ -11,6 +12,24 @@ import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
+import { getServerSession } from "@/lib/supabaseServer";
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session = await getServerSession(context);
+  
+  if (!session) {
+    return {
+      redirect: {
+        destination: "/auth/login",
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+}
 
 export default function ProfilePage() {
   const { user, signOut, loading, refreshUser } = useAuth();
@@ -41,16 +60,12 @@ export default function ProfilePage() {
   }, [user, toast]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-    }
     if (user) {
       setProfileImageUrl(user.profile?.profile_image_url || null);
       loadProfileData();
     }
-  }, [user, loading, router, loadProfileData]);
+  }, [user, loadProfileData]);
 
-  // Add a useEffect to refresh data when the page comes into focus (returning from rating submission)
   useEffect(() => {
     const handleFocus = () => {
       if (user) {
@@ -58,8 +73,8 @@ export default function ProfilePage() {
       }
     };
 
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [user, loadProfileData]);
 
   const handleImageUpdate = async (newImageUrl: string | null) => {
