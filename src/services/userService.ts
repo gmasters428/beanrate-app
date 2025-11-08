@@ -230,7 +230,8 @@ export const userService = {
         profile_image_url: friend.profile_image_url,
         bio: null,
         created_at: null,
-        updated_at: null
+        updated_at: null,
+        friendship_id: friendship.id // Add friendship ID for deletion
       } as UserWithProfile;
     });
 
