@@ -435,6 +435,7 @@ export type Database = {
     }
     Functions: {
       delete_user_account: { Args: { p_user_id: string }; Returns: undefined }
+      ensure_user_profile: { Args: never; Returns: undefined }
       get_friends: {
         Args: { p_user_id: string }
         Returns: {

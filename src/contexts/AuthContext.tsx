@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Ensure user profile exists via RPC (best-effort, ignore errors)
       try {
-        await supabase.rpc('ensure_user_profile');
+        await (supabase.rpc as any)('ensure_user_profile');
       } catch (error) {
         // Silently ignore profile RPC errors
         console.debug('Profile RPC call completed with:', error);
