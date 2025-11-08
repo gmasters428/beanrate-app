@@ -1,10 +1,8 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -146,137 +144,135 @@ export default function RatingPage() {
     );
   };
 
-  if (loading) return <Layout><div className="text-center p-10">Loading...</div></Layout>;
-  if (!rating) return <Layout><div className="text-center p-10">Rating not found.</div></Layout>;
+  if (loading) return <div className="text-center p-10">Loading...</div>;
+  if (!rating) return <div className="text-center p-10">Rating not found.</div>;
 
   return (
-    <Layout title={`Rating for ${rating.coffee_beans?.name}`}>
-      <div className="container mx-auto max-w-4xl px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Column: Image & Bean Info */}
-          <div>
-            <div className="relative aspect-square w-full rounded-xl shadow-lg overflow-hidden border mb-6">
-              {rating.coffee_beans?.image_url ? (
-                <Image src={rating.coffee_beans.image_url} alt={rating.coffee_beans.name || ""} fill className="object-cover" />
-              ) : (
-                <div className="bg-gray-100 h-full w-full flex items-center justify-center">
-                  <Coffee className="w-24 h-24 text-gray-300" />
-                </div>
-              )}
-            </div>
-            
-            <Link href={`/bean/${rating.coffee_bean_id}`} className="group">
-              <h2 className="text-2xl font-bold text-gray-900 group-hover:text-amber-700">{rating.coffee_beans?.name}</h2>
-              <p className="text-lg text-gray-600">by {rating.coffee_beans?.brand}</p>
-            </Link>
-            
-            <div className="flex flex-wrap gap-2 mt-4">
-              {rating.brewing_method && <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">{rating.brewing_method}</span>}
-              {rating.coffee_beans?.origin && <span className="text-xs font-medium bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full">{rating.coffee_beans.origin}</span>}
-              {rating.coffee_beans?.roast_level && <span className="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{rating.coffee_beans.roast_level}</span>}
-            </div>
-          </div>
-
-          {/* Right Column: Rating Details */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <Link href={`/profile/${rating.user_id}`} className="flex items-center group">
-                <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-amber-100">
-                  {rating.users?.profile_image_url ? (
-                    <Image src={rating.users.profile_image_url} alt={rating.users.username || ""} fill className="object-cover" />
-                  ) : (
-                    <div className="bg-gray-100 h-full w-full flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="ml-3">
-                  <p className="font-bold text-gray-900 group-hover:text-amber-700">{rating.users?.display_name || rating.users?.username}</p>
-                  <p className="text-sm text-gray-500">{formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}</p>
-                </div>
-              </Link>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-md border">
-              <div className="mb-4">{renderDetailStars(rating.overall_rating)}</div>
-              <Separator className="my-4"/>
-              <div className="space-y-3">
-                <DetailRating label="Aroma" value={rating.aroma_rating} />
-                <DetailRating label="Flavor" value={rating.flavor_rating} />
-                <DetailRating label="Aftertaste" value={rating.aftertaste_rating} />
-                <DetailRating label="Acidity" value={rating.acidity_rating} />
-                <DetailRating label="Body" value={rating.body_rating} />
-              </div>
-            </div>
-
-            {rating.review_text && (
-              <div className="mt-6">
-                <h3 className="font-bold text-lg mb-2">Review</h3>
-                <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border">{rating.review_text}</p>
+    <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left Column: Image & Bean Info */}
+        <div>
+          <div className="relative aspect-square w-full rounded-xl shadow-lg overflow-hidden border mb-6">
+            {rating.coffee_beans?.image_url ? (
+              <Image src={rating.coffee_beans.image_url} alt={rating.coffee_beans.name || ""} fill className="object-cover" />
+            ) : (
+              <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                <Coffee className="w-24 h-24 text-gray-300" />
               </div>
             )}
           </div>
+          
+          <Link href={`/bean/${rating.coffee_bean_id}`} className="group">
+            <h2 className="text-2xl font-bold text-gray-900 group-hover:text-amber-700">{rating.coffee_beans?.name}</h2>
+            <p className="text-lg text-gray-600">by {rating.coffee_beans?.brand}</p>
+          </Link>
+          
+          <div className="flex flex-wrap gap-2 mt-4">
+            {rating.brewing_method && <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">{rating.brewing_method}</span>}
+            {rating.coffee_beans?.origin && <span className="text-xs font-medium bg-neutral-100 text-neutral-800 px-2 py-1 rounded-full">{rating.coffee_beans.origin}</span>}
+            {rating.coffee_beans?.roast_level && <span className="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded-full">{rating.coffee_beans.roast_level}</span>}
+          </div>
         </div>
-        
-        <Separator className="my-8" />
 
-        {/* Actions and Comments */}
+        {/* Right Column: Rating Details */}
         <div>
-          <div className="flex items-center space-x-6 mb-6">
-            <button onClick={handleLikeToggle} disabled={!user || isLiking} className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 disabled:opacity-50 transition-colors ${hasLiked ? 'text-red-500' : ''}`}>
-              <Heart className={`w-6 h-6 ${hasLiked ? 'fill-current' : ''}`} />
-              <span className="font-semibold">{likeCount}</span>
-            </button>
-            <div className="flex items-center space-x-2 text-gray-600">
-              <MessageCircle className="w-6 h-6" />
-              <span className="font-semibold">{comments.length}</span>
+          <div className="flex items-center justify-between mb-4">
+            <Link href={`/profile/${rating.user_id}`} className="flex items-center group">
+              <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-amber-100">
+                {rating.users?.profile_image_url ? (
+                  <Image src={rating.users.profile_image_url} alt={rating.users.username || ""} fill className="object-cover" />
+                ) : (
+                  <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                    <UserIcon className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <div className="ml-3">
+                <p className="font-bold text-gray-900 group-hover:text-amber-700">{rating.users?.display_name || rating.users?.username}</p>
+                <p className="text-sm text-gray-500">{formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}</p>
+              </div>
+            </Link>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-md border">
+            <div className="mb-4">{renderDetailStars(rating.overall_rating)}</div>
+            <Separator className="my-4"/>
+            <div className="space-y-3">
+              <DetailRating label="Aroma" value={rating.aroma_rating} />
+              <DetailRating label="Flavor" value={rating.flavor_rating} />
+              <DetailRating label="Aftertaste" value={rating.aftertaste_rating} />
+              <DetailRating label="Acidity" value={rating.acidity_rating} />
+              <DetailRating label="Body" value={rating.body_rating} />
             </div>
           </div>
 
-          <h3 className="font-bold text-xl mb-4">Comments</h3>
-          {user ? (
-            <form onSubmit={handleCommentSubmit} className="flex items-start space-x-3 mb-6">
-              <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-grow" />
-              <Button type="submit" disabled={isSubmittingComment}>
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
-          ) : (
-            <p className="text-gray-500 mb-6">You must be logged in to comment.</p>
+          {rating.review_text && (
+            <div className="mt-6">
+              <h3 className="font-bold text-lg mb-2">Review</h3>
+              <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border">{rating.review_text}</p>
+            </div>
           )}
-
-          <div className="space-y-4">
-            {comments.map(comment => (
-              <div key={comment.id} className="flex items-start space-x-3">
-                <div className="relative h-10 w-10 rounded-full overflow-hidden border">
-                  {comment.users?.profile_image_url ? (
-                    <Image src={comment.users.profile_image_url} alt={comment.users.username || ""} fill className="object-cover" />
-                  ) : (
-                    <div className="bg-gray-100 h-full w-full flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-grow">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-baseline justify-between">
-                      <Link href={`/profile/${comment.user_id}`} className="font-bold text-sm hover:underline">{comment.users?.display_name || comment.users?.username}</Link>
-                      {user?.id === comment.user_id && (
-                        <button onClick={() => handleDeleteComment(comment.id)} className="text-gray-400 hover:text-red-500">
-                          <Trash2 className="w-3 h-3"/>
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-gray-800">{comment.text}</p>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
-                </div>
-              </div>
-            ))}
-            {comments.length === 0 && <p className="text-gray-500">No comments yet.</p>}
-          </div>
         </div>
       </div>
-    </Layout>
+      
+      <Separator className="my-8" />
+
+      {/* Actions and Comments */}
+      <div>
+        <div className="flex items-center space-x-6 mb-6">
+          <button onClick={handleLikeToggle} disabled={!user || isLiking} className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 disabled:opacity-50 transition-colors ${hasLiked ? 'text-red-500' : ''}`}>
+            <Heart className={`w-6 h-6 ${hasLiked ? 'fill-current' : ''}`} />
+            <span className="font-semibold">{likeCount}</span>
+          </button>
+          <div className="flex items-center space-x-2 text-gray-600">
+            <MessageCircle className="w-6 h-6" />
+            <span className="font-semibold">{comments.length}</span>
+          </div>
+        </div>
+
+        <h3 className="font-bold text-xl mb-4">Comments</h3>
+        {user ? (
+          <form onSubmit={handleCommentSubmit} className="flex items-start space-x-3 mb-6">
+            <Textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-grow" />
+            <Button type="submit" disabled={isSubmittingComment}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+        ) : (
+          <p className="text-gray-500 mb-6">You must be logged in to comment.</p>
+        )}
+
+        <div className="space-y-4">
+          {comments.map(comment => (
+            <div key={comment.id} className="flex items-start space-x-3">
+              <div className="relative h-10 w-10 rounded-full overflow-hidden border">
+                {comment.users?.profile_image_url ? (
+                  <Image src={comment.users.profile_image_url} alt={comment.users.username || ""} fill className="object-cover" />
+                ) : (
+                  <div className="bg-gray-100 h-full w-full flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-grow">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-baseline justify-between">
+                    <Link href={`/profile/${comment.user_id}`} className="font-bold text-sm hover:underline">{comment.users?.display_name || comment.users?.username}</Link>
+                    {user?.id === comment.user_id && (
+                      <button onClick={() => handleDeleteComment(comment.id)} className="text-gray-400 hover:text-red-500">
+                        <Trash2 className="w-3 h-3"/>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-gray-800">{comment.text}</p>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</p>
+              </div>
+            </div>
+          ))}
+          {comments.length === 0 && <p className="text-gray-500">No comments yet.</p>}
+        </div>
+      </div>
+    </div>
   );
 }
