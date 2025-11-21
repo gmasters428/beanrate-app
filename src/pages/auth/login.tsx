@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useRouter } from "next/router";
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
+import { supabase } from '../../integrations/supabase/client';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,46 +8,43 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useAuth();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError("");
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
+    if (loading) return;
     
-    if (!formData.email || !formData.password) {
+    if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
-
-    setIsLoading(true);
-    setError("");
-
+    
+    setError(null);
+    setLoading(true);
+    
     try {
-      await signIn(formData.email, formData.password);
-      router.push("/profile");
-    } catch (error) {
-      setError("Invalid email or password");
-    } finally {
-      setIsLoading(false);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { 
+        setError(error.message); 
+        setLoading(false); 
+        return; 
+      }
+      if (!data?.session) { 
+        setError('Login failed. No session returned.'); 
+        setLoading(false); 
+        return; 
+      }
+      router.push('/profile');
+    } catch (err: any) {
+      setError(err?.message ?? 'Unexpected error');
+      setLoading(false);
     }
   };
 
@@ -72,8 +70,8 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleInputChange}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -86,8 +84,8 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleInputChange}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <button
@@ -103,9 +101,9 @@ export default function LoginPage() {
             <Button 
               type="submit" 
               className="w-full bg-brown-600 hover:bg-brown-700"
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? "Signing In..." : "Sign In"}
+              {loading ? "Signing In..." : "Sign In"}
             </Button>
           </form>
 
