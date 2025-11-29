@@ -33,6 +33,22 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
 });
 
+// Helper to detect transient errors that should not clear user state
+const isTransientError = (error: any): boolean => {
+  if (!error) return false;
+  const message = error?.message || String(error);
+  return (
+    message.includes("Operation timed out") ||
+    message.includes("timeout") ||
+    message.includes("ETIMEDOUT") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ENOTFOUND") ||
+    message.includes("Network request failed") ||
+    message.includes("Failed to fetch") ||
+    error.name === "AbortError"
+  );
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const authTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -52,6 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -62,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (isRetry = false) => {
     if (!mountedRef.current) return;
     
     // Clear any existing timeout
@@ -71,22 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Add timeout for auth requests
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        refreshTimeoutRef.current = setTimeout(() => {
-          reject(new Error('Authentication timeout'));
-        }, 8000); // 8 second timeout
-      });
-
-      const authPromise = authService.getCurrentUser();
-      const currentUser = await Promise.race([authPromise, timeoutPromise]);
-      
-      // Clear timeout on success
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-        refreshTimeoutRef.current = null;
-      }
-
+      const currentUser = await authService.getCurrentUser();
       safeSetState(setUser, currentUser);
     } catch (error) {
       // Clear timeout on error
@@ -95,8 +100,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshTimeoutRef.current = null;
       }
 
-      if (mountedRef.current && error instanceof Error && !error.message.includes('timeout')) {
-        console.error("Error refreshing user:", error);
+      // Check if this is a transient error
+      if (isTransientError(error)) {
+        console.warn("Transient auth error (keeping current user state):", error);
+        
+        // Schedule a silent retry if this isn't already a retry
+        if (!isRetry && mountedRef.current) {
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) {
+              console.log("Retrying auth refresh after transient error...");
+              refreshUser(true);
+            }
+          }, 3000); // Retry after 3 seconds
+        }
+        // DO NOT clear user state on transient errors
+        return;
+      }
+
+      // Only clear user state on non-transient errors
+      if (mountedRef.current) {
+        console.error("Non-transient auth error (clearing user state):", error);
         safeSetState(setUser, null);
       }
     }
@@ -111,15 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Add timeout for sign in
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        authTimeoutRef.current = setTimeout(() => {
-          reject(new Error('Sign in timeout - please check your connection'));
-        }, 10000); // 10 second timeout for sign in
-      });
-
-      const signInPromise = authService.signIn(email, password);
-      await Promise.race([signInPromise, timeoutPromise]);
+      await authService.signIn(email, password);
       
       // Clear timeout on success
       if (authTimeoutRef.current) {
@@ -164,14 +182,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        // If session fetch failed with transient error, keep trying but don't fail initialization
+        if (sessionError && isTransientError(sessionError)) {
+          console.warn("Transient error fetching session, will retry:", sessionError);
+          safeSetState(setLoading, false);
+          // Schedule a retry
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current && !user) {
+              console.log("Retrying session initialization...");
+              initializeAuth();
+            }
+          }, 2000);
+          return;
+        }
         
         if (session?.user && mountedRef.current) {
-          const currentUser = await authService.getCurrentUser();
-          safeSetState(setUser, currentUser);
+          try {
+            const currentUser = await authService.getCurrentUser();
+            safeSetState(setUser, currentUser);
+          } catch (userError) {
+            // If getting user profile fails with transient error, keep session but retry
+            if (isTransientError(userError)) {
+              console.warn("Transient error fetching user profile, will retry:", userError);
+              // Schedule a retry
+              if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+              }
+              retryTimeoutRef.current = setTimeout(() => {
+                if (mountedRef.current && session?.user) {
+                  refreshUser();
+                }
+              }, 2000);
+            } else {
+              console.error("Error fetching user profile:", userError);
+            }
+          }
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        // Only log non-transient errors
+        if (!isTransientError(error)) {
+          console.error("Error initializing auth:", error);
+        } else {
+          console.warn("Transient initialization error:", error);
+        }
       } finally {
         safeSetState(setLoading, false);
       }
@@ -183,14 +241,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!mountedRef.current) return;
 
+        console.debug("Auth state change event:", event);
+
+        // Only handle explicit sign-in and sign-out events
         if (event === 'SIGNED_IN' && session?.user) {
-          if (mountedRef.current) {
+          try {
             const currentUser = await authService.getCurrentUser();
             safeSetState(setUser, currentUser);
+          } catch (error) {
+            // If user fetch fails with transient error, keep the session
+            if (isTransientError(error)) {
+              console.warn("Transient error during SIGNED_IN, keeping session:", error);
+              // Schedule a retry to fetch user profile
+              if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+              }
+              retryTimeoutRef.current = setTimeout(() => {
+                if (mountedRef.current && session?.user) {
+                  refreshUser();
+                }
+              }, 2000);
+            } else {
+              console.error("Error fetching user after SIGNED_IN:", error);
+            }
           }
         } else if (event === 'SIGNED_OUT') {
+          // Only clear user on explicit sign-out
           safeSetState(setUser, null);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // On token refresh, try to update user but don't clear on failure
+          if (session?.user && mountedRef.current) {
+            try {
+              const currentUser = await authService.getCurrentUser();
+              safeSetState(setUser, currentUser);
+            } catch (error) {
+              // Keep existing user state on transient refresh errors
+              if (isTransientError(error)) {
+                console.warn("Transient error during TOKEN_REFRESHED, keeping current user:", error);
+              } else {
+                console.error("Error refreshing user profile:", error);
+              }
+            }
+          }
         }
+        // For other events (USER_UPDATED, PASSWORD_RECOVERY, etc.), keep current state
         
         safeSetState(setLoading, false);
       }
@@ -199,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [safeSetState]);
+  }, [safeSetState, refreshUser]);
 
   // Connection recovery mechanism - retry auth on network recovery
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from './types';
 
@@ -9,6 +10,15 @@ export const supabase = createBrowserClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      flowType: 'pkce',
+    },
+    global: {
+      headers: {
+        'x-client-info': 'supabase-js-web',
+      },
+    },
+    db: {
+      schema: 'public',
     },
   }
 );
