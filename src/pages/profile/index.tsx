@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { formatUserPreferences } from "@/lib/utils";
+import { parseUserPreferences } from "@/utils/profilePreferences";
+import { Badge } from "@/components/ui/badge";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -106,6 +108,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   }
 
   const displayName = user?.profile?.display_name || user?.profile?.username || "User";
+  const preferences = parseUserPreferences(user.profile?.bio);
 
   return (
     <>
@@ -130,9 +133,24 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                 <div className="flex-1 text-center">
                   <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
                   <h3 className="font-semibold text-gray-900 mb-2">@{user.profile.username}</h3>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>{formatUserPreferences(user.profile?.bio)}</p>
-                  </div>
+                  {preferences && (
+                    <div className="space-y-2 text-sm">
+                      {(preferences.firstName || preferences.region) && (
+                        <p className="text-gray-500">
+                          {[preferences.firstName, preferences.region].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      {preferences.coffeeTypes && preferences.coffeeTypes.length > 0 && (
+                        <div className="flex flex-wrap justify-center gap-1.5">
+                          {preferences.coffeeTypes.map((type, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {type}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 flex justify-end space-x-2">
                   <Link href="/profile/settings"><button className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><Settings className="h-5 w-5" /></button></Link>
