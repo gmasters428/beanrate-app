@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
+import { formatUserPreferences } from "@/lib/utils";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -130,7 +131,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                   <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
                   <h3 className="font-semibold text-gray-900 mb-2">@{user.profile.username}</h3>
                   <div className="space-y-1 text-sm text-gray-600">
-                    <p>{user.profile?.bio || "No bio yet"}</p>
+                    <p>{formatUserPreferences(user.profile?.bio)}</p>
                   </div>
                 </div>
                 <div className="flex-1 flex justify-end space-x-2">
@@ -138,7 +139,6 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                   <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><LogOut className="h-5 w-5" /></button>
                 </div>
               </div>
-              {user?.profile?.bio && <p className="mt-2 text-gray-700 text-center">{user.profile.bio}</p>}
               <div className="mt-4 flex justify-center space-x-8">
                 <Link href="/profile/friends" className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors">
                   <div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div>
