@@ -124,13 +124,69 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 export default function AddBeanPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, status } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempts, setSubmitAttempts] = useState(0);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [flavorNoteInput, setFlavorNoteInput] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Show loading state while auth is initializing or recovering from transient errors
+  if (status === 'loading' || status === 'recovering') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+              <p className="text-muted-foreground">
+                {status === 'recovering' ? 'Reconnecting to server...' : 'Loading...'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Only show login gate when definitively signed out
+  if (status === 'signedOut' || (!user && status === 'idle')) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <Coffee className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground mb-4">
+              Please log in to add a coffee bean and share your tasting experience.
+            </p>
+            <Button onClick={() => router.push('/auth/login')}>
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state if auth is in error state
+  if (status === 'error') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <Coffee className="h-12 w-12 mx-auto mb-4 text-red-500" />
+            <p className="text-muted-foreground mb-4">
+              There was an error loading your authentication status. Please try refreshing the page.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const form = useForm<AddBeanFormData>({
     resolver: zodResolver(addBeanSchema),
@@ -712,24 +768,6 @@ export default function AddBeanPage() {
       console.log('🏁 Comprehensive test completed');
     }
   };
-
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6 text-center">
-            <Coffee className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4">
-              Please log in to add a coffee bean and share your tasting experience.
-            </p>
-            <Button onClick={() => router.push('/auth/login')}>
-              Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">

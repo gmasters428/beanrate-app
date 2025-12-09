@@ -6,8 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
 import Link from "next/link";
-import Head from "next/head";
-
 export default function HomePage() {
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,9 +111,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <>
-        <Head>
-          <title>BeanRate - Discover Great Coffee</title>
-        </Head>
+        
         <div className="max-w-2xl mx-auto">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <div className="relative">
@@ -136,9 +132,7 @@ export default function HomePage() {
   if (error) {
     return (
       <>
-        <Head>
-          <title>BeanRate - Discover Great Coffee</title>
-        </Head>
+        
         <div className="max-w-2xl mx-auto">
           <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <Coffee className="h-12 w-12 text-gray-400" />
@@ -157,9 +151,7 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <title>BeanRate - Discover Great Coffee</title>
-      </Head>
+      
       <div className="max-w-2xl mx-auto">
         {/* Page Header Section */}
         <div className="mb-6">
