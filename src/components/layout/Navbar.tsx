@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { Coffee, Search, User, Menu, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/lib/adminUtils";
 
 export default function Navbar() {
   const router = useRouter();
@@ -32,9 +33,11 @@ export default function Navbar() {
                 <Link href="/rate" className="text-gray-700 hover:text-amber-600">
                   Rate Coffee
                 </Link>
-                <Link href="/admin" className="text-gray-700 hover:text-amber-600">
-                  <Shield className="h-5 w-5" />
-                </Link>
+                {isAdmin(user.email) && (
+                  <Link href="/admin" className="text-gray-700 hover:text-amber-600">
+                    <Shield className="h-5 w-5" />
+                  </Link>
+                )}
                 <Link href="/profile" className="text-gray-700 hover:text-amber-600">
                   <User className="h-5 w-5" />
                 </Link>

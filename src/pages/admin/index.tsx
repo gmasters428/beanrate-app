@@ -1,10 +1,42 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Database, Mail, Settings, Shield, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { GetServerSideProps } from "next";
+import { getServerSupabase } from "@/lib/supabaseServer";
+import { isAdmin } from "@/lib/adminUtils";
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const supabase = getServerSupabase(context);
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Redirect to login if not authenticated
+  if (!session) {
+    return {
+      redirect: {
+        destination: '/auth/login',
+        permanent: false,
+      },
+    };
+  }
+  
+  // Redirect to home if not an admin
+  if (!isAdmin(session.user.email)) {
+    return {
+      redirect: {
+        destination: '/',
+        permanent: false,
+      },
+    };
+  }
+  
+  return {
+    props: {},
+  };
+};
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
