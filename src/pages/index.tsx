@@ -1,4 +1,4 @@
-
+// TEMP: test dev vercel deploy
 import { useState, useEffect, useCallback, useRef } from "react";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
