@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, UserX, UserPlus, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import authService from "@/services/authService";
+import { authService } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function UserManagementPage() {
