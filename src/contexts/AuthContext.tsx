@@ -8,15 +8,7 @@ import { type UserProfile } from "@/types";
 type AuthUser = {
   id: string;
   email: string;
-  profile: {
-    id: string;
-    username: string;
-    display_name: string;
-    bio: string;
-    profile_image_url: string;
-    created_at: string;
-    updated_at: string;
-  };
+  profile: UserProfile | null;
 } | null;
 
 type AuthStatus = 'loading' | 'idle' | 'signedIn' | 'signedOut' | 'recovering' | 'error';
