@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { type Database } from "@/integrations/supabase/types";
+import { type Database } from "@/integrations/supabase/database.types";
 
 type Rating = Database['public']['Tables']['ratings']['Row'];
 type RatingInsert = Database['public']['Tables']['ratings']['Insert'];
