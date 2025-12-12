@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { type Database } from "@/integrations/supabase/types";
+import { type Database } from "@/integrations/supabase/database.types";
 
 type Comment = Database['public']['Tables']['comments']['Row'];
 type CommentInsert = Database['public']['Tables']['comments']['Insert'];
