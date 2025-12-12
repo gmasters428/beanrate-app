@@ -1,5 +1,4 @@
-
-import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/database.types";
 
 // Supabase database types
 export type User = Database['public']['Tables']['users']['Row'];

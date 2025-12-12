@@ -237,3 +237,6 @@ export default function AdminDashboard() {
     </Link>
   </p>
 </div>
+    </div>
+  );
+}
