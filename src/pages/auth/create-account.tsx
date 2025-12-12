@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Coffee, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import authService from "@/services/authService";
+import { authService } from "@/services/authService";
 
 export default function CreateAccountPage() {
   const [formData, setFormData] = useState({

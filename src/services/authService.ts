@@ -65,13 +65,17 @@ export const authService = {
   },
 
   // Sign up with email and password
-  async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
+  async signUp(email: string, password: string, username: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${getURL()}auth/confirm-email`
+          emailRedirectTo: `${getURL()}auth/confirm-email`,
+          data: {
+            username,
+            display_name: username,
+          }
         }
       });
 
@@ -92,6 +96,29 @@ export const authService = {
       return { 
         user: null, 
         error: { message: "An unexpected error occurred during sign up" } 
+      };
+    }
+  },
+
+  // Resend confirmation email
+  async resendConfirmation(email: string): Promise<{ error: AuthError | null }> {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${getURL()}auth/confirm-email`
+        }
+      });
+
+      if (error) {
+        return { error: { message: error.message, code: error.status?.toString() } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { 
+        error: { message: "An unexpected error occurred during email resend" } 
       };
     }
   },
@@ -244,5 +271,20 @@ export const authService = {
 
     if (error) throw error;
     return { user: data.user, message: "Signup requested" };
+  },
+
+  async advancedDebugEmail(email: string): Promise<any> {
+    // Re-use debugAuthState for now, or expand if needed
+    return this.debugAuthState(email);
+  },
+
+  async forceCleanupEmail(email: string): Promise<{ success: boolean; message: string }> {
+    console.warn("forceCleanupEmail is not implemented on client side");
+    return { success: false, message: "Action requires server-side admin privileges" };
+  },
+
+  async superNuclearReset(): Promise<{ message: string }> {
+    console.warn("superNuclearReset is not implemented on client side");
+    return { message: "Action requires server-side admin privileges" };
   }
 };
