@@ -193,5 +193,56 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
+  },
+
+  // Admin Debug Methods
+  async debugAuthState(email: string): Promise<any> {
+    // Check if user exists in public users table
+    const { data: publicUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', email) // Assuming username check for now, or fetch by id if possible
+      .maybeSingle();
+
+    // Since we can't easily check auth.users from client without admin key,
+    // we return what we can see from the public side and current session
+    const { data: { session } } = await supabase.auth.getSession();
+    const isCurrentUser = session?.user?.email === email;
+
+    return {
+      email,
+      authUserExists: isCurrentUser, // approximate
+      authUserConfirmed: isCurrentUser ? !!session?.user?.email_confirmed_at : false,
+      publicUserExists: !!publicUser,
+      currentSession: !!session,
+      isOrphaned: isCurrentUser && !publicUser,
+      authUserId: isCurrentUser ? session?.user?.id : null,
+      publicUserId: publicUser?.id,
+      authUserCreatedAt: isCurrentUser ? session?.user?.created_at : null
+    };
+  },
+
+  async clearOrphanedAuthData(email?: string): Promise<{ message: string }> {
+    console.warn("clearOrphanedAuthData is not implemented on client side");
+    return { message: "Action requires server-side admin privileges" };
+  },
+
+  async nuclearAuthReset(): Promise<{ message: string }> {
+    console.warn("nuclearAuthReset is not implemented on client side");
+    return { message: "Action requires server-side admin privileges" };
+  },
+
+  async forceSignUp(email: string, password: string, username: string): Promise<any> {
+    // Attempt standard signup
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username, display_name: username }
+      }
+    });
+
+    if (error) throw error;
+    return { user: data.user, message: "Signup requested" };
   }
 };
