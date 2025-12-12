@@ -218,14 +218,22 @@ export default function AdminDashboard() {
       </Card>
 
       {/* Footer */}
-      <div className="mt-8 text-center text-sm text-gray-500">
-        <p>BeanRate Admin Dashboard • Version 1.0</p>
-        <p className="mt-1">
-          <Link href="/" className="text-blue-600 hover:underline">
-            ← Back to Main Site
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
-}
+<div className="mt-8 text-center text-sm text-gray-500">
+  <p>
+    BeanRate Admin Dashboard • Version 1.0{" "}
+    <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+      DEV
+    </span>
+  </p>
+
+  <p className="mt-1 text-xs text-gray-400">
+    Build: {process.env.NEXT_PUBLIC_VERCEL_ENV || "local"} •{" "}
+    {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "no-sha"}
+  </p>
+
+  <p className="mt-1">
+    <Link href="/" className="text-blue-600 hover:underline">
+      ← Back to Main Site
+    </Link>
+  </p>
+</div>
