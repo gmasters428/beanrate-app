@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { type Database } from "@/integrations/supabase/types";
+import { type Database } from "@/integrations/supabase/database.types";
 
 type CoffeeBean = Database['public']['Tables']['coffee_beans']['Row'];
 type CoffeeBeanInsert = Database['public']['Tables']['coffee_beans']['Insert'];
