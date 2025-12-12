@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Mail, Coffee, RefreshCw, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import authService from "@/services/authService";
+import { authService } from "@/services/authService";
 
 export default function CheckInboxPage() {
   const [email, setEmail] = useState<string>("");
