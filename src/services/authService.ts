@@ -38,24 +38,37 @@ const getURL = () => {
 export const authService = {
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return null;
 
-    // Fetch profile
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    return {
-      id: user.id,
-      email: user.email || "",
-      user_metadata: user.user_metadata,
-      created_at: user.created_at,
-      profile: profile as UserProfile | null
-    };
+      return {
+        id: user.id,
+        email: user.email || "",
+        user_metadata: user.user_metadata,
+        created_at: user.created_at,
+        profile: profile as UserProfile | null
+      };
+    } catch (error: any) {
+      const message = error?.message || String(error);
+      const isTransient = 
+        message.includes("timeout") ||
+        message.includes("ETIMEDOUT") ||
+        message.includes("Failed to fetch") ||
+        error.name === "AbortError";
+      
+      console.debug('Get current user error:', error);
+      
+      return null;
+    }
   },
 
   // Get current session

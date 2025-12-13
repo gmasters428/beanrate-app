@@ -33,17 +33,16 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { 
         setError(error.message); 
-        setLoading(false); 
         return; 
       }
       if (!data?.session) { 
         setError('Login failed. No session returned.'); 
-        setLoading(false); 
         return; 
       }
       router.push('/profile');
     } catch (err: any) {
       setError(err?.message ?? 'Unexpected error');
+    } finally {
       setLoading(false);
     }
   };
