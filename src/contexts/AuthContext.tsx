@@ -170,7 +170,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.debug('Profile RPC call completed with:', error);
       }
 
-      await refreshUser();
+      // Best-effort user refresh: don't fail sign-in on transient network errors
+      try {
+        await refreshUser();
+      } catch (e) {
+        if (isTransientError(e)) {
+          console.debug('Transient error during post-signin refreshUser, ignoring:', e);
+        } else {
+          throw e;
+        }
+      }
     } catch (error) {
       // Clear timeout on error
       if (authTimeoutRef.current) {
