@@ -30,3 +30,29 @@ Make DEV and PROD behavior consistent, fix auth/session issues, and eliminate ob
    - Fix applied
    - Files changed
    - Manual verification steps
+
+## Git + Deployment Workflow (Codex)
+
+### Allowed branches
+- You may commit and push directly to `origin/dev` after checks pass.
+- Never push to `main` under any circumstances.
+- Do not create tags or releases.
+
+### Required checks before any push
+Run these and confirm success:
+1) `npm run build`
+2) `npm run lint` (if lint exists / is configured)
+
+If either fails: do not commit or push. Fix the issue or stop and report the failure.
+
+### Before pushing
+- Show `git diff --stat`
+- Briefly summarize what changed and why
+
+### Commit rules
+- Use a concise message: `Fix: <short description>`
+- Keep diffs minimal; no refactors unless necessary for the bug.
+
+### Push rules
+- Push only to: `origin dev`
+- Use: `git push origin dev`
