@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -6,7 +6,7 @@ import type { GetServerSideProps, NextPage } from 'next';
 import RatingCard from "@/components/home/RatingCard";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
-import { Settings, LogOut, MapPin, Users, UserIcon } from "lucide-react";
+import { Settings, LogOut, Users, UserIcon, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService } from "@/services/userService";
@@ -22,6 +22,22 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 type Props = {
   userId: string;
 };
+
+type StatProps = {
+  icon?: ReactNode;
+  value: number;
+  label: string;
+};
+
+const Stat = ({ icon, value, label }: StatProps) => (
+  <div className="flex flex-col items-center text-center">
+    <div className="flex items-center justify-center gap-1 mb-1">
+      {icon}
+      <p className="font-bold text-gray-900">{value}</p>
+    </div>
+    <p className="text-sm text-gray-600">{label}</p>
+  </div>
+);
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   try {
@@ -133,8 +149,17 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     );
   }
 
-  const displayName = user?.profile?.display_name || user?.profile?.username || "User";
   const preferences = parseUserPreferences(user.profile?.bio);
+  const profileMeta = user?.profile as { full_name?: string | null } | null;
+  const displayName = [
+    user?.profile?.display_name,
+    profileMeta?.full_name,
+    preferences?.firstName,
+    (user as any)?.user_metadata?.full_name,
+    (user as any)?.user_metadata?.name,
+    user?.profile?.username,
+    user?.profile?.username?.replace(/^@/, ""),
+  ].find((value) => typeof value === "string" && value.trim().length > 0)?.trim() || "User";
 
   return (
     <>
@@ -183,10 +208,9 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                   <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><LogOut className="h-5 w-5" /></button>
                 </div>
               </div>
-              <div className="mt-4 flex justify-center space-x-8">
-                <Link href="/profile/friends" className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors">
-                  <div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div>
-                  <p className="text-sm text-gray-600">Friends</p>
+              <div className="mt-4 flex justify-center gap-8">
+                <Link href="/profile/friends" className="rounded-lg p-2 transition-colors hover:bg-gray-50">
+                  <Stat icon={<Users className="h-4 w-4 text-brown-600" />} value={friendsCount} label="Friends" />
                 </Link>
                 {pendingRequestsCount > 0 && (
                   <Link href="/profile/friend-requests" className="text-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors relative">
@@ -195,9 +219,8 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                     <div className="absolute -top-1 -right-1 h-3 w-3 bg-brown-500 rounded-full"></div>
                   </Link>
                 )}
-                <div className="text-center">
-                  <p className="font-bold text-gray-900">{userRatings.length}</p>
-                  <p className="text-sm text-gray-600">Ratings</p>
+                <div className="rounded-lg p-2">
+                  <Stat icon={<Star className="h-4 w-4 text-brown-600" />} value={userRatings.length} label="Ratings" />
                 </div>
               </div>
             </div>

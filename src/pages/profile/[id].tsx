@@ -1,15 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
-import { ArrowLeft, User as UserIcon, Users, UserPlus, UserCheck, UserX } from "lucide-react";
+import { ArrowLeft, User as UserIcon, Users, UserPlus, UserCheck, UserX, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile, FriendshipStatus } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { isUUID } from "@/lib/ids";
 import { supabase } from "@/integrations/supabase/client";
+
+type StatProps = {
+  icon?: ReactNode;
+  value: number;
+  label: string;
+};
+
+const Stat = ({ icon, value, label }: StatProps) => (
+  <div className="flex flex-col items-center text-center">
+    <div className="flex items-center justify-center gap-1 mb-1">
+      {icon}
+      <p className="font-bold text-gray-900">{value}</p>
+    </div>
+    <p className="text-sm text-gray-600">{label}</p>
+  </div>
+);
 
 export default function UserProfilePage() {
   const { user: currentUser, loading: authLoading } = useAuth();
@@ -234,9 +250,13 @@ export default function UserProfilePage() {
             <p className="text-gray-600">@{profileUser.username}</p>
             {profileUser.bio && <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>}
             <div className="mt-4 flex justify-center">{renderFriendshipButton()}</div>
-            <div className="mt-4 flex justify-center space-x-8">
-              <div className="text-center"><div className="flex items-center justify-center gap-1 mb-1"><Users className="h-4 w-4 text-brown-600" /><p className="font-bold text-gray-900">{friendsCount}</p></div><p className="text-sm text-gray-600">Friends</p></div>
-              <div className="text-center"><p className="font-bold text-gray-900">{userRatings.length}</p><p className="text-sm text-gray-600">Ratings</p></div>
+            <div className="mt-4 flex justify-center gap-8">
+              <div className="rounded-lg p-2">
+                <Stat icon={<Users className="h-4 w-4 text-brown-600" />} value={friendsCount} label="Friends" />
+              </div>
+              <div className="rounded-lg p-2">
+                <Stat icon={<Star className="h-4 w-4 text-brown-600" />} value={userRatings.length} label="Ratings" />
+              </div>
             </div>
           </div>
         </div>
