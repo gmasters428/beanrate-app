@@ -229,6 +229,22 @@ export default function AddBeanPage() {
     );
   };
 
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Timed out after ${ms}ms: ${label}`));
+      }, ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
   // TEST SUBMISSION FUNCTION for isolated testing
   const testSubmit = async () => {
     console.log('🧪 TEST SUBMISSION STARTED - Direct Service Test');
@@ -272,7 +288,11 @@ export default function AddBeanPage() {
       
       // Test 2: Bean creation via service
       console.log('🧪 Step 2: Testing coffeeBeansService.createCoffeeBean...');
-      const testBean = await coffeeBeansService.createCoffeeBean(testBeanData, null);
+      const testBean = await withTimeout(
+        coffeeBeansService.createCoffeeBean(testBeanData, null),
+        15000,
+        'testSubmit.createCoffeeBean'
+      );
       console.log('✅ Service bean creation successful:', testBean);
       
       // Test 3: Rating creation via service
@@ -285,7 +305,11 @@ export default function AddBeanPage() {
       };
       
       console.log('🧪 Step 3a: Rating data prepared:', testRatingData);
-      const testRating = await ratingsService.createRating(testRatingData);
+      const testRating = await withTimeout(
+        ratingsService.createRating(testRatingData),
+        15000,
+        'testSubmit.createRating'
+      );
       console.log('✅ Service rating creation successful:', testRating);
       
       // Test 4: Verification - can we retrieve what we just created?
@@ -420,7 +444,12 @@ export default function AddBeanPage() {
       
       let newBean;
       try {
-        newBean = await coffeeBeansService.createCoffeeBean(beanData, imageFiles[0] || null);
+        console.log('⏳ Creating coffee bean...');
+        newBean = await withTimeout(
+          coffeeBeansService.createCoffeeBean(beanData, imageFiles[0] || null),
+          15000,
+          'createCoffeeBean'
+        );
         console.log('✅ Coffee bean created successfully:', newBean);
       } catch (beanError) {
         console.error('💥 Bean creation failed:', beanError);
@@ -457,7 +486,8 @@ export default function AddBeanPage() {
       
       let rating;
       try {
-        rating = await ratingsService.createRating(ratingData);
+        console.log('⏳ Creating rating...');
+        rating = await withTimeout(ratingsService.createRating(ratingData), 15000, 'createRating');
         console.log('✅ Rating created successfully:', rating);
       } catch (ratingError) {
         console.error('💥 Rating creation failed:', ratingError);
@@ -645,7 +675,11 @@ export default function AddBeanPage() {
       console.log('☕ Testing bean creation with data:', beanData);
       
       // Step 3: Create bean (NO IMAGE UPLOAD)
-      const testBean = await coffeeBeansService.createCoffeeBean(beanData, null);
+      const testBean = await withTimeout(
+        coffeeBeansService.createCoffeeBean(beanData, null),
+        15000,
+        'comprehensiveTest.createCoffeeBean'
+      );
       console.log('✅ Bean created successfully:', testBean);
       
       // Step 4: Create rating
@@ -670,7 +704,11 @@ export default function AddBeanPage() {
       
       console.log('⭐ Testing rating creation with data:', ratingData);
       
-      const testRating = await ratingsService.createRating(ratingData);
+      const testRating = await withTimeout(
+        ratingsService.createRating(ratingData),
+        15000,
+        'comprehensiveTest.createRating'
+      );
       console.log('✅ Rating created successfully:', testRating);
       
       // Step 5: Success!
