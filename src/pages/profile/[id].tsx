@@ -10,6 +10,7 @@ import { userService, UserWithProfile, FriendshipStatus } from "@/services/userS
 import { useToast } from "@/hooks/use-toast";
 import { isUUID } from "@/lib/ids";
 import { supabase } from "@/integrations/supabase/client";
+import { parseUserPreferences } from "@/utils/profilePreferences";
 
 type StatProps = {
   icon?: ReactNode;
@@ -208,7 +209,16 @@ export default function UserProfilePage() {
   // Profile user must be loaded by this point
   if (!profileUser) return null;
 
-  const displayName = profileUser.display_name || profileUser.username;
+  const preferences = parseUserPreferences(profileUser.bio);
+  const username = profileUser.username?.replace(/^@/, "").trim();
+  const profileMeta = profileUser as { full_name?: string | null };
+  const displayName =
+    [profileUser.display_name, profileMeta?.full_name, preferences?.firstName]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .find((value) => value && value !== username) ||
+    username ||
+    profileUser.username ||
+    "User";
 
   const renderFriendshipButton = () => {
     if (!currentUser || currentUser.id === profileUser.id) return null;

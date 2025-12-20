@@ -151,15 +151,20 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
 
   const preferences = parseUserPreferences(user.profile?.bio);
   const profileMeta = user?.profile as { full_name?: string | null } | null;
-  const displayName = [
-    user?.profile?.display_name,
-    profileMeta?.full_name,
-    preferences?.firstName,
-    (user as any)?.user_metadata?.full_name,
-    (user as any)?.user_metadata?.name,
-    user?.profile?.username,
-    user?.profile?.username?.replace(/^@/, ""),
-  ].find((value) => typeof value === "string" && value.trim().length > 0)?.trim() || "User";
+  const username = user?.profile?.username?.replace(/^@/, "").trim();
+  const displayName =
+    [
+      user?.profile?.display_name,
+      profileMeta?.full_name,
+      preferences?.firstName,
+      (user as any)?.user_metadata?.full_name,
+      (user as any)?.user_metadata?.name,
+    ]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .find((value) => value && value !== username) ||
+    username ||
+    user?.profile?.username ||
+    "User";
 
   return (
     <>
