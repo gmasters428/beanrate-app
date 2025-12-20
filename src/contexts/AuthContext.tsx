@@ -57,6 +57,14 @@ const isInvalidSessionError = (error: any): boolean => {
   );
 };
 
+const getSupabaseProjectRefSuffix = (url?: string): string | null => {
+  if (!url) return null;
+  const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
+  if (!match) return null;
+  const ref = match[1];
+  return ref.length > 6 ? ref.slice(-6) : ref;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      const refSuffix = getSupabaseProjectRefSuffix((supabase as any)?.supabaseUrl);
+      console.debug(
+        `[Auth] Supabase URL project ref: ${refSuffix ? `...${refSuffix}` : "unknown"}`
+      );
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       mountedRef.current = false;

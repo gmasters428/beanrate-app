@@ -5,6 +5,19 @@ import type { Database } from './database.types';
 const SUPABASE_URL = "https://xkjqkqgmyhgdpqrbuvph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhranFrcWdteWhnZHBxcmJ1dnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMDYxNzcsImV4cCI6MjA4MDg4MjE3N30.by0IhkXikFoEF5aImMsusEEndmVU5LKmgWttyvfg0eU";
 
+const getMaskedProjectRef = (url: string): string | null => {
+  const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
+  if (!match) return null;
+  const ref = match[1];
+  if (ref.length <= 8) return ref;
+  return `${ref.slice(0, 4)}...${ref.slice(-4)}`;
+};
+
+if (process.env.NODE_ENV !== "production") {
+  const maskedRef = getMaskedProjectRef(SUPABASE_URL);
+  console.debug(`[Supabase] Browser client init project ref: ${maskedRef ?? "unknown"}`);
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 

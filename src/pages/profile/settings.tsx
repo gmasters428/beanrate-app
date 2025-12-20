@@ -74,6 +74,23 @@ export default function ProfileSettingsPage() {
   const [theme, setTheme] = useState("light");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const isDev = process.env.NODE_ENV !== "production";
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Timed out after ${ms}ms: ${label}`));
+      }, ms);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -122,17 +139,35 @@ export default function ProfileSettingsPage() {
         throw new Error("User not found");
       }
 
-      console.log("Updating profile with data:", formData);
+      if (isDev) {
+        console.debug(`[ProfileSettings][${new Date().toISOString()}] Saving profile...`, formData);
+      }
 
-      await userService.updateUserProfile(user.id, {
-        bio: JSON.stringify({
-          firstName: formData.firstName.trim() || null,
-          region: formData.region || null,
-          coffeeTypes: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
-        })
-      });
+      if (isDev) {
+        console.debug(`[ProfileSettings][${new Date().toISOString()}] updateUserProfile start`);
+      }
+      await withTimeout(
+        userService.updateUserProfile(user.id, {
+          bio: JSON.stringify({
+            firstName: formData.firstName.trim() || null,
+            region: formData.region || null,
+            coffeeTypes: formData.coffeeTypes.length > 0 ? formData.coffeeTypes : null
+          })
+        }),
+        15000,
+        "updateUserProfile"
+      );
+      if (isDev) {
+        console.debug(`[ProfileSettings][${new Date().toISOString()}] updateUserProfile done`);
+      }
 
-      await refreshUser();
+      if (isDev) {
+        console.debug(`[ProfileSettings][${new Date().toISOString()}] refreshUser start`);
+      }
+      await withTimeout(refreshUser(), 15000, "refreshUser");
+      if (isDev) {
+        console.debug(`[ProfileSettings][${new Date().toISOString()}] refreshUser done`);
+      }
 
       setSaveMessage("Profile updated successfully!");
       setTimeout(() => setSaveMessage(""), 3000);
