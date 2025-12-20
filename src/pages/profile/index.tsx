@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatUserPreferences } from "@/lib/utils";
 import { parseUserPreferences } from "@/utils/profilePreferences";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -102,6 +103,31 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         </Head>
         <div className="max-w-md mx-auto flex justify-center items-center h-64">
           <div className="text-gray-500">Loading...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (!user.profile) {
+    return (
+      <>
+        <Head>
+          <title>Profile Error - BeanRate</title>
+        </Head>
+        <div className="max-w-md mx-auto mt-6 space-y-4">
+          <Alert variant="destructive">
+            <AlertDescription>
+              We couldn't load your profile details. Please try again or sign out and back in.
+            </AlertDescription>
+          </Alert>
+          <div className="flex justify-center gap-3">
+            <Button onClick={() => refreshUser()} className="bg-brown-600 hover:bg-brown-700">
+              Retry
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              Sign out
+            </Button>
+          </div>
         </div>
       </>
     );

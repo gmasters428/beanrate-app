@@ -154,7 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      await authService.signIn(email, password);
+      const result = await authService.signIn(email, password);
+      if (result.error || !result.user) {
+        throw new Error(result.error?.message || "Login failed. Please check your credentials.");
+      }
       
       // Clear timeout on success
       if (authTimeoutRef.current) {
@@ -162,12 +165,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authTimeoutRef.current = null;
       }
 
-      // Ensure user profile exists via RPC (best-effort, ignore errors)
+      // Ensure user profile exists via RPC (best-effort, log errors for visibility)
       try {
-        await (supabase.rpc as any)('ensure_user_profile');
+        const { error: profileError } = await (supabase.rpc as any)('ensure_user_profile');
+        if (profileError) {
+          console.warn('Profile initialization failed:', profileError);
+        }
       } catch (error) {
-        // Silently ignore profile RPC errors
-        console.debug('Profile RPC call completed with:', error);
+        console.warn('Profile initialization failed:', error);
       }
 
       // Best-effort user refresh: don't fail sign-in on transient network errors

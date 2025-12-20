@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../integrations/supabase/client';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { signIn } = useAuth();
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -30,16 +31,11 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { 
-        setError(error.message); 
-        return; 
+      if (!signIn) {
+        throw new Error("Login is unavailable. Please refresh and try again.");
       }
-      if (!data?.session) { 
-        setError('Login failed. No session returned.'); 
-        return; 
-      }
-      router.push('/profile');
+      await signIn(email, password);
+      await router.push('/profile');
     } catch (err: any) {
       setError(err?.message ?? 'Unexpected error');
     } finally {

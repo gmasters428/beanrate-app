@@ -173,6 +173,26 @@ export default function ProfileAccountPage() {
     );
   }
 
+  if (!user.profile) {
+    return (
+      <div className="max-w-md mx-auto mt-6 space-y-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            We couldn't load your profile details. Please try again or sign out and back in.
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-center gap-3">
+          <Button onClick={() => refreshUser()} className="bg-brown-600 hover:bg-brown-700">
+            Retry
+          </Button>
+          <Button variant="outline" onClick={() => router.push("/auth/login")}>
+            Back to login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const displayName = user?.profile?.display_name || user?.profile?.username || "User";
 
   return (
