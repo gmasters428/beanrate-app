@@ -7,33 +7,17 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
 import Link from "next/link";
 
-const REQUEST_TIMEOUT_MS = 15000;
-const RETRY_DELAYS_MS = [500, 1500];
+const REQUEST_TIMEOUT_MS = 30000;
+const RETRY_DELAYS_MS = [500, 1500, 3000];
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> => {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const timeoutError = new Error("Request timeout - please check your connection");
-      timeoutError.name = "TimeoutError";
-      reject(timeoutError);
-    }, ms);
-  });
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
-};
-
 const isTransientError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : "";
   return (
+    name === "TimeoutError" ||
     message.includes("timeout") ||
     message.includes("Timeout") ||
     message.includes("Failed to fetch") ||
@@ -80,7 +64,7 @@ export default function HomePage() {
               timeoutMs: REQUEST_TIMEOUT_MS,
             });
           }
-          data = await withTimeout(ratingsService.getRatings(20), REQUEST_TIMEOUT_MS);
+          data = await ratingsService.getRatings(20);
           if (IS_DEV) {
             console.debug("[Home] ratings load success", {
               attempt: attemptNumber,

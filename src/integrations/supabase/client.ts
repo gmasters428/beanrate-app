@@ -4,6 +4,7 @@ import type { Database } from './database.types';
 
 const SUPABASE_URL = "https://xkjqkqgmyhgdpqrbuvph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhranFrcWdteWhnZHBxcmJ1dnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMDYxNzcsImV4cCI6MjA4MDg4MjE3N30.by0IhkXikFoEF5aImMsusEEndmVU5LKmgWttyvfg0eU";
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
 
 const getMaskedProjectRef = (url: string): string | null => {
   const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);
@@ -18,7 +19,65 @@ if (process.env.NODE_ENV !== "production") {
   console.debug(`[Supabase] Browser client init project ref: ${maskedRef ?? "unknown"}`);
 }
 
+const fetchWithTimeout = async (
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS
+): Promise<Response> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+
+  const timeoutController = new AbortController();
+  const onTimeout = () => {
+    timedOut = true;
+    timeoutController.abort();
+  };
+
+  timeoutId = setTimeout(onTimeout, timeoutMs);
+
+  let signal: AbortSignal = timeoutController.signal;
+  let cleanup: () => void = () => {};
+
+  if (init.signal) {
+    if (typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function") {
+      signal = AbortSignal.any([init.signal, timeoutController.signal]);
+    } else {
+      const onAbort = () => timeoutController.abort();
+      if (init.signal.aborted) {
+        onAbort();
+      } else {
+        init.signal.addEventListener("abort", onAbort);
+        cleanup = () => init.signal?.removeEventListener("abort", onAbort);
+      }
+    }
+  }
+
+  try {
+    return await fetch(input, { ...init, signal });
+  } catch (error) {
+    if (timedOut) {
+      const timeoutError = new Error("Request timeout - please check your connection");
+      timeoutError.name = "TimeoutError";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    cleanup();
+  }
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {
+    fetch: (input, init) => fetchWithTimeout(input, init, DEFAULT_REQUEST_TIMEOUT_MS),
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
