@@ -6,6 +6,43 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
 import Link from "next/link";
+
+const REQUEST_TIMEOUT_MS = 15000;
+const RETRY_DELAYS_MS = [500, 1500];
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const timeoutError = new Error("Request timeout - please check your connection");
+      timeoutError.name = "TimeoutError";
+      reject(timeoutError);
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+const isTransientError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("timeout") ||
+    message.includes("Timeout") ||
+    message.includes("Failed to fetch") ||
+    message.includes("Network request failed") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ENOTFOUND")
+  );
+};
+
 export default function HomePage() {
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,78 +51,74 @@ export default function HomePage() {
   const { user } = useAuth();
   
   // Use refs to prevent memory leaks
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const requestIdRef = useRef(0);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
     };
   }, []);
 
   const loadRatings = useCallback(async () => {
-    // Cancel any existing request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Create new abort controller for this request
-    abortControllerRef.current = new AbortController();
+    const requestId = ++requestIdRef.current;
     
     try {
       setLoading(true);
       setError(null);
       
-      // Create timeout promise that cleans up properly
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutRef.current = setTimeout(() => {
-          reject(new Error('Request timeout - please check your connection'));
-        }, 10000); // Increased timeout to 10 seconds
-      });
-      
-      const ratingsPromise = ratingsService.getRatings(20);
-      
-      const data = await Promise.race([ratingsPromise, timeoutPromise]);
-      
-      // Clear timeout if request succeeded
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      let data: RatingWithDetails[] = [];
+      const startedAt = Date.now();
+
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+        const attemptNumber = attempt + 1;
+        try {
+          if (IS_DEV) {
+            console.debug("[Home] ratings load start", {
+              attempt: attemptNumber,
+              timeoutMs: REQUEST_TIMEOUT_MS,
+            });
+          }
+          data = await withTimeout(ratingsService.getRatings(20), REQUEST_TIMEOUT_MS);
+          if (IS_DEV) {
+            console.debug("[Home] ratings load success", {
+              attempt: attemptNumber,
+              durationMs: Date.now() - startedAt,
+              count: data?.length ?? 0,
+            });
+          }
+          break;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (IS_DEV) {
+            console.debug("[Home] ratings load error", {
+              attempt: attemptNumber,
+              message,
+            });
+          }
+          const shouldRetry = isTransientError(error) && attempt < RETRY_DELAYS_MS.length;
+          if (!shouldRetry) {
+            throw error;
+          }
+          await sleep(RETRY_DELAYS_MS[attempt]);
+        }
       }
       
       // Only update state if component is still mounted
-      if (mountedRef.current) {
+      if (mountedRef.current && requestId === requestIdRef.current) {
         setRatings(data || []);
         setError(null);
       }
     } catch (error) {
-      // Clear timeout on error
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      
       // Only update state if component is still mounted and error wasn't due to abort
-      if (mountedRef.current && error instanceof Error && error.name !== 'AbortError') {
+      if (mountedRef.current && requestId === requestIdRef.current && error instanceof Error && error.name !== 'AbortError') {
         console.error("Error loading ratings:", error);
         setError(error.message || "Failed to load ratings. Please try again.");
         setRatings([]); // Clear existing data on error
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && requestId === requestIdRef.current) {
         setLoading(false);
       }
     }
