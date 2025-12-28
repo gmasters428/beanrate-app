@@ -4,6 +4,7 @@ import type { AppProps } from "next/app";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import { Toaster } from "@/components/ui/toaster";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "@/styles/globals.css";
 import { ratingsService } from "@/services/ratingsService";
 import { commentsService } from "@/services/commentsService";
@@ -62,6 +63,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Layout>
         <Component {...pageProps} />
         <Toaster />
+        <SpeedInsights />
       </Layout>
     </AuthProvider>
   );
