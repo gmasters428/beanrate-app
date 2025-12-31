@@ -10,6 +10,7 @@ import Link from "next/link";
 const REQUEST_TIMEOUT_MS = 30000;
 const RETRY_DELAYS_MS = [500, 1500, 3000];
 const IS_DEV = process.env.NODE_ENV !== "production";
+const TIMEOUT_MESSAGE = "Request timeout - please check your connection";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -37,16 +38,25 @@ export default function HomePage() {
   // Use refs to prevent memory leaks
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
   const loadRatings = useCallback(async () => {
     const requestId = ++requestIdRef.current;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     
     try {
       setLoading(true);
@@ -57,35 +67,72 @@ export default function HomePage() {
 
       for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
         const attemptNumber = attempt + 1;
+        const controller = new AbortController();
+        let timedOut = false;
+        const timeoutId = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, REQUEST_TIMEOUT_MS);
+
+        abortControllerRef.current = controller;
         try {
           if (IS_DEV) {
-            console.debug("[Home] ratings load start", {
+            console.debug("[RatingsFeed] load start", {
               attempt: attemptNumber,
               timeoutMs: REQUEST_TIMEOUT_MS,
+              requestId,
             });
           }
-          data = await ratingsService.getRatings(20);
+          data = await ratingsService.getRatings(20, { signal: controller.signal });
           if (IS_DEV) {
-            console.debug("[Home] ratings load success", {
+            console.debug("[RatingsFeed] load success", {
               attempt: attemptNumber,
               durationMs: Date.now() - startedAt,
               count: data?.length ?? 0,
+              requestId,
             });
           }
           break;
         } catch (error) {
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+
           const message = error instanceof Error ? error.message : String(error);
+          const isAbort = error instanceof Error && error.name === "AbortError";
+
           if (IS_DEV) {
-            console.debug("[Home] ratings load error", {
+            console.debug("[RatingsFeed] load error", {
               attempt: attemptNumber,
               message,
+              requestId,
             });
           }
-          const shouldRetry = isTransientError(error) && attempt < RETRY_DELAYS_MS.length;
+
+          if (isAbort && !timedOut) {
+            if (IS_DEV) {
+              console.debug("[RatingsFeed] load aborted", { attempt: attemptNumber, requestId });
+            }
+            return;
+          }
+
+          if (timedOut && IS_DEV) {
+            console.debug("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
+          }
+
+          const shouldRetry =
+            (timedOut || isTransientError(error)) && attempt < RETRY_DELAYS_MS.length;
           if (!shouldRetry) {
-            throw error;
+            const timeoutError = new Error(TIMEOUT_MESSAGE);
+            timeoutError.name = "TimeoutError";
+            throw timedOut ? timeoutError : error;
           }
           await sleep(RETRY_DELAYS_MS[attempt]);
+        } finally {
+          clearTimeout(timeoutId);
+          if (abortControllerRef.current === controller) {
+            abortControllerRef.current = null;
+          }
         }
       }
       

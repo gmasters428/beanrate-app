@@ -23,9 +23,12 @@ export interface RatingWithDetails extends Rating {
 }
 
 export const ratingsService = {
-  async getRatings(limit = 20): Promise<RatingWithDetails[]> {
+  async getRatings(
+    limit = 20,
+    options?: { signal?: AbortSignal }
+  ): Promise<RatingWithDetails[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ratings')
         .select(`
           *,
@@ -45,6 +48,12 @@ export const ratingsService = {
         `)
         .order('created_at', { ascending: false })
         .limit(limit);
+
+      if (options?.signal) {
+        query = query.abortSignal(options.signal);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching ratings:', error);
