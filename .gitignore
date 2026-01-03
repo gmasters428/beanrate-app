@@ -45,3 +45,6 @@ supabase-prod-schema.sql
 dist/
 .cache/
 .turbo/
+
+# local debug artifacts (HAR, console logs)
+debug-artifacts/

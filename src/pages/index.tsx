@@ -69,10 +69,16 @@ export default function HomePage() {
         const attemptNumber = attempt + 1;
         const controller = new AbortController();
         let timedOut = false;
-        const timeoutId = setTimeout(() => {
-          timedOut = true;
-          controller.abort();
-        }, REQUEST_TIMEOUT_MS);
+        const timeoutError = new Error(TIMEOUT_MESSAGE);
+        timeoutError.name = "TimeoutError";
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+            reject(timeoutError);
+          }, REQUEST_TIMEOUT_MS);
+        });
 
         abortControllerRef.current = controller;
         try {
@@ -83,7 +89,10 @@ export default function HomePage() {
               requestId,
             });
           }
-          data = await ratingsService.getRatings(20, { signal: controller.signal });
+          data = await Promise.race([
+            ratingsService.getRatings(20, { signal: controller.signal }),
+            timeoutPromise,
+          ]);
           if (IS_DEV) {
             console.debug("[RatingsFeed] load success", {
               attempt: attemptNumber,
@@ -129,7 +138,9 @@ export default function HomePage() {
           }
           await sleep(RETRY_DELAYS_MS[attempt]);
         } finally {
-          clearTimeout(timeoutId);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           if (abortControllerRef.current === controller) {
             abortControllerRef.current = null;
           }
