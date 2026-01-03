@@ -39,6 +39,7 @@ export default function HomePage() {
   const mountedRef = useRef(true);
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -46,6 +47,9 @@ export default function HomePage() {
       mountedRef.current = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+      }
+      if (hardTimeoutRef.current) {
+        clearTimeout(hardTimeoutRef.current);
       }
     };
   }, []);
@@ -57,6 +61,20 @@ export default function HomePage() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+
+    if (hardTimeoutRef.current) {
+      clearTimeout(hardTimeoutRef.current);
+    }
+    hardTimeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current || requestId !== requestIdRef.current) {
+        return;
+      }
+      if (IS_DEV) {
+        console.debug("[RatingsFeed] hard timeout", { requestId });
+      }
+      setError(TIMEOUT_MESSAGE);
+      setLoading(false);
+    }, REQUEST_TIMEOUT_MS + 5000);
     
     try {
       setLoading(true);
@@ -160,6 +178,10 @@ export default function HomePage() {
         setRatings([]); // Clear existing data on error
       }
     } finally {
+      if (hardTimeoutRef.current) {
+        clearTimeout(hardTimeoutRef.current);
+        hardTimeoutRef.current = null;
+      }
       if (mountedRef.current && requestId === requestIdRef.current) {
         setLoading(false);
       }
