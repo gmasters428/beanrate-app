@@ -70,7 +70,7 @@ export default function HomePage() {
         return;
       }
       if (IS_DEV) {
-        console.debug("[RatingsFeed] hard timeout", { requestId });
+        console.log("[RatingsFeed] hard timeout", { requestId });
       }
       setError(TIMEOUT_MESSAGE);
       setLoading(false);
@@ -101,7 +101,7 @@ export default function HomePage() {
         abortControllerRef.current = controller;
         try {
           if (IS_DEV) {
-            console.debug("[RatingsFeed] load start", {
+            console.log("[RatingsFeed] load start", {
               attempt: attemptNumber,
               timeoutMs: REQUEST_TIMEOUT_MS,
               requestId,
@@ -112,7 +112,7 @@ export default function HomePage() {
             timeoutPromise,
           ]);
           if (IS_DEV) {
-            console.debug("[RatingsFeed] load success", {
+            console.log("[RatingsFeed] load success", {
               attempt: attemptNumber,
               durationMs: Date.now() - startedAt,
               count: data?.length ?? 0,
@@ -129,7 +129,7 @@ export default function HomePage() {
           const isAbort = error instanceof Error && error.name === "AbortError";
 
           if (IS_DEV) {
-            console.debug("[RatingsFeed] load error", {
+            console.log("[RatingsFeed] load error", {
               attempt: attemptNumber,
               message,
               requestId,
@@ -138,13 +138,13 @@ export default function HomePage() {
 
           if (isAbort && !timedOut) {
             if (IS_DEV) {
-              console.debug("[RatingsFeed] load aborted", { attempt: attemptNumber, requestId });
+              console.log("[RatingsFeed] load aborted", { attempt: attemptNumber, requestId });
             }
             return;
           }
 
           if (timedOut && IS_DEV) {
-            console.debug("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
+            console.log("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
           }
 
           const shouldRetry =
