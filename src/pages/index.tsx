@@ -8,6 +8,8 @@ import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "
 import Link from "next/link";
 
 const REQUEST_TIMEOUT_MS = 60000;
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
+const PUBLIC_REQUEST_TIMEOUT_MS = REQUEST_TIMEOUT_MS;
 const RETRY_DELAYS_MS = [500, 1500, 3000];
 const SHOULD_LOG =
   process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
@@ -75,7 +77,7 @@ export default function HomePage() {
       }
       setError(TIMEOUT_MESSAGE);
       setLoading(false);
-    }, REQUEST_TIMEOUT_MS + 5000);
+    }, PUBLIC_REQUEST_TIMEOUT_MS + 5000);
     
     try {
       setLoading(true);
@@ -83,6 +85,7 @@ export default function HomePage() {
       
       let data: RatingWithDetails[] = [];
       const startedAt = Date.now();
+      let usePublicClient = false;
 
       for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
         const attemptNumber = attempt + 1;
@@ -91,12 +94,13 @@ export default function HomePage() {
         const timeoutError = new Error(TIMEOUT_MESSAGE);
         timeoutError.name = "TimeoutError";
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const timeoutMs = usePublicClient ? PUBLIC_REQUEST_TIMEOUT_MS : AUTH_REQUEST_TIMEOUT_MS;
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             timedOut = true;
             controller.abort();
             reject(timeoutError);
-          }, REQUEST_TIMEOUT_MS);
+          }, timeoutMs);
         });
 
         abortControllerRef.current = controller;
@@ -104,12 +108,13 @@ export default function HomePage() {
           if (SHOULD_LOG) {
             console.log("[RatingsFeed] load start", {
               attempt: attemptNumber,
-              timeoutMs: REQUEST_TIMEOUT_MS,
+              timeoutMs,
               requestId,
+              client: usePublicClient ? "public" : "auth",
             });
           }
           data = await Promise.race([
-            ratingsService.getRatings(20, { signal: controller.signal }),
+            ratingsService.getRatings(20, { signal: controller.signal, usePublicClient }),
             timeoutPromise,
           ]);
           if (SHOULD_LOG) {
@@ -118,6 +123,7 @@ export default function HomePage() {
               durationMs: Date.now() - startedAt,
               count: data?.length ?? 0,
               requestId,
+              client: usePublicClient ? "public" : "auth",
             });
           }
           break;
@@ -134,6 +140,7 @@ export default function HomePage() {
               attempt: attemptNumber,
               message,
               requestId,
+              client: usePublicClient ? "public" : "auth",
             });
           }
 
@@ -146,6 +153,13 @@ export default function HomePage() {
 
           if (timedOut && SHOULD_LOG) {
             console.log("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
+          }
+
+          if (timedOut && !usePublicClient) {
+            usePublicClient = true;
+            if (SHOULD_LOG) {
+              console.log("[RatingsFeed] switching to public client", { requestId });
+            }
           }
 
           const shouldRetry =
@@ -204,7 +218,7 @@ export default function HomePage() {
 
   const handleRetry = useCallback(() => {
     loadRatings();
-  }, []);
+  }, [loadRatings]);
 
   if (loading) {
     return (

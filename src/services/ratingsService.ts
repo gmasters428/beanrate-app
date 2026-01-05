@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabasePublic } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/database.types";
 
 type Rating = Database['public']['Tables']['ratings']['Row'];
@@ -25,10 +25,11 @@ export interface RatingWithDetails extends Rating {
 export const ratingsService = {
   async getRatings(
     limit = 20,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal; usePublicClient?: boolean }
   ): Promise<RatingWithDetails[]> {
     try {
-      let query = supabase
+      const client = options?.usePublicClient ? supabasePublic : supabase;
+      let query = client
         .from('ratings')
         .select(`
           *,

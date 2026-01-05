@@ -81,3 +81,13 @@ export const supabase = createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUB
     autoRefreshToken: true,
   },
 });
+
+export const supabasePublic = createBrowserClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  global: {
+    fetch: (input, init) => fetchWithTimeout(input, init, DEFAULT_REQUEST_TIMEOUT_MS),
+  },
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
