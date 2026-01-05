@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Coffee, TrendingUp, Users, Sparkles, Search, Filter } from "lucide-react";
 import Link from "next/link";
 
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = 60000;
 const RETRY_DELAYS_MS = [500, 1500, 3000];
 const IS_DEV = process.env.NODE_ENV !== "production";
 const TIMEOUT_MESSAGE = "Request timeout - please check your connection";
