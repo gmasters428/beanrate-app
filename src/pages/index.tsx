@@ -85,7 +85,8 @@ export default function HomePage() {
       
       let data: RatingWithDetails[] = [];
       const startedAt = Date.now();
-      let usePublicClient = false;
+      let usePublicClient = true;
+      let forcedAuthClient = false;
 
       for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
         const attemptNumber = attempt + 1;
@@ -155,15 +156,26 @@ export default function HomePage() {
             console.log("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
           }
 
-          if (timedOut && !usePublicClient) {
-            usePublicClient = true;
+          const messageLower = message.toLowerCase();
+          const isPermissionError =
+            messageLower.includes("permission") ||
+            messageLower.includes("authorization") ||
+            messageLower.includes("jwt") ||
+            messageLower.includes("role");
+
+          if (isPermissionError && usePublicClient && !forcedAuthClient) {
+            usePublicClient = false;
+            forcedAuthClient = true;
             if (SHOULD_LOG) {
-              console.log("[RatingsFeed] switching to public client", { requestId });
+              console.log("[RatingsFeed] switching to auth client due to permission error", {
+                requestId,
+              });
             }
           }
 
           const shouldRetry =
-            (timedOut || isTransientError(error)) && attempt < RETRY_DELAYS_MS.length;
+            (timedOut || isTransientError(error) || isPermissionError) &&
+            attempt < RETRY_DELAYS_MS.length;
           if (!shouldRetry) {
             const timeoutError = new Error(TIMEOUT_MESSAGE);
             timeoutError.name = "TimeoutError";
