@@ -4,7 +4,7 @@ import type { Database } from './database.types';
 
 const SUPABASE_URL = "https://xkjqkqgmyhgdpqrbuvph.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhranFrcWdteWhnZHBxcmJ1dnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMDYxNzcsImV4cCI6MjA4MDg4MjE3N30.by0IhkXikFoEF5aImMsusEEndmVU5LKmgWttyvfg0eU";
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 60000;
 
 const getMaskedProjectRef = (url: string): string | null => {
   const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/i);

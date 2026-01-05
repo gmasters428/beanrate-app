@@ -9,7 +9,8 @@ import Link from "next/link";
 
 const REQUEST_TIMEOUT_MS = 60000;
 const RETRY_DELAYS_MS = [500, 1500, 3000];
-const IS_DEV = process.env.NODE_ENV !== "production";
+const SHOULD_LOG =
+  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_VERCEL_ENV === "preview";
 const TIMEOUT_MESSAGE = "Request timeout - please check your connection";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,7 +70,7 @@ export default function HomePage() {
       if (!mountedRef.current || requestId !== requestIdRef.current) {
         return;
       }
-      if (IS_DEV) {
+      if (SHOULD_LOG) {
         console.log("[RatingsFeed] hard timeout", { requestId });
       }
       setError(TIMEOUT_MESSAGE);
@@ -100,7 +101,7 @@ export default function HomePage() {
 
         abortControllerRef.current = controller;
         try {
-          if (IS_DEV) {
+          if (SHOULD_LOG) {
             console.log("[RatingsFeed] load start", {
               attempt: attemptNumber,
               timeoutMs: REQUEST_TIMEOUT_MS,
@@ -111,7 +112,7 @@ export default function HomePage() {
             ratingsService.getRatings(20, { signal: controller.signal }),
             timeoutPromise,
           ]);
-          if (IS_DEV) {
+          if (SHOULD_LOG) {
             console.log("[RatingsFeed] load success", {
               attempt: attemptNumber,
               durationMs: Date.now() - startedAt,
@@ -128,7 +129,7 @@ export default function HomePage() {
           const message = error instanceof Error ? error.message : String(error);
           const isAbort = error instanceof Error && error.name === "AbortError";
 
-          if (IS_DEV) {
+          if (SHOULD_LOG) {
             console.log("[RatingsFeed] load error", {
               attempt: attemptNumber,
               message,
@@ -137,13 +138,13 @@ export default function HomePage() {
           }
 
           if (isAbort && !timedOut) {
-            if (IS_DEV) {
+            if (SHOULD_LOG) {
               console.log("[RatingsFeed] load aborted", { attempt: attemptNumber, requestId });
             }
             return;
           }
 
-          if (timedOut && IS_DEV) {
+          if (timedOut && SHOULD_LOG) {
             console.log("[RatingsFeed] load timeout", { attempt: attemptNumber, requestId });
           }
 
