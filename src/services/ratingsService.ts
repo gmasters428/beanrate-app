@@ -28,6 +28,43 @@ export const ratingsService = {
     options?: { signal?: AbortSignal; usePublicClient?: boolean }
   ): Promise<RatingWithDetails[]> {
     try {
+      if (options?.usePublicClient) {
+        const supabaseUrl =
+          process.env.NEXT_PUBLIC_SUPABASE_URL || (supabasePublic as any)?.supabaseUrl;
+        const supabaseKey =
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (supabasePublic as any)?.supabaseKey;
+
+        if (supabaseUrl && supabaseKey) {
+          const url = new URL(`${supabaseUrl}/rest/v1/ratings`);
+          url.searchParams.set(
+            "select",
+            "*,users!fk_ratings_user_id(username,display_name,profile_image_url),coffee_beans(name,brand,origin,roast_level,variety,image_url)"
+          );
+          url.searchParams.set("order", "created_at.desc");
+          url.searchParams.set("limit", String(limit));
+
+          const response = await fetch(url.toString(), {
+            method: "GET",
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`,
+              Accept: "application/json",
+            },
+            signal: options?.signal,
+          });
+
+          if (!response.ok) {
+            const body = await response.text().catch(() => "");
+            const error = new Error(body || `Failed to load ratings (${response.status})`);
+            (error as any).status = response.status;
+            throw error;
+          }
+
+          const data = await response.json();
+          return data as RatingWithDetails[];
+        }
+      }
+
       const client = options?.usePublicClient ? supabasePublic : supabase;
       let query = client
         .from('ratings')
