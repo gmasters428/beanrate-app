@@ -6,7 +6,7 @@ import { isAdmin } from "@/lib/adminUtils";
 
 export default function Navbar() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     return router.pathname === path;
@@ -28,7 +28,7 @@ export default function Navbar() {
               <Search className="h-5 w-5" />
             </Link>
             
-            {!loading && user && (
+            {user && (
               <>
                 <Link href="/rate" className="text-gray-700 hover:text-amber-600">
                   Rate Coffee
@@ -44,7 +44,7 @@ export default function Navbar() {
               </>
             )}
             
-            {!loading && !user && (
+            {!user && (
               <Link href="/auth/login" className="text-gray-700 hover:text-amber-600">
                 Sign In
               </Link>
