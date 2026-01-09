@@ -210,6 +210,7 @@ export default function UserProfilePage() {
   if (!profileUser) return null;
 
   const preferences = parseUserPreferences(profileUser.bio);
+  const bioText = preferences ? null : profileUser.bio;
   const username = profileUser.username?.replace(/^@/, "").trim();
   const profileMeta = profileUser as { full_name?: string | null };
   const displayName =
@@ -258,7 +259,7 @@ export default function UserProfilePage() {
           <div className="pt-16 text-center">
             <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
             <p className="text-gray-600">@{profileUser.username}</p>
-            {profileUser.bio && <p className="mt-2 text-gray-700 text-center">{profileUser.bio}</p>}
+            {bioText && <p className="mt-2 text-gray-700 text-center">{bioText}</p>}
             <div className="mt-4 flex justify-center">{renderFriendshipButton()}</div>
             <div className="mt-4 flex justify-center gap-8">
               <div className="rounded-lg p-2">
