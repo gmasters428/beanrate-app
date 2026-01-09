@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { GetServerSidePropsContext } from "next";
@@ -36,7 +36,7 @@ export default function FriendRequestsPage() {
   const [pendingRequests, setPendingRequests] = useState<UserWithProfile[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
-  const loadPendingRequests = async () => {
+  const loadPendingRequests = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -48,13 +48,13 @@ export default function FriendRequestsPage() {
     } finally {
       setLoadingRequests(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       loadPendingRequests();
     }
-  }, [user]);
+  }, [user, loadPendingRequests]);
 
   const handleAcceptRequest = async (requesterId: string) => {
     if (!user) return;
