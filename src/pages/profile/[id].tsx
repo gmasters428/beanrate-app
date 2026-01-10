@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import RatingCard from "@/components/home/RatingCard";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
 import { ArrowLeft, User as UserIcon, Users, UserPlus, UserCheck, UserX, Star } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile, FriendshipStatus } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +30,7 @@ const Stat = ({ icon, value, label }: StatProps) => (
 );
 
 export default function UserProfilePage() {
-  const { user: currentUser, loading: authLoading } = useAuth();
+  const { user: currentUser, loading: authLoading } = useAuthGuard();
   const { toast } = useToast();
   const router = useRouter();
   const { id: slugParam } = router.query;
@@ -222,7 +223,14 @@ export default function UserProfilePage() {
     "User";
 
   const renderFriendshipButton = () => {
-    if (!currentUser || currentUser.id === profileUser.id) return null;
+    if (!currentUser) {
+      return (
+        <Link href="/auth/login">
+          <Button className="bg-brown-600 hover:bg-brown-700">Sign In to Add Friend</Button>
+        </Link>
+      );
+    }
+    if (currentUser.id === profileUser.id) return null;
 
     switch (friendshipStatus.status) {
       case 'none':

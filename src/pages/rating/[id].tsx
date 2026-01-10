@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useToast } from "@/hooks/use-toast";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
 import { commentsService, CommentWithUser } from "@/services/commentsService";
@@ -16,7 +16,7 @@ import { Coffee, User as UserIcon, Star, Heart, MessageCircle, Send, Trash2 } fr
 export default function RatingPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuthGuard();
   const { toast } = useToast();
 
   const [rating, setRating] = useState<RatingWithDetails | null>(null);
@@ -220,7 +220,7 @@ export default function RatingPage() {
       {/* Actions and Comments */}
       <div>
         <div className="flex items-center space-x-6 mb-6">
-          <button onClick={handleLikeToggle} disabled={!user || isLiking} className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 disabled:opacity-50 transition-colors ${hasLiked ? 'text-red-500' : ''}`}>
+          <button onClick={handleLikeToggle} disabled={!isAuthenticated || isLiking} className={`flex items-center space-x-2 text-gray-600 hover:text-red-500 disabled:opacity-50 transition-colors ${hasLiked ? 'text-red-500' : ''}`}>
             <Heart className={`w-6 h-6 ${hasLiked ? 'fill-current' : ''}`} />
             <span className="font-semibold">{likeCount}</span>
           </button>
@@ -229,6 +229,14 @@ export default function RatingPage() {
             <span className="font-semibold">{comments.length}</span>
           </div>
         </div>
+        {!isAuthenticated && (
+          <div className="mb-6 text-sm text-gray-500">
+            <Link href="/auth/login" className="text-amber-600 hover:underline">
+              Sign in
+            </Link>{" "}
+            to like or comment.
+          </div>
+        )}
 
         <h3 className="font-bold text-xl mb-4">Comments</h3>
         {user ? (
@@ -239,7 +247,12 @@ export default function RatingPage() {
             </Button>
           </form>
         ) : (
-          <p className="text-gray-500 mb-6">You must be logged in to comment.</p>
+          <div className="mb-6 text-gray-500">
+            <p className="mb-2">You must be logged in to comment.</p>
+            <Link href="/auth/login">
+              <Button size="sm">Sign In</Button>
+            </Link>
+          </div>
         )}
 
         <div className="space-y-4">

@@ -9,7 +9,7 @@ import RatingCard from "@/components/home/RatingCard";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Star, Coffee, MapPin, Edit } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { format } from "date-fns";
 
 interface BeanDetails extends CoffeeBean {
@@ -20,7 +20,7 @@ interface BeanDetails extends CoffeeBean {
 export default function BeanPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuthGuard();
   
   const [bean, setBean] = useState<BeanDetails | null>(null);
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
@@ -144,11 +144,17 @@ export default function BeanPage() {
             </div>
           )}
           
-          {user && (
+          {isAuthenticated ? (
             <Link href={`/rate?beanId=${bean.id}`}>
               <Button className="w-full md:w-auto">
                 <Edit className="h-4 w-4 mr-2" />
                 Rate this Coffee
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/auth/login">
+              <Button variant="outline" className="w-full md:w-auto">
+                Sign in to Rate
               </Button>
             </Link>
           )}

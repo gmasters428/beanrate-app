@@ -8,6 +8,7 @@ interface CoffeeBeanButtonProps {
   className?: string;
   size?: "sm" | "md" | "lg";
   likeCount?: number;
+  disabled?: boolean;
 }
 
 export default function CoffeeBeanButton({
@@ -15,12 +16,14 @@ export default function CoffeeBeanButton({
   onClick,
   className,
   size = "md",
-  likeCount = 0
+  likeCount = 0,
+  disabled = false,
 }: CoffeeBeanButtonProps) {
   const [showSteam, setShowSteam] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
 
   const handleClick = () => {
+    if (disabled) return;
     setIsClicked(true);
     setShowSteam(true);
     setTimeout(() => setShowSteam(false), 1500);
@@ -37,6 +40,7 @@ export default function CoffeeBeanButton({
   return (
     <button
       onClick={handleClick}
+      disabled={disabled}
       className={cn(
         "relative p-2 rounded-lg transition-all duration-200",
         "hover:scale-110 active:scale-95 group",
@@ -44,6 +48,7 @@ export default function CoffeeBeanButton({
           ? "hover:bg-amber-50 text-amber-700" 
           : "hover:bg-neutral-50 text-neutral-500",
         isClicked && "animate-pulse",
+        disabled && "cursor-not-allowed opacity-50 hover:scale-100 active:scale-100",
         className
       )}
     >

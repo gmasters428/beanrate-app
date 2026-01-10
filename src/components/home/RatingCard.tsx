@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import CommentSection from "./CommentSection";
 import commentsService from "@/services/commentsService";
 import { likesService } from "@/services/likesService";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import CoffeeBeanButton from "@/components/ui/coffee-bean-button";
 
 interface RatingCardProps {
@@ -21,7 +21,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likesLoading, setLikesLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuthGuard();
 
   // Refs for cleanup and preventing memory leaks
   const mountedRef = useRef(true);
@@ -122,10 +122,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
   }, [loadCommentCount]);
 
   const handleLikeClick = useCallback(async () => {
-    if (!user) {
-      // Redirect to login or show login prompt
-      return;
-    }
+    if (!user) return;
 
     // Prevent multiple simultaneous requests
     if (!mountedRef.current) return;
@@ -308,7 +305,7 @@ export default function RatingCard({ rating }: RatingCardProps) {
                   onClick={handleLikeClick}
                   size="md"
                   likeCount={likeCount}
-                  className={!user ? "opacity-50 cursor-not-allowed" : ""}
+                  disabled={!isAuthenticated}
                 />
                 <span className={`ml-2 text-sm transition-colors ${
                   isLiked 
@@ -338,6 +335,14 @@ export default function RatingCard({ rating }: RatingCardProps) {
               View Details →
             </Link>
           </div>
+          {!isAuthenticated && (
+            <div className="mt-2 text-xs text-gray-500">
+              <Link href="/auth/login" className="text-amber-600 hover:underline">
+                Sign in
+              </Link>{" "}
+              to like or comment.
+            </div>
+          )}
         </div>
       </div>
 

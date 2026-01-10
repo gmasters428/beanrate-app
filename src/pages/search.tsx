@@ -5,7 +5,7 @@ import SearchBar from "@/components/search/SearchBar";
 import BeanCard from "@/components/search/BeanCard";
 import { CoffeeBeanWithRatings } from "@/types";
 import { User as UserIcon, UserPlus, Coffee } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { Button } from "@/components/ui/button";
 import { userService, UserWithProfile } from "@/services/userService";
 import { coffeeBeansService } from "@/services/coffeeBeansService";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import Head from "next/head";
 
 export default function SearchPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuthGuard();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"beans" | "users">("beans");
@@ -89,6 +89,7 @@ export default function SearchPage() {
   }, [searchQuery, searchType, allBeans, searchUsers]);
 
   const handleSendFriendRequest = async (userId: string) => {
+    if (!user) return;
     try {
       await userService.sendFriendRequest(user.id, userId);
       setUserSearchResults(prev => 
@@ -147,6 +148,7 @@ export default function SearchPage() {
                 ? "Search coffee beans, brands, origins..." 
                 : "Search for people by name or username..."
             }
+            disabled={!isAuthenticated && searchType === "users"}
           />
         </div>
 
@@ -171,6 +173,14 @@ export default function SearchPage() {
 
         {searchType === "users" && (
           <div className="space-y-4">
+            {!isAuthenticated && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="mb-3">Sign in to search for people and add friends.</p>
+                <Link href="/auth/login">
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700">Sign In</Button>
+                </Link>
+              </div>
+            )}
             {usersLoading ? (
               <div className="text-center py-8 text-gray-500">Searching...</div>
             ) : userSearchResults.length > 0 ? (

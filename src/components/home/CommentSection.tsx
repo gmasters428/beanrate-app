@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageCircle, Send, Reply, User, Trash2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import commentsService, { CommentWithUser } from "@/services/commentsService";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,7 @@ interface CommentSectionProps {
 }
 
 export default function CommentSection({ ratingId, isOpen, onClose }: CommentSectionProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuthGuard();
   const [comments, setComments] = useState<CommentWithUser[]>([]);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -263,13 +263,15 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                       <p className="text-sm text-gray-700">{comment.text}</p>
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-xs">
-                      <button
-                        onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                        className="text-gray-500 hover:text-blue-500 flex items-center gap-1 transition-colors"
-                      >
-                        <Reply className="h-3 w-3" />
-                        Reply
-                      </button>
+                      {isAuthenticated && (
+                        <button
+                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                          className="text-gray-500 hover:text-blue-500 flex items-center gap-1 transition-colors"
+                        >
+                          <Reply className="h-3 w-3" />
+                          Reply
+                        </button>
+                      )}
                       {user?.id === comment.user_id && (
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
@@ -282,7 +284,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
                     </div>
 
                     {/* Reply Input */}
-                    {replyingTo === comment.id && (
+                    {isAuthenticated && replyingTo === comment.id && (
                       <div className="mt-3 flex gap-2">
                         <Textarea
                           value={replyText}
@@ -405,7 +407,7 @@ export default function CommentSection({ ratingId, isOpen, onClose }: CommentSec
           </div>
         ) : (
           <div className="border-t border-gray-200 p-4 text-center">
-            <p className="text-gray-500 mb-2">Please sign in to comment</p>
+            <p className="text-gray-500 mb-2">Please sign in to comment or reply</p>
             <Link href="/auth/login">
               <Button size="sm">Sign In</Button>
             </Link>
