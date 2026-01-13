@@ -230,11 +230,11 @@ export default function RatingPage() {
           </div>
         </div>
         {!isAuthenticated && (
-          <div className="mb-6 text-sm text-gray-500">
-            <Link href="/auth/login" className="text-amber-600 hover:underline">
-              Sign in
-            </Link>{" "}
-            to like or comment.
+          <div className="mb-6 flex items-center justify-between gap-2 text-sm text-gray-500">
+            <span>Sign in to like or comment.</span>
+            <Link href="/auth/login">
+              <Button size="sm" variant="outline">Sign In</Button>
+            </Link>
           </div>
         )}
 

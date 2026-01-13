@@ -10,6 +10,7 @@ import commentsService from "@/services/commentsService";
 import { likesService } from "@/services/likesService";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import CoffeeBeanButton from "@/components/ui/coffee-bean-button";
+import { Button } from "@/components/ui/button";
 
 interface RatingCardProps {
   rating: RatingWithDetails;
@@ -337,10 +338,12 @@ export default function RatingCard({ rating }: RatingCardProps) {
           </div>
           {!isAuthenticated && (
             <div className="mt-2 text-xs text-gray-500">
-              <Link href="/auth/login" className="text-amber-600 hover:underline">
-                Sign in
-              </Link>{" "}
-              to like or comment.
+              <div className="flex items-center justify-between gap-2">
+                <span>Sign in to like or comment.</span>
+                <Link href="/auth/login">
+                  <Button size="sm" variant="outline">Sign In</Button>
+                </Link>
+              </div>
             </div>
           )}
         </div>
