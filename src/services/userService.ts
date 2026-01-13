@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/database.types";
 import { type UserProfile, type FriendshipStatus, type UserWithProfile } from "@/types";
+import { getImageBucketCandidates, isBucketNotFound, parseSupabaseStorageUrl, uploadImageWithFallback } from "@/services/storageService";
 
 export type { UserProfile, FriendshipStatus, UserWithProfile };
 
@@ -48,18 +49,10 @@ export const userService = {
   async uploadProfileImage(userId: string, file: File): Promise<string> {
     const fileExt = file.name.split(".").pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage
-      .from("images")
-      .upload(`profiles/${fileName}`, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from("images")
-      .getPublicUrl(data.path);
+    const { publicUrl } = await uploadImageWithFallback(`profiles/${fileName}`, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
     
     await userService.updateUserProfile(userId, { profile_image_url: publicUrl });
 
@@ -71,21 +64,38 @@ export const userService = {
     const userProfile = await userService.getUserProfile(userId);
     
     if (userProfile?.profile_image_url) {
-      // Extract the file path from the URL
-      const url = userProfile.profile_image_url;
-      const urlParts = url.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-      const filePath = `profiles/${fileName}`;
-      
-      // Remove the file from storage
-      const { error: storageError } = await supabase.storage
-        .from("images")
-        .remove([filePath]);
+      const storageTarget = parseSupabaseStorageUrl(userProfile.profile_image_url);
 
-      if (storageError) {
-        console.warn('Failed to delete image from storage:', storageError);
-        // Continue with profile update even if storage deletion fails
+      if (storageTarget) {
+        const { error: storageError } = await supabase.storage
+          .from(storageTarget.bucket)
+          .remove([storageTarget.path]);
+
+        if (storageError) {
+          console.warn('Failed to delete image from storage:', storageError);
+        }
+      } else {
+        const urlParts = userProfile.profile_image_url.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const filePath = `profiles/${fileName}`;
+
+        for (const bucket of getImageBucketCandidates()) {
+          const { error: storageError } = await supabase.storage
+            .from(bucket)
+            .remove([filePath]);
+
+          if (!storageError) {
+            break;
+          }
+
+          if (!isBucketNotFound(storageError)) {
+            console.warn('Failed to delete image from storage:', storageError);
+            break;
+          }
+        }
       }
+
+      // Continue with profile update even if storage deletion fails
     }
     
     // Update the user profile to remove the image URL

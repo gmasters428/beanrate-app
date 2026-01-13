@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { type Database } from "@/integrations/supabase/database.types";
+import { uploadImageWithFallback } from "@/services/storageService";
 
 type CoffeeBean = Database['public']['Tables']['coffee_beans']['Row'];
 type CoffeeBeanInsert = Database['public']['Tables']['coffee_beans']['Insert'];
@@ -114,21 +115,11 @@ export const coffeeBeansService = {
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
                 const filePath = `coffee-beans/${fileName}`;
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('images')
-                    .upload(filePath, imageFile, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-
-                if (uploadError) {
-                    console.warn('Image upload failed (non-critical):', uploadError.message);
-                } else {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('images')
-                        .getPublicUrl(filePath);
-                    imageUrl = publicUrl;
-                }
+                const { publicUrl } = await uploadImageWithFallback(filePath, imageFile, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+                imageUrl = publicUrl;
             }
         } catch (error) {
             console.warn('Image upload error caught and ignored:', error);
@@ -160,18 +151,8 @@ export const coffeeBeansService = {
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
             const filePath = `coffee-beans/${fileName}`;
             
-            const { error: uploadError } = await supabase.storage
-                .from('images')
-                .upload(filePath, imageFile);
-
-            if (uploadError) {
-                console.warn('Image upload failed during update, continuing without image');
-            } else {
-                const { data: { publicUrl } } = supabase.storage
-                    .from('images')
-                    .getPublicUrl(filePath);
-                updateData.image_url = publicUrl;
-            }
+            const { publicUrl } = await uploadImageWithFallback(filePath, imageFile);
+            updateData.image_url = publicUrl;
         } catch (error) {
             console.warn('Image upload error during update:', error);
         }
