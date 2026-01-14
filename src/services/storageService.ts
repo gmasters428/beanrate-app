@@ -1,6 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const IMAGE_BUCKET_CANDIDATES = ["images", "avatars"] as const;
+const DEFAULT_BUCKET_CANDIDATES = ["images", "avatars"] as const;
+const PROFILE_BUCKET_CANDIDATES = ["profiles", "profile-images", "avatars", "images"] as const;
+const BEAN_BUCKET_CANDIDATES = ["coffee-beans", "beans", "images"] as const;
+
+const getBucketCandidatesForPath = (path?: string): string[] => {
+  const prefix = path?.split("/")[0];
+  let candidates: readonly string[] = DEFAULT_BUCKET_CANDIDATES;
+
+  if (prefix === "profiles") {
+    candidates = PROFILE_BUCKET_CANDIDATES;
+  } else if (prefix === "coffee-beans") {
+    candidates = BEAN_BUCKET_CANDIDATES;
+  }
+
+  return Array.from(new Set(candidates));
+};
 
 const isBucketMissingError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") return false;
@@ -8,7 +23,8 @@ const isBucketMissingError = (error: unknown): boolean => {
   return message.toLowerCase().includes("bucket not found");
 };
 
-export const getImageBucketCandidates = (): readonly string[] => IMAGE_BUCKET_CANDIDATES;
+export const getImageBucketCandidates = (path?: string): readonly string[] =>
+  getBucketCandidatesForPath(path);
 
 export const uploadImageWithFallback = async (
   path: string,
@@ -17,7 +33,9 @@ export const uploadImageWithFallback = async (
 ): Promise<{ bucket: string; path: string; publicUrl: string }> => {
   let lastError: unknown;
 
-  for (const bucket of IMAGE_BUCKET_CANDIDATES) {
+  const bucketCandidates = getBucketCandidatesForPath(path);
+
+  for (const bucket of bucketCandidates) {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, options);
     if (!error && data?.path) {
       const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(data.path);

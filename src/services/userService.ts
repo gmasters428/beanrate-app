@@ -79,7 +79,7 @@ export const userService = {
         const fileName = urlParts[urlParts.length - 1];
         const filePath = `profiles/${fileName}`;
 
-        for (const bucket of getImageBucketCandidates()) {
+        for (const bucket of getImageBucketCandidates(filePath)) {
           const { error: storageError } = await supabase.storage
             .from(bucket)
             .remove([filePath]);
