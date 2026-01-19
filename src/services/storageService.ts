@@ -23,6 +23,30 @@ const isBucketMissingError = (error: unknown): boolean => {
   return message.toLowerCase().includes("bucket not found");
 };
 
+const rankBucketsForPath = (buckets: string[], path?: string): string[] => {
+  if (!path) return buckets;
+  const prefix = path.split("/")[0];
+  const keywords =
+    prefix === "profiles"
+      ? ["profile", "avatar", "image"]
+      : prefix === "coffee-beans"
+        ? ["bean", "coffee", "image"]
+        : ["image"];
+
+  return buckets
+    .map((bucket) => {
+      const lower = bucket.toLowerCase();
+      let score = 0;
+      if (lower === prefix) score += 3;
+      for (const keyword of keywords) {
+        if (lower.includes(keyword)) score += 1;
+      }
+      return { bucket, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(({ bucket }) => bucket);
+};
+
 export const getImageBucketCandidates = (path?: string): readonly string[] =>
   getBucketCandidatesForPath(path);
 
@@ -34,8 +58,10 @@ export const uploadImageWithFallback = async (
   let lastError: unknown;
 
   const bucketCandidates = getBucketCandidatesForPath(path);
+  const attemptedBuckets = new Set<string>();
 
   for (const bucket of bucketCandidates) {
+    attemptedBuckets.add(bucket);
     const { data, error } = await supabase.storage.from(bucket).upload(path, file, options);
     if (!error && data?.path) {
       const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(data.path);
@@ -47,6 +73,33 @@ export const uploadImageWithFallback = async (
     }
 
     lastError = error;
+  }
+
+  if (isBucketMissingError(lastError)) {
+    const { data, error } = await supabase.storage.listBuckets();
+    if (!error && data?.length) {
+      const remainingBuckets = rankBucketsForPath(
+        data.map((bucket) => bucket.name).filter(Boolean),
+        path
+      ).filter((bucket) => !attemptedBuckets.has(bucket));
+
+      for (const bucket of remainingBuckets) {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(path, file, options);
+
+        if (!uploadError && uploadData?.path) {
+          const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(uploadData.path);
+          return { bucket, path: uploadData.path, publicUrl: publicData.publicUrl };
+        }
+
+        if (uploadError && !isBucketMissingError(uploadError)) {
+          throw uploadError;
+        }
+
+        lastError = uploadError;
+      }
+    }
   }
 
   if (lastError instanceof Error) {
