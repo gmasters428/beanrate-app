@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const { signIn, status } = useAuth();
+
+  useEffect(() => {
+    if (status === 'signedIn') {
+      void router.replace('/profile');
+    }
+  }, [status, router]);
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -35,7 +41,7 @@ export default function LoginPage() {
         throw new Error("Login is unavailable. Please refresh and try again.");
       }
       await signIn(email, password);
-      await router.push('/profile');
+      void router.replace('/profile');
     } catch (err: any) {
       setError(err?.message ?? 'Unexpected error');
     } finally {
