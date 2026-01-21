@@ -182,26 +182,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authTimeoutRef.current = null;
       }
 
-      // Ensure user profile exists via RPC (best-effort, log errors for visibility)
-      try {
-        const { error: profileError } = await (supabase.rpc as any)('ensure_user_profile');
-        if (profileError) {
-          console.warn('Profile initialization failed:', profileError);
-        }
-      } catch (error) {
-        console.warn('Profile initialization failed:', error);
-      }
+      // Ensure user profile exists via RPC (best-effort, do not block login)
+      void (supabase.rpc as any)('ensure_user_profile')
+        .then(({ error: profileError }: { error?: unknown }) => {
+          if (profileError) {
+            console.warn('Profile initialization failed:', profileError);
+          }
+        })
+        .catch((error: unknown) => {
+          console.warn('Profile initialization failed:', error);
+        });
 
-      // Best-effort user refresh: don't fail sign-in on transient network errors
-      try {
-        await refreshUser();
-      } catch (e) {
+      // Best-effort user refresh: don't block sign-in flow
+      void refreshUser().catch((e) => {
         if (isTransientError(e)) {
           console.debug('Transient error during post-signin refreshUser, ignoring:', e);
         } else {
-          throw e;
+          console.warn('Post-signin refreshUser failed:', e);
         }
-      }
+      });
     } catch (error) {
       // Clear timeout on error
       if (authTimeoutRef.current) {
