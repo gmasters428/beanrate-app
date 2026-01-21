@@ -4,8 +4,10 @@ const DEFAULT_BUCKET_CANDIDATES = ["images", "avatars"] as const;
 const PROFILE_BUCKET_CANDIDATES = ["profiles", "profile-images", "avatars", "images"] as const;
 const BEAN_BUCKET_CANDIDATES = ["coffee-beans", "beans", "images"] as const;
 
-const getBucketCandidatesForPath = (path?: string): string[] => {
-  const prefix = path?.split("/")[0];
+type BucketHint = "profiles" | "coffee-beans";
+
+const getBucketCandidatesForPath = (path?: string, hint?: BucketHint): string[] => {
+  const prefix = hint ?? path?.split("/")[0];
   let candidates: readonly string[] = DEFAULT_BUCKET_CANDIDATES;
 
   if (prefix === "profiles") {
@@ -23,9 +25,9 @@ const isBucketMissingError = (error: unknown): boolean => {
   return message.toLowerCase().includes("bucket not found");
 };
 
-const rankBucketsForPath = (buckets: string[], path?: string): string[] => {
-  if (!path) return buckets;
-  const prefix = path.split("/")[0];
+const rankBucketsForPath = (buckets: string[], path?: string, hint?: BucketHint): string[] => {
+  const prefix = hint ?? path?.split("/")[0];
+  if (!prefix) return buckets;
   const keywords =
     prefix === "profiles"
       ? ["profile", "avatar", "image"]
@@ -47,17 +49,17 @@ const rankBucketsForPath = (buckets: string[], path?: string): string[] => {
     .map(({ bucket }) => bucket);
 };
 
-export const getImageBucketCandidates = (path?: string): readonly string[] =>
-  getBucketCandidatesForPath(path);
+export const getImageBucketCandidates = (path?: string, hint?: BucketHint): readonly string[] =>
+  getBucketCandidatesForPath(path, hint);
 
 export const uploadImageWithFallback = async (
   path: string,
   file: File,
-  options?: { cacheControl?: string; upsert?: boolean }
+  options?: { cacheControl?: string; upsert?: boolean; bucketHint?: BucketHint }
 ): Promise<{ bucket: string; path: string; publicUrl: string }> => {
   let lastError: unknown;
 
-  const bucketCandidates = getBucketCandidatesForPath(path);
+  const bucketCandidates = getBucketCandidatesForPath(path, options?.bucketHint);
   const attemptedBuckets = new Set<string>();
 
   for (const bucket of bucketCandidates) {
@@ -80,7 +82,8 @@ export const uploadImageWithFallback = async (
     if (!error && data?.length) {
       const remainingBuckets = rankBucketsForPath(
         data.map((bucket) => bucket.name).filter(Boolean),
-        path
+        path,
+        options?.bucketHint
       ).filter((bucket) => !attemptedBuckets.has(bucket));
 
       for (const bucket of remainingBuckets) {

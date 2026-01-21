@@ -49,9 +49,11 @@ export const userService = {
   async uploadProfileImage(userId: string, file: File): Promise<string> {
     const fileExt = file.name.split(".").pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    const { publicUrl } = await uploadImageWithFallback(`profiles/${fileName}`, file, {
+    const filePath = `${userId}/${fileName}`;
+    const { publicUrl } = await uploadImageWithFallback(filePath, file, {
       cacheControl: "3600",
       upsert: true,
+      bucketHint: "profiles",
     });
     
     await userService.updateUserProfile(userId, { profile_image_url: publicUrl });
@@ -77,9 +79,9 @@ export const userService = {
       } else {
         const urlParts = userProfile.profile_image_url.split('/');
         const fileName = urlParts[urlParts.length - 1];
-        const filePath = `profiles/${fileName}`;
+        const filePath = `${userId}/${fileName}`;
 
-        for (const bucket of getImageBucketCandidates(filePath)) {
+        for (const bucket of getImageBucketCandidates(filePath, "profiles")) {
           const { error: storageError } = await supabase.storage
             .from(bucket)
             .remove([filePath]);
