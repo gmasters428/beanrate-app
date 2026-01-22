@@ -124,8 +124,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const currentUser = await authService.getCurrentUser();
-      safeSetState(setUser, currentUser);
-      safeSetState(setStatus, currentUser ? 'signedIn' : 'signedOut');
+      if (currentUser) {
+        safeSetState(setUser, currentUser);
+        safeSetState(setStatus, 'signedIn');
+        return;
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        if (isTransientError(sessionError)) {
+          console.warn("Transient auth error during refresh session check (keeping current user state):", sessionError);
+          safeSetState(setStatus, 'recovering');
+          if (!isRetry && mountedRef.current) {
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current);
+            }
+            retryTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current) {
+                console.log("Retrying auth refresh after transient session error...");
+                refreshUser(true);
+              }
+            }, 3000);
+          }
+          return;
+        }
+
+        if (isInvalidSessionError(sessionError)) {
+          console.log("Invalid session detected during refresh:", sessionError);
+          safeSetState(setUser, null);
+          safeSetState(setStatus, 'signedOut');
+          return;
+        }
+
+        console.error("Non-transient auth error during refresh session check:", sessionError);
+        safeSetState(setStatus, 'error');
+        return;
+      }
+
+      if (session?.user) {
+        safeSetState(setUser, buildAuthUserFromSession(session.user));
+        safeSetState(setStatus, 'signedIn');
+        if (!isRetry && mountedRef.current) {
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) {
+              console.log("Retrying auth refresh after null user session...");
+              refreshUser(true);
+            }
+          }, 3000);
+        }
+        return;
+      }
+
+      safeSetState(setUser, null);
+      safeSetState(setStatus, 'signedOut');
     } catch (error) {
       // Clear timeout on error
       if (refreshTimeoutRef.current) {
@@ -287,6 +342,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               void refreshUser();
             }
           } catch (userError) {
+            const hasSessionUser = Boolean(session?.user);
+            if (hasSessionUser && !isInvalidSessionError(userError)) {
+              safeSetState(setUser, buildAuthUserFromSession(session.user));
+            }
+
             // If getting user profile fails with transient error, keep session but retry
             if (isTransientError(userError)) {
               console.warn("Transient error fetching user profile on mount, will retry:", userError);
@@ -361,6 +421,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // If user fetch fails with transient error, keep the session
             if (isTransientError(error)) {
               console.warn("Transient error during SIGNED_IN, will retry:", error);
+              if (session?.user) {
+                safeSetState(setUser, buildAuthUserFromSession(session.user));
+              }
               safeSetState(setStatus, 'recovering');
               // Schedule a retry to fetch user profile
               if (retryTimeoutRef.current) {
@@ -401,6 +464,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // Keep existing user state on transient refresh errors
               if (isTransientError(error)) {
                 console.warn("Transient error during TOKEN_REFRESHED, keeping current user:", error);
+                if (session?.user) {
+                  safeSetState(setUser, buildAuthUserFromSession(session.user));
+                }
                 safeSetState(setStatus, 'recovering');
               } else if (isInvalidSessionError(error)) {
                 console.log("Invalid session during TOKEN_REFRESHED:", error);

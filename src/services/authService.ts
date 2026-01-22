@@ -38,37 +38,32 @@ const getURL = () => {
 export const authService = {
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return null;
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      return {
-        id: user.id,
-        email: user.email || "",
-        user_metadata: user.user_metadata,
-        created_at: user.created_at,
-        profile: profile as UserProfile | null
-      };
-    } catch (error: any) {
-      const message = error?.message || String(error);
-      const isTransient = 
-        message.includes("timeout") ||
-        message.includes("ETIMEDOUT") ||
-        message.includes("Failed to fetch") ||
-        error.name === "AbortError";
-      
-      console.debug('Get current user error:', error);
-      
-      return null;
+    if (authError) {
+      throw authError;
     }
+
+    if (!user) return null;
+
+    // Fetch profile
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    return {
+      id: user.id,
+      email: user.email || "",
+      user_metadata: user.user_metadata,
+      created_at: user.created_at,
+      profile: profile as UserProfile | null
+    };
   },
 
   // Get current session
