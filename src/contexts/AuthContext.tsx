@@ -65,6 +65,12 @@ const getSupabaseProjectRefSuffix = (url?: string): string | null => {
   return ref.length > 6 ? ref.slice(-6) : ref;
 };
 
+const buildAuthUserFromSession = (sessionUser: SupabaseUser): AuthUser => ({
+  id: sessionUser.id,
+  email: sessionUser.email ?? "",
+  profile: null,
+});
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -272,8 +278,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user && mountedRef.current) {
           try {
             const currentUser = await authService.getCurrentUser();
-            safeSetState(setUser, currentUser);
-            safeSetState(setStatus, 'signedIn');
+            if (currentUser) {
+              safeSetState(setUser, currentUser);
+              safeSetState(setStatus, 'signedIn');
+            } else {
+              safeSetState(setUser, buildAuthUserFromSession(session.user));
+              safeSetState(setStatus, 'signedIn');
+              void refreshUser();
+            }
           } catch (userError) {
             // If getting user profile fails with transient error, keep session but retry
             if (isTransientError(userError)) {
@@ -337,8 +349,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_IN' && session?.user) {
           try {
             const currentUser = await authService.getCurrentUser();
-            safeSetState(setUser, currentUser);
-            safeSetState(setStatus, 'signedIn');
+            if (currentUser) {
+              safeSetState(setUser, currentUser);
+              safeSetState(setStatus, 'signedIn');
+            } else if (session?.user) {
+              safeSetState(setUser, buildAuthUserFromSession(session.user));
+              safeSetState(setStatus, 'signedIn');
+              void refreshUser();
+            }
           } catch (error) {
             // If user fetch fails with transient error, keep the session
             if (isTransientError(error)) {
@@ -371,8 +389,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user && mountedRef.current) {
             try {
               const currentUser = await authService.getCurrentUser();
-              safeSetState(setUser, currentUser);
-              safeSetState(setStatus, 'signedIn');
+              if (currentUser) {
+                safeSetState(setUser, currentUser);
+                safeSetState(setStatus, 'signedIn');
+              } else if (session?.user) {
+                safeSetState(setUser, buildAuthUserFromSession(session.user));
+                safeSetState(setStatus, 'signedIn');
+                void refreshUser();
+              }
             } catch (error) {
               // Keep existing user state on transient refresh errors
               if (isTransientError(error)) {
