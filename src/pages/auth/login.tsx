@@ -16,13 +16,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn, status } = useAuth();
+  const { signIn, status, user } = useAuth();
 
   useEffect(() => {
-    if (status === 'signedIn') {
+    if (status === 'signedIn' || user) {
       void router.replace('/profile');
     }
-  }, [status, router]);
+  }, [status, user, router]);
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();

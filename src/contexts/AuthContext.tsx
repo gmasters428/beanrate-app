@@ -219,6 +219,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // For other non-transient errors, log but keep previous state
       console.error("Non-transient auth error during refresh:", error);
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          if (isInvalidSessionError(sessionError)) {
+            console.log("Invalid session detected after refresh error:", sessionError);
+            safeSetState(setUser, null);
+            safeSetState(setStatus, 'signedOut');
+            return;
+          }
+          console.warn("Session check failed after refresh error:", sessionError);
+        }
+
+        if (session?.user) {
+          safeSetState(setUser, buildAuthUserFromSession(session.user));
+          safeSetState(setStatus, 'signedIn');
+          return;
+        }
+      } catch (sessionLookupError) {
+        console.warn("Failed to check session after refresh error:", sessionLookupError);
+      }
+
       safeSetState(setStatus, 'error');
     }
   }, [safeSetState]);
@@ -331,6 +352,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         if (session?.user && mountedRef.current) {
+          safeSetState(setUser, buildAuthUserFromSession(session.user));
+          safeSetState(setStatus, 'signedIn');
+
           try {
             const currentUser = await authService.getCurrentUser();
             if (currentUser) {
@@ -366,7 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               safeSetState(setStatus, 'signedOut');
             } else {
               console.error("Error fetching user profile on mount:", userError);
-              safeSetState(setStatus, 'error');
+              safeSetState(setStatus, 'signedIn');
             }
           }
         } else {
@@ -407,6 +431,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Only handle explicit sign-in and sign-out events
         if (event === 'SIGNED_IN' && session?.user) {
+          safeSetState(setUser, buildAuthUserFromSession(session.user));
+          safeSetState(setStatus, 'signedIn');
           try {
             const currentUser = await authService.getCurrentUser();
             if (currentUser) {
@@ -440,7 +466,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               safeSetState(setStatus, 'signedOut');
             } else {
               console.error("Error fetching user after SIGNED_IN:", error);
-              safeSetState(setStatus, 'error');
+              safeSetState(setStatus, 'signedIn');
             }
           }
         } else if (event === 'SIGNED_OUT') {
