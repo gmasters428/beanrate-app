@@ -15,6 +15,7 @@ import { formatUserPreferences } from "@/lib/utils";
 import { parseUserPreferences } from "@/utils/profilePreferences";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { UserProfile } from "@/types";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -55,7 +56,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 };
 
 const ProfilePage: NextPage<Props> = ({ userId }) => {
-  const { user, signOut, loading, refreshUser } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -64,14 +65,19 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   const [friendsCount, setFriendsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileFallback, setProfileFallback] = useState<UserProfile | null>(null);
+  const [profileFallbackLoading, setProfileFallbackLoading] = useState(false);
+
+  const effectiveUserId = user?.id ?? userId;
+  const effectiveProfile = user?.profile ?? profileFallback;
 
   const loadProfileData = useCallback(async () => {
-    if (!user) return;
+    if (!effectiveUserId) return;
     try {
       const [friendsCountResult, pendingRequests, ratings] = await Promise.all([
-        userService.getFriendsCount(user.id),
-        userService.getFriendRequests(user.id),
-        ratingsService.getRatingsByUser(user.id),
+        userService.getFriendsCount(effectiveUserId),
+        userService.getFriendRequests(effectiveUserId),
+        ratingsService.getRatingsByUser(effectiveUserId),
       ]);
       setFriendsCount(friendsCountResult);
       setPendingRequestsCount(pendingRequests.length);
@@ -80,28 +86,63 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
       console.error("Error loading profile data:", error);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
-  }, [user, toast]);
+  }, [effectiveUserId, toast]);
 
   useEffect(() => {
-    if (user) {
-      setProfileImageUrl(user.profile?.profile_image_url || null);
+    if (effectiveProfile) {
+      setProfileImageUrl(effectiveProfile.profile_image_url || null);
+    }
+  }, [effectiveProfile]);
+
+  useEffect(() => {
+    if (effectiveUserId) {
       loadProfileData();
     }
-  }, [user, loadProfileData]);
+  }, [effectiveUserId, loadProfileData]);
+
+  useEffect(() => {
+    if (user?.profile || !userId) return;
+
+    let isMounted = true;
+    setProfileFallbackLoading(true);
+
+    userService
+      .getUserProfile(userId)
+      .then((profile) => {
+        if (isMounted) {
+          setProfileFallback(profile);
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading fallback profile:", error);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setProfileFallbackLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.profile, userId]);
 
   useEffect(() => {
     const handleFocus = () => {
-      if (user) {
+      if (effectiveUserId) {
         loadProfileData();
       }
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [user, loadProfileData]);
+  }, [effectiveUserId, loadProfileData]);
 
   const handleImageUpdate = async (newImageUrl: string | null) => {
     setProfileImageUrl(newImageUrl);
+    setProfileFallback((prev) =>
+      prev ? { ...prev, profile_image_url: newImageUrl } : prev
+    );
     await refreshUser();
     toast({ title: "Success", description: "Profile image updated!" });
   };
@@ -111,7 +152,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     router.push("/");
   };
 
-  if (loading || !user) {
+  if (!effectiveUserId) {
     return (
       <>
         <Head>
@@ -124,7 +165,20 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     );
   }
 
-  if (!user.profile) {
+  if (!effectiveProfile) {
+    if (profileFallbackLoading) {
+      return (
+        <>
+          <Head>
+            <title>Loading... - BeanRate</title>
+          </Head>
+          <div className="max-w-md mx-auto flex justify-center items-center h-64">
+            <div className="text-gray-500">Loading...</div>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         <Head>
@@ -149,12 +203,12 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     );
   }
 
-  const preferences = parseUserPreferences(user.profile?.bio);
-  const profileMeta = user?.profile as { full_name?: string | null } | null;
-  const username = user?.profile?.username?.replace(/^@/, "").trim();
+  const preferences = parseUserPreferences(effectiveProfile?.bio);
+  const profileMeta = effectiveProfile as { full_name?: string | null } | null;
+  const username = effectiveProfile?.username?.replace(/^@/, "").trim();
   const displayName =
     [
-      user?.profile?.display_name,
+      effectiveProfile?.display_name,
       profileMeta?.full_name,
       preferences?.firstName,
       (user as any)?.user_metadata?.full_name,
@@ -163,7 +217,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
       .map((value) => (typeof value === "string" ? value.trim() : ""))
       .find((value) => value && value !== username) ||
     username ||
-    user?.profile?.username ||
+    effectiveProfile?.username ||
     "User";
 
   return (
@@ -177,7 +231,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
           <div className="px-4 pb-4 relative">
             <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
               <ProfileImageUpload
-                userId={user.id}
+                userId={effectiveUserId}
                 currentImageUrl={profileImageUrl}
                 onImageUpdate={handleImageUpdate}
                 size="lg"
@@ -188,7 +242,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                 <div className="flex-1"></div>
                 <div className="flex-1 text-center">
                   <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-                  <h3 className="font-semibold text-gray-900 mb-2">@{user.profile.username}</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">@{effectiveProfile?.username}</h3>
                   {preferences && (
                     <div className="space-y-2 text-sm">
                       {(preferences.firstName || preferences.region) && (
