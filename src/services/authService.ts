@@ -38,10 +38,22 @@ const getURL = () => {
 export const authService = {
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (authError) {
-      throw authError;
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    let user = session?.user ?? null;
+
+    if (!user) {
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+      if (authError) {
+        throw authError;
+      }
+
+      user = authUser ?? null;
     }
 
     if (!user) return null;
