@@ -26,6 +26,21 @@ function resolveAvatarUrl(user: any): string | null {
   return null; // caller can fall back to placeholder
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getSessionWithRetry = async (attempts = 3, delayMs = 250) => {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      return data.session;
+    }
+    if (attempt < attempts - 1) {
+      await delay(delayMs);
+    }
+  }
+  return null;
+};
+
 const fetchUserProfileDirect = async (userId: string): Promise<UserProfile | null> => {
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || (supabase as any)?.supabaseUrl;
@@ -36,8 +51,8 @@ const fetchUserProfileDirect = async (userId: string): Promise<UserProfile | nul
     throw new Error("Supabase URL or anon key missing.");
   }
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
+  const session = await getSessionWithRetry();
+  const accessToken = session?.access_token;
 
   const url = new URL(`${supabaseUrl}/rest/v1/users`);
   url.searchParams.set("select", "*");

@@ -104,12 +104,6 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     if (effectiveProfile || !effectiveUserId) return;
 
     let isMounted = true;
-    const timeoutId = window.setTimeout(() => {
-      if (isMounted) {
-        console.warn("Profile fallback load timed out.");
-        setProfileFallbackLoading(false);
-      }
-    }, 8000);
     setProfileFallbackLoading(true);
 
     userService
@@ -126,12 +120,10 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         if (isMounted) {
           setProfileFallbackLoading(false);
         }
-        window.clearTimeout(timeoutId);
       });
 
     return () => {
       isMounted = false;
-      window.clearTimeout(timeoutId);
     };
   }, [effectiveProfile, effectiveUserId]);
 
