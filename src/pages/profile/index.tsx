@@ -257,39 +257,14 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     );
   }
 
-  if (!effectiveProfile) {
-    if (profileFallbackLoading) {
-      return (
-        <>
-          <Head>
-            <title>Loading... - BeanRate</title>
-          </Head>
-          <div className="max-w-md mx-auto flex justify-center items-center h-64">
-            <div className="text-gray-500">Loading...</div>
-          </div>
-        </>
-      );
-    }
-
+  if (!effectiveProfile && profileFallbackLoading) {
     return (
       <>
         <Head>
-          <title>Profile Error - BeanRate</title>
+          <title>Loading... - BeanRate</title>
         </Head>
-        <div className="max-w-md mx-auto mt-6 space-y-4">
-          <Alert variant="destructive">
-            <AlertDescription>
-              We couldn't load your profile details. Please try again or sign out and back in.
-            </AlertDescription>
-          </Alert>
-          <div className="flex justify-center gap-3">
-            <Button onClick={() => refreshUser()} className="bg-brown-600 hover:bg-brown-700">
-              Retry
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              Sign out
-            </Button>
-          </div>
+        <div className="max-w-md mx-auto flex justify-center items-center h-64">
+          <div className="text-gray-500">Loading...</div>
         </div>
       </>
     );
@@ -298,6 +273,9 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   const preferences = parseUserPreferences(effectiveProfile?.bio);
   const profileMeta = effectiveProfile as { full_name?: string | null } | null;
   const username = effectiveProfile?.username?.replace(/^@/, "").trim();
+  const fallbackUsername =
+    user?.email?.split("@")[0] || (effectiveUserId ? effectiveUserId.slice(0, 6) : "user");
+  const resolvedUsername = username || fallbackUsername;
   const displayName =
     [
       effectiveProfile?.display_name,
@@ -308,9 +286,9 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     ]
       .map((value) => (typeof value === "string" ? value.trim() : ""))
       .find((value) => value && value !== username) ||
-    username ||
-    effectiveProfile?.username ||
+    resolvedUsername ||
     "User";
+  const showProfileWarning = !effectiveProfile;
 
   return (
     <>
@@ -318,6 +296,23 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         <title>My Profile - BeanRate</title>
       </Head>
       <div className="max-w-md mx-auto">
+        {showProfileWarning && (
+          <div className="mb-4 space-y-3">
+            <Alert variant="destructive">
+              <AlertDescription>
+                We couldn't load your profile details yet. You can retry, or sign out and back in.
+              </AlertDescription>
+            </Alert>
+            <div className="flex justify-center gap-3">
+              <Button onClick={() => refreshUser()} className="bg-brown-600 hover:bg-brown-700">
+                Retry
+              </Button>
+              <Button variant="outline" onClick={handleLogout}>
+                Sign out
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
           <div className="bg-brown-600 h-24"></div>
           <div className="px-4 pb-4 relative">
@@ -334,7 +329,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
                 <div className="flex-1"></div>
                 <div className="flex-1 text-center">
                   <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
-                  <h3 className="font-semibold text-gray-900 mb-2">@{effectiveProfile?.username}</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">@{resolvedUsername}</h3>
                   {preferences && (
                     <div className="space-y-2 text-sm">
                       {(preferences.firstName || preferences.region) && (
