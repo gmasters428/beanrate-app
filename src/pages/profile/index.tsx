@@ -16,6 +16,7 @@ import { parseUserPreferences } from "@/utils/profilePreferences";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { UserProfile } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 import Head from "next/head";
 import { getServerSupabase } from '@/lib/supabaseServer';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -64,8 +65,10 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileFallback, setProfileFallback] = useState<UserProfile | null>(null);
   const [profileFallbackLoading, setProfileFallbackLoading] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  const effectiveUserId = user?.id ?? userId;
+  const effectiveUserId = user?.id || sessionUserId || userId;
   const effectiveProfile = user?.profile ?? profileFallback;
 
   const loadProfileData = useCallback(async () => {
@@ -98,13 +101,13 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   }, [effectiveUserId, loadProfileData]);
 
   useEffect(() => {
-    if (user?.profile || !userId) return;
+    if (effectiveProfile || !effectiveUserId) return;
 
     let isMounted = true;
     setProfileFallbackLoading(true);
 
     userService
-      .getUserProfile(userId)
+      .getUserProfile(effectiveUserId)
       .then((profile) => {
         if (isMounted) {
           setProfileFallback(profile);
@@ -122,7 +125,44 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     return () => {
       isMounted = false;
     };
-  }, [user?.profile, userId]);
+  }, [effectiveProfile, effectiveUserId]);
+
+  useEffect(() => {
+    if (effectiveUserId || status === "signedOut") {
+      setSessionChecked(true);
+      return;
+    }
+
+    let isMounted = true;
+    const timeoutId = window.setTimeout(() => {
+      if (isMounted) {
+        setSessionChecked(true);
+      }
+    }, 4000);
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn("Failed to check auth session on profile page:", error);
+          return;
+        }
+        if (isMounted) {
+          setSessionUserId(data?.session?.user?.id ?? "");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setSessionChecked(true);
+        }
+        window.clearTimeout(timeoutId);
+      });
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [effectiveUserId, status]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -149,6 +189,12 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
     router.push("/");
   };
 
+  const handleRetrySession = () => {
+    setSessionChecked(false);
+    setSessionUserId("");
+    void refreshUser();
+  };
+
   if (!effectiveUserId) {
     if (status === "signedOut") {
       return (
@@ -163,6 +209,29 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
             <Button onClick={() => router.push("/auth/login")} className="bg-brown-600 hover:bg-brown-700">
               Sign In
             </Button>
+          </div>
+        </>
+      );
+    }
+
+    if (sessionChecked) {
+      return (
+        <>
+          <Head>
+            <title>Profile Error - BeanRate</title>
+          </Head>
+          <div className="max-w-md mx-auto mt-6 space-y-4 text-center">
+            <Alert variant="destructive">
+              <AlertDescription>We couldn't verify your session. Please try again.</AlertDescription>
+            </Alert>
+            <div className="flex justify-center gap-3">
+              <Button onClick={handleRetrySession} className="bg-brown-600 hover:bg-brown-700">
+                Retry
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/auth/login")}>
+                Sign In
+              </Button>
+            </div>
           </div>
         </>
       );
