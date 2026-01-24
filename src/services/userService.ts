@@ -85,6 +85,10 @@ export const userService = {
         .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        console.warn("Profile fetch returned empty data, retrying with direct REST call.");
+        return await fetchUserProfileDirect(userId);
+      }
       return data;
     } catch (error: any) {
       if (error?.name === "AbortError" || String(error?.message || "").includes("timeout")) {
