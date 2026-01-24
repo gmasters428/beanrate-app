@@ -5,6 +5,8 @@ import { getImageBucketCandidates, isBucketNotFound, parseSupabaseStorageUrl, up
 
 export type { UserProfile, FriendshipStatus, UserWithProfile };
 
+const PROFILE_FETCH_TIMEOUT_MS = 8000;
+
 // Helper function to resolve avatar URL from multiple possible sources
 function resolveAvatarUrl(user: any): string | null {
   // Prefer absolute URLs already stored
@@ -24,15 +26,75 @@ function resolveAvatarUrl(user: any): string | null {
   return null; // caller can fall back to placeholder
 }
 
+const fetchUserProfileDirect = async (userId: string): Promise<UserProfile | null> => {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || (supabase as any)?.supabaseUrl;
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || (supabase as any)?.supabaseKey;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase URL or anon key missing.");
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+
+  const url = new URL(`${supabaseUrl}/rest/v1/users`);
+  url.searchParams.set("select", "*");
+  url.searchParams.set("id", `eq.${userId}`);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${accessToken || supabaseKey}`,
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      const error = new Error(body || `Failed to load profile (${response.status})`);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? (data[0] ?? null) : (data as UserProfile | null);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const userService = {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    if (error) throw error;
-    return data;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
+
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .abortSignal(controller.signal)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      if (error?.name === "AbortError" || String(error?.message || "").includes("timeout")) {
+        console.warn("Profile fetch timed out, retrying with direct REST call.");
+        return await fetchUserProfileDirect(userId);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   },
 
   async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
