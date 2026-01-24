@@ -4,27 +4,46 @@ import { serialize } from 'cookie';
 
 type Ctx = { req: IncomingMessage & { cookies?: Record<string, string> }; res: ServerResponse & { getHeader: any; setHeader: any } };
 
+const parseCookieHeader = (header?: string): Record<string, string> => {
+  if (!header) return {};
+  return header.split(';').reduce((acc, part) => {
+    const [name, ...rest] = part.trim().split('=');
+    if (!name) return acc;
+    const value = rest.join('=');
+    acc[name] = decodeURIComponent(value);
+    return acc;
+  }, {} as Record<string, string>);
+};
+
+const getRequestCookies = (req: IncomingMessage & { cookies?: Record<string, string> }) => {
+  const headerCookies = parseCookieHeader(req.headers?.cookie);
+  if (req.cookies) {
+    return { ...headerCookies, ...req.cookies };
+  }
+  return headerCookies;
+};
+
 export function getServerSupabase(ctx: Ctx) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
     {
       cookies: {
-        get: (name: string) => (ctx.req as any).cookies?.[name],
-        set: (name: string, value: string, options: any) => {
-          const cookie = serialize(name, value, options);
-          const prev = ctx.res.getHeader('Set-Cookie');
-          if (!prev) ctx.res.setHeader('Set-Cookie', cookie);
-          else if (Array.isArray(prev)) ctx.res.setHeader('Set-Cookie', [...prev, cookie]);
-          else ctx.res.setHeader('Set-Cookie', [prev as string, cookie]);
+        getAll: () => {
+          const cookies = getRequestCookies(ctx.req);
+          return Object.entries(cookies)
+            .filter(([, value]) => typeof value === 'string')
+            .map(([name, value]) => ({ name, value }));
         },
-        remove: (name: string, options: any) => {
-          const cookie = serialize(name, '', { ...options, maxAge: 0 });
+        setAll: (cookies) => {
+          const serialized = cookies.map((cookie) =>
+            serialize(cookie.name, cookie.value, cookie.options)
+          );
           const prev = ctx.res.getHeader('Set-Cookie');
-          if (!prev) ctx.res.setHeader('Set-Cookie', cookie);
-          else if (Array.isArray(prev)) ctx.res.setHeader('Set-Cookie', [...prev, cookie]);
-          else ctx.res.setHeader('Set-Cookie', [prev as string, cookie]);
-        }
+          if (!prev) ctx.res.setHeader('Set-Cookie', serialized);
+          else if (Array.isArray(prev)) ctx.res.setHeader('Set-Cookie', [...prev, ...serialized]);
+          else ctx.res.setHeader('Set-Cookie', [prev as string, ...serialized]);
+        },
       }
     }
   );
