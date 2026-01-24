@@ -43,20 +43,17 @@ const Stat = ({ icon, value, label }: StatProps) => (
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   try {
     const supabase = getServerSupabase({ req: ctx.req as any, res: ctx.res as any });
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data?.session) {
-      return { redirect: { destination: '/auth/login', permanent: false } };
-    }
+    const { data } = await supabase.auth.getSession();
     // Do NOT call any profile-creation RPCs here; keep SSR fast and side-effect free.
-    return { props: { userId: data.session.user.id } };
+    return { props: { userId: data?.session?.user?.id ?? "" } };
   } catch {
-    // On any SSR auth error, send user to login instead of throwing a 500
-    return { redirect: { destination: '/auth/login', permanent: false } };
+    // On any SSR auth error, fall back to client-side auth handling
+    return { props: { userId: "" } };
   }
 };
 
 const ProfilePage: NextPage<Props> = ({ userId }) => {
-  const { user, signOut, refreshUser } = useAuth();
+  const { user, signOut, refreshUser, status } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -153,6 +150,24 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   };
 
   if (!effectiveUserId) {
+    if (status === "signedOut") {
+      return (
+        <>
+          <Head>
+            <title>Sign In - BeanRate</title>
+          </Head>
+          <div className="max-w-md mx-auto mt-6 space-y-4 text-center">
+            <Alert>
+              <AlertDescription>Please sign in to view your profile.</AlertDescription>
+            </Alert>
+            <Button onClick={() => router.push("/auth/login")} className="bg-brown-600 hover:bg-brown-700">
+              Sign In
+            </Button>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         <Head>
