@@ -23,6 +23,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 type Props = {
   userId: string;
+  profile: UserProfile | null;
 };
 
 type StatProps = {
@@ -46,14 +47,29 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     const supabase = getServerSupabase({ req: ctx.req as any, res: ctx.res as any });
     const { data } = await supabase.auth.getSession();
     // Do NOT call any profile-creation RPCs here; keep SSR fast and side-effect free.
-    return { props: { userId: data?.session?.user?.id ?? "" } };
+    const sessionUserId = data?.session?.user?.id ?? "";
+    if (!sessionUserId) {
+      return { props: { userId: "", profile: null } };
+    }
+
+    const { data: profile, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", sessionUserId)
+      .maybeSingle();
+
+    if (error) {
+      return { props: { userId: sessionUserId, profile: null } };
+    }
+
+    return { props: { userId: sessionUserId, profile } };
   } catch {
     // On any SSR auth error, fall back to client-side auth handling
-    return { props: { userId: "" } };
+    return { props: { userId: "", profile: null } };
   }
 };
 
-const ProfilePage: NextPage<Props> = ({ userId }) => {
+const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const { user, signOut, refreshUser, status } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -63,17 +79,44 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
   const [friendsCount, setFriendsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
-  const [profileFallback, setProfileFallback] = useState<UserProfile | null>(null);
+  const [profileFallback, setProfileFallback] = useState<UserProfile | null>(profile);
   const [profileFallbackLoading, setProfileFallbackLoading] = useState(false);
+  const [profileFallbackError, setProfileFallbackError] = useState<string | null>(null);
+  const [profileDataError, setProfileDataError] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const effectiveUserId = user?.id || sessionUserId || userId;
   const effectiveProfile = user?.profile ?? profileFallback;
+  const debugParam = router.query.debug;
+  const showDebugPanel =
+    debugParam === "1" || (Array.isArray(debugParam) && debugParam.includes("1"));
+  const showProfileWarning =
+    !effectiveProfile || profileFallbackLoading || Boolean(profileFallbackError);
+  const debugPanel = showDebugPanel ? (
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+      <div className="mb-2 font-semibold">Debug info</div>
+      <div className="space-y-1">
+        <div>authStatus: {status}</div>
+        <div>authUserId: {user?.id || "none"}</div>
+        <div>ssrUserId: {userId || "none"}</div>
+        <div>sessionChecked: {sessionChecked ? "yes" : "no"}</div>
+        <div>sessionUserId: {sessionUserId || "none"}</div>
+        <div>sessionError: {sessionError || "none"}</div>
+        <div>effectiveUserId: {effectiveUserId || "none"}</div>
+        <div>profilePresent: {effectiveProfile ? "yes" : "no"}</div>
+        <div>profileFallbackLoading: {profileFallbackLoading ? "yes" : "no"}</div>
+        <div>profileFallbackError: {profileFallbackError || "none"}</div>
+        <div>profileDataError: {profileDataError || "none"}</div>
+      </div>
+    </div>
+  ) : null;
 
   const loadProfileData = useCallback(async () => {
     if (!effectiveUserId) return;
     try {
+      setProfileDataError(null);
       const [friendsCountResult, pendingRequests, ratings] = await Promise.all([
         userService.getFriendsCount(effectiveUserId),
         userService.getFriendRequests(effectiveUserId),
@@ -83,6 +126,8 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
       setPendingRequestsCount(pendingRequests.length);
       setUserRatings(ratings);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setProfileDataError(message);
       console.error("Error loading profile data:", error);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
@@ -105,6 +150,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
 
     let isMounted = true;
     setProfileFallbackLoading(true);
+    setProfileFallbackError(null);
 
     userService
       .getUserProfile(effectiveUserId)
@@ -114,6 +160,8 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         }
       })
       .catch((error) => {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        setProfileFallbackError(message);
         console.error("Error loading fallback profile:", error);
       })
       .finally(() => {
@@ -144,9 +192,11 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
       .getSession()
       .then(({ data, error }) => {
         if (error) {
+          setSessionError(error.message);
           console.warn("Failed to check auth session on profile page:", error);
           return;
         }
+        setSessionError(null);
         if (isMounted) {
           setSessionUserId(data?.session?.user?.id ?? "");
         }
@@ -203,6 +253,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
             <title>Sign In - BeanRate</title>
           </Head>
           <div className="max-w-md mx-auto mt-6 space-y-4 text-center">
+            {debugPanel}
             <Alert>
               <AlertDescription>Please sign in to view your profile.</AlertDescription>
             </Alert>
@@ -221,6 +272,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
             <title>Profile Error - BeanRate</title>
           </Head>
           <div className="max-w-md mx-auto mt-6 space-y-4 text-center">
+            {debugPanel}
             <Alert variant="destructive">
               <AlertDescription>We couldn't verify your session. Please try again.</AlertDescription>
             </Alert>
@@ -242,20 +294,8 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         <Head>
           <title>Loading... - BeanRate</title>
         </Head>
-        <div className="max-w-md mx-auto flex justify-center items-center h-64">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      </>
-    );
-  }
-
-  if (!effectiveProfile && profileFallbackLoading) {
-    return (
-      <>
-        <Head>
-          <title>Loading... - BeanRate</title>
-        </Head>
-        <div className="max-w-md mx-auto flex justify-center items-center h-64">
+        <div className="max-w-md mx-auto flex flex-col justify-center items-center h-64">
+          {debugPanel}
           <div className="text-gray-500">Loading...</div>
         </div>
       </>
@@ -280,7 +320,6 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
       .find((value) => value && value !== username) ||
     resolvedUsername ||
     "User";
-  const showProfileWarning = !effectiveProfile;
 
   return (
     <>
@@ -288,6 +327,7 @@ const ProfilePage: NextPage<Props> = ({ userId }) => {
         <title>My Profile - BeanRate</title>
       </Head>
       <div className="max-w-md mx-auto">
+        {debugPanel}
         {showProfileWarning && (
           <div className="mb-4 space-y-3">
             <Alert variant="destructive">
