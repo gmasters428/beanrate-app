@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "smoke:dev": "node scripts/smoke-dev.mjs",
+    "preflight": "npm run lint && npm run build && npm run smoke:dev"
   },
   "dependencies": {
     "@faker-js/faker": "^9.4.0",
