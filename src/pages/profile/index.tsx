@@ -115,20 +115,40 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
 
   const loadProfileData = useCallback(async () => {
     if (!effectiveUserId) return;
-    try {
-      setProfileDataError(null);
-      const [friendsCountResult, pendingRequests, ratings] = await Promise.all([
-        userService.getFriendsCount(effectiveUserId),
-        userService.getFriendRequests(effectiveUserId),
-        ratingsService.getRatingsByUser(effectiveUserId),
-      ]);
-      setFriendsCount(friendsCountResult);
-      setPendingRequestsCount(pendingRequests.length);
-      setUserRatings(ratings);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+    setProfileDataError(null);
+
+    const [friendsResult, requestsResult, ratingsResult] = await Promise.allSettled([
+      userService.getFriendsCount(effectiveUserId),
+      userService.getFriendRequests(effectiveUserId),
+      ratingsService.getRatingsByUser(effectiveUserId),
+    ]);
+
+    const failures: string[] = [];
+
+    if (friendsResult.status === "fulfilled") {
+      setFriendsCount(friendsResult.value);
+    } else {
+      failures.push("friends");
+      console.error("Error loading friends count:", friendsResult.reason);
+    }
+
+    if (requestsResult.status === "fulfilled") {
+      setPendingRequestsCount(requestsResult.value.length);
+    } else {
+      failures.push("requests");
+      console.error("Error loading friend requests:", requestsResult.reason);
+    }
+
+    if (ratingsResult.status === "fulfilled") {
+      setUserRatings(ratingsResult.value);
+    } else {
+      failures.push("ratings");
+      console.error("Error loading ratings:", ratingsResult.reason);
+    }
+
+    if (failures.length > 0) {
+      const message = `Could not load: ${failures.join(", ")}.`;
       setProfileDataError(message);
-      console.error("Error loading profile data:", error);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
   }, [effectiveUserId, toast]);
@@ -139,11 +159,14 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     }
   }, [effectiveProfile]);
 
+  const canLoadProfileData =
+    Boolean(effectiveUserId) && (Boolean(user?.id) || status === "signedIn" || Boolean(sessionUserId));
+
   useEffect(() => {
-    if (effectiveUserId) {
+    if (canLoadProfileData) {
       loadProfileData();
     }
-  }, [effectiveUserId, loadProfileData]);
+  }, [canLoadProfileData, loadProfileData]);
 
   useEffect(() => {
     if (effectiveProfile || !effectiveUserId) return;
@@ -216,14 +239,14 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
 
   useEffect(() => {
     const handleFocus = () => {
-      if (effectiveUserId) {
+      if (canLoadProfileData) {
         loadProfileData();
       }
     };
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [effectiveUserId, loadProfileData]);
+  }, [canLoadProfileData, loadProfileData]);
 
   const handleImageUpdate = async (newImageUrl: string | null) => {
     setProfileImageUrl(newImageUrl);
