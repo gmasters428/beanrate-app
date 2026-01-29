@@ -200,7 +200,12 @@ export const ratingsService = {
         console.error('Error fetching ratings by user:', error);
         throw error;
       }
-      
+
+      if (!data || data.length === 0) {
+        console.warn('Ratings fetch returned empty data, retrying with direct REST call.');
+        return await fetchRatingsByUserDirect(userId);
+      }
+
       return data as RatingWithDetails[];
     } catch (error) {
       if (error instanceof Error) {
