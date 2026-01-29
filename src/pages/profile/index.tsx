@@ -268,6 +268,14 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     void refreshUser();
   };
 
+  const handleRetryProfileData = () => {
+    if (canLoadProfileData) {
+      loadProfileData();
+      return;
+    }
+    void refreshUser();
+  };
+
   if (!effectiveUserId) {
     if (status === "signedOut") {
       return (
@@ -364,6 +372,20 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
               </Button>
               <Button variant="outline" onClick={handleLogout}>
                 Sign out
+              </Button>
+            </div>
+          </div>
+        )}
+        {profileDataError && (
+          <div className="mb-4 space-y-3">
+            <Alert variant="destructive">
+              <AlertDescription>
+                We couldn't load all of your profile data yet. Please retry.
+              </AlertDescription>
+            </Alert>
+            <div className="flex justify-center gap-3">
+              <Button onClick={handleRetryProfileData} className="bg-brown-600 hover:bg-brown-700">
+                Retry
               </Button>
             </div>
           </div>
