@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -86,6 +86,8 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const [sessionUserId, setSessionUserId] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const emptyRatingsRetryRef = useRef(0);
+  const emptyRatingsTimerRef = useRef<number | null>(null);
 
   const effectiveUserId = user?.id || sessionUserId || userId;
   const effectiveProfile = user?.profile ?? profileFallback;
@@ -112,6 +114,8 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
       </div>
     </div>
   ) : null;
+  const canLoadProfileData =
+    Boolean(effectiveUserId) && (Boolean(user?.id) || status === "signedIn" || Boolean(sessionUserId));
 
   const loadProfileData = useCallback(async () => {
     if (!effectiveUserId) return;
@@ -140,7 +144,26 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     }
 
     if (ratingsResult.status === "fulfilled") {
-      setUserRatings(ratingsResult.value);
+      const nextRatings = ratingsResult.value;
+
+      if (nextRatings.length === 0 && emptyRatingsRetryRef.current < 2) {
+        emptyRatingsRetryRef.current += 1;
+        if (emptyRatingsTimerRef.current) {
+          window.clearTimeout(emptyRatingsTimerRef.current);
+        }
+        emptyRatingsTimerRef.current = window.setTimeout(() => {
+          if (canLoadProfileData) {
+            loadProfileData();
+          }
+        }, 1000 * emptyRatingsRetryRef.current);
+      } else {
+        emptyRatingsRetryRef.current = 0;
+        if (emptyRatingsTimerRef.current) {
+          window.clearTimeout(emptyRatingsTimerRef.current);
+          emptyRatingsTimerRef.current = null;
+        }
+        setUserRatings(nextRatings);
+      }
     } else {
       failures.push("ratings");
       console.error("Error loading ratings:", ratingsResult.reason);
@@ -151,7 +174,7 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
       setProfileDataError(message);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
-  }, [effectiveUserId, toast]);
+  }, [effectiveUserId, toast, canLoadProfileData]);
 
   useEffect(() => {
     if (effectiveProfile) {
@@ -159,14 +182,19 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     }
   }, [effectiveProfile]);
 
-  const canLoadProfileData =
-    Boolean(effectiveUserId) && (Boolean(user?.id) || status === "signedIn" || Boolean(sessionUserId));
-
   useEffect(() => {
     if (canLoadProfileData) {
       loadProfileData();
     }
   }, [canLoadProfileData, loadProfileData]);
+
+  useEffect(() => {
+    return () => {
+      if (emptyRatingsTimerRef.current) {
+        window.clearTimeout(emptyRatingsTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (effectiveProfile || !effectiveUserId) return;
