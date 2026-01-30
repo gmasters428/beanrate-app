@@ -12,6 +12,10 @@ const rawBaseUrl =
   process.env.NEXT_PUBLIC_VERCEL_URL ||
   process.env.VERCEL_URL ||
   "";
+const bypassToken =
+  process.env.VERCEL_PROTECTION_BYPASS ||
+  process.env.VERCEL_AUTOMATION_BYPASS ||
+  "";
 
 if (rawEmail !== email || rawPassword !== password) {
   console.warn("Trimmed whitespace from DEV_SMOKE_EMAIL or DEV_SMOKE_PASSWORD.");
@@ -58,8 +62,16 @@ const writeLog = (line) => {
 
 const main = async () => {
   const browser = await chromium.launch({ headless: true });
+  const extraHTTPHeaders = bypassToken
+    ? {
+        "x-vercel-protection-bypass": bypassToken,
+        "x-vercel-set-bypass-cookie": "true",
+      }
+    : undefined;
+
   const context = await browser.newContext({
     recordHar: { path: harPath, content: "omit" },
+    extraHTTPHeaders,
   });
   const page = await context.newPage();
 
@@ -113,17 +125,29 @@ const main = async () => {
     writeLog("Starting login flow.");
     await page.goto(`${baseUrl}/auth/login`, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-    const emailInput = page.locator('input[name="email"], input[type="email"]').first();
-    const passwordInput = page.locator('input[name="password"], input[type="password"]').first();
-    await emailInput.waitFor({ state: "visible", timeout: timeoutMs });
+    const fillAndSubmit = async () => {
+      const emailInput = page.locator('input[name="email"], input[type="email"]').first();
+      const passwordInput = page.locator('input[name="password"], input[type="password"]').first();
+      if (!(await emailInput.isVisible()) || !(await passwordInput.isVisible())) {
+        await page.goto(`${baseUrl}/auth/login`, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      }
+      await emailInput.waitFor({ state: "visible", timeout: timeoutMs });
+      await passwordInput.waitFor({ state: "visible", timeout: timeoutMs });
+      await emailInput.fill(email);
+      await passwordInput.fill(password);
+      await page.getByRole("button", { name: /sign\s*in/i }).click();
+    };
 
-    await emailInput.fill(email);
-    await passwordInput.fill(password);
+    await fillAndSubmit();
 
-    await Promise.all([
-      page.waitForURL(/\/profile/, { timeout: timeoutMs }),
-      page.getByRole("button", { name: /sign\s*in/i }).click(),
+    await Promise.race([
+      page.waitForURL(/\/profile/, { timeout: timeoutMs }).catch(() => {}),
+      page.locator("text=Ratings").first().waitFor({ state: "visible", timeout: timeoutMs }).catch(() => {}),
     ]);
+
+    if (!page.url().includes("/profile")) {
+      await page.goto(`${baseUrl}/profile`, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    }
 
     await page.locator("text=Ratings").first().waitFor({ state: "visible", timeout: timeoutMs });
 
