@@ -105,6 +105,9 @@ const main = async () => {
   page.on("response", async (response) => {
     try {
       const url = response.url();
+      if (url.includes("/api/ratings/user")) {
+        writeLog(`api ratings response ${response.status()} ${url}`);
+      }
       if (!url.includes("/rest/v1/ratings")) return;
       const method = response.request().method();
       if (method !== "GET") return;
@@ -123,6 +126,10 @@ const main = async () => {
 
   page.on("requestfailed", (request) => {
     const url = request.url();
+    if (url.includes("/api/ratings/user")) {
+      const failure = request.failure();
+      writeLog(`api ratings request failed: ${failure?.errorText || "unknown"} ${url}`);
+    }
     if (!url.includes("/rest/v1/ratings")) return;
     const failure = request.failure();
     writeLog(`ratings request failed: ${failure?.errorText || "unknown"} ${url}`);
@@ -168,14 +175,20 @@ const main = async () => {
           : initialRatings
             ? 1
             : 0;
+        const initialRatingsState =
+          initialRatings === undefined
+            ? "missing"
+            : Array.isArray(initialRatings)
+              ? `array:${initialRatings.length}`
+              : "value";
         const cookieCount = document.cookie
           .split(";")
           .map((value) => value.trim())
           .filter((value) => value.startsWith("sb-")).length;
-        return { userId, cookieCount, initialRatingsLength };
+        return { userId, cookieCount, initialRatingsLength, initialRatingsState };
       });
       writeLog(
-        `${label}: pageProps.userId=${state.userId || "(empty)"}, sbCookies=${state.cookieCount}, initialRatings=${state.initialRatingsLength}`,
+        `${label}: pageProps.userId=${state.userId || "(empty)"}, sbCookies=${state.cookieCount}, initialRatings=${state.initialRatingsLength}, initialRatingsState=${state.initialRatingsState}`,
       );
     } catch (error) {
       writeLog(`${label}: failed to read page state (${error?.message || String(error)})`);
