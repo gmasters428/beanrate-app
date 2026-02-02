@@ -88,6 +88,8 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const emptyRatingsRetryRef = useRef(0);
   const emptyRatingsTimerRef = useRef<number | null>(null);
+  const userIdRetryRef = useRef(0);
+  const userIdTimerRef = useRef<number | null>(null);
 
   const effectiveUserId = user?.id || sessionUserId || userId;
   const effectiveProfile = user?.profile ?? profileFallback;
@@ -129,7 +131,23 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
 
   const loadProfileData = useCallback(async () => {
     const resolvedUserId = await resolveUserId();
-    if (!resolvedUserId) return;
+    if (!resolvedUserId) {
+      if (userIdRetryRef.current < 3) {
+        userIdRetryRef.current += 1;
+        if (userIdTimerRef.current) {
+          window.clearTimeout(userIdTimerRef.current);
+        }
+        userIdTimerRef.current = window.setTimeout(() => {
+          loadProfileData();
+        }, 750 * userIdRetryRef.current);
+      }
+      return;
+    }
+    userIdRetryRef.current = 0;
+    if (userIdTimerRef.current) {
+      window.clearTimeout(userIdTimerRef.current);
+      userIdTimerRef.current = null;
+    }
     setProfileDataError(null);
 
     const [friendsResult, requestsResult, ratingsResult] = await Promise.allSettled([
@@ -203,6 +221,9 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     return () => {
       if (emptyRatingsTimerRef.current) {
         window.clearTimeout(emptyRatingsTimerRef.current);
+      }
+      if (userIdTimerRef.current) {
+        window.clearTimeout(userIdTimerRef.current);
       }
     };
   }, []);
