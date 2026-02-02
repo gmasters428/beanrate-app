@@ -212,10 +212,8 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   }, [effectiveProfile]);
 
   useEffect(() => {
-    if (status === "signedIn" || effectiveUserId || sessionUserId) {
-      loadProfileData();
-    }
-  }, [status, effectiveUserId, sessionUserId, loadProfileData]);
+    loadProfileData();
+  }, [loadProfileData]);
 
   useEffect(() => {
     return () => {
