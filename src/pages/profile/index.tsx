@@ -117,14 +117,25 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const canLoadProfileData =
     Boolean(effectiveUserId) && (Boolean(user?.id) || status === "signedIn" || Boolean(sessionUserId));
 
+  const resolveUserId = useCallback(async () => {
+    if (effectiveUserId) return effectiveUserId;
+    const { data } = await supabase.auth.getSession();
+    const resolvedId = data?.session?.user?.id ?? "";
+    if (resolvedId && resolvedId !== sessionUserId) {
+      setSessionUserId(resolvedId);
+    }
+    return resolvedId;
+  }, [effectiveUserId, sessionUserId]);
+
   const loadProfileData = useCallback(async () => {
-    if (!effectiveUserId) return;
+    const resolvedUserId = await resolveUserId();
+    if (!resolvedUserId) return;
     setProfileDataError(null);
 
     const [friendsResult, requestsResult, ratingsResult] = await Promise.allSettled([
-      userService.getFriendsCount(effectiveUserId),
-      userService.getFriendRequests(effectiveUserId),
-      ratingsService.getRatingsByUser(effectiveUserId),
+      userService.getFriendsCount(resolvedUserId),
+      userService.getFriendRequests(resolvedUserId),
+      ratingsService.getRatingsByUser(resolvedUserId),
     ]);
 
     const failures: string[] = [];
@@ -174,7 +185,7 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
       setProfileDataError(message);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
-  }, [effectiveUserId, toast, canLoadProfileData]);
+  }, [resolveUserId, toast, canLoadProfileData]);
 
   useEffect(() => {
     if (effectiveProfile) {
@@ -183,10 +194,10 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   }, [effectiveProfile]);
 
   useEffect(() => {
-    if (canLoadProfileData) {
+    if (status === "signedIn" || effectiveUserId || sessionUserId) {
       loadProfileData();
     }
-  }, [canLoadProfileData, loadProfileData]);
+  }, [status, effectiveUserId, sessionUserId, loadProfileData]);
 
   useEffect(() => {
     return () => {
