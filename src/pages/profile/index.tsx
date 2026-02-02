@@ -24,6 +24,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 type Props = {
   userId: string;
   profile: UserProfile | null;
+  initialRatings: RatingWithDetails[];
 };
 
 type StatProps = {
@@ -49,7 +50,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     // Do NOT call any profile-creation RPCs here; keep SSR fast and side-effect free.
     const sessionUserId = data?.session?.user?.id ?? "";
     if (!sessionUserId) {
-      return { props: { userId: "", profile: null } };
+      return { props: { userId: "", profile: null, initialRatings: [] } };
     }
 
     const { data: profile, error } = await supabase
@@ -58,23 +59,48 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       .eq("id", sessionUserId)
       .maybeSingle();
 
+    const { data: ratings, error: ratingsError } = await supabase
+      .from("ratings")
+      .select(
+        `
+        *,
+        users!fk_ratings_user_id (
+          username,
+          display_name,
+          profile_image_url
+        ),
+        coffee_beans (
+          name,
+          brand,
+          origin,
+          roast_level,
+          variety,
+          image_url
+        )
+      `
+      )
+      .eq("user_id", sessionUserId)
+      .order("created_at", { ascending: false });
+
+    const initialRatings = ratingsError ? [] : (ratings ?? []);
+
     if (error) {
-      return { props: { userId: sessionUserId, profile: null } };
+      return { props: { userId: sessionUserId, profile: null, initialRatings } };
     }
 
-    return { props: { userId: sessionUserId, profile } };
+    return { props: { userId: sessionUserId, profile, initialRatings } };
   } catch {
     // On any SSR auth error, fall back to client-side auth handling
-    return { props: { userId: "", profile: null } };
+    return { props: { userId: "", profile: null, initialRatings: [] } };
   }
 };
 
-const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
+const ProfilePage: NextPage<Props> = ({ userId, profile, initialRatings }) => {
   const { user, signOut, refreshUser, status } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [userRatings, setUserRatings] = useState<RatingWithDetails[]>([]);
+  const [userRatings, setUserRatings] = useState<RatingWithDetails[]>(initialRatings ?? []);
   const [activeTab, setActiveTab] = useState<"ratings" | "beans">("ratings");
   const [friendsCount, setFriendsCount] = useState(0);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
@@ -88,6 +114,8 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const emptyRatingsRetryRef = useRef(0);
   const emptyRatingsTimerRef = useRef<number | null>(null);
+  const bootstrapRatingsRetryRef = useRef(0);
+  const bootstrapRatingsTimerRef = useRef<number | null>(null);
   const userIdRetryRef = useRef(0);
   const userIdTimerRef = useRef<number | null>(null);
 
@@ -133,7 +161,34 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
     return resolvedId;
   }, [effectiveUserId, sessionUserId]);
 
+  const loadRatingsDirect = useCallback(async () => {
+    try {
+      const response = await fetch("/api/ratings/user");
+      if (!response.ok) {
+        throw new Error(`Failed to load ratings (${response.status})`);
+      }
+      const payload = await response.json();
+      const ratings = Array.isArray(payload?.data) ? payload.data : [];
+      if (ratings.length > 0) {
+        setUserRatings(ratings);
+        setProfileDataError(null);
+      }
+    } catch (error) {
+      console.error("Error loading ratings via API:", error);
+    }
+  }, []);
+
   const loadProfileData = useCallback(async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionId = sessionData?.session?.user?.id ?? "";
+      if (sessionId && sessionId !== sessionUserId) {
+        setSessionUserId(sessionId);
+      }
+    } catch (error) {
+      console.warn("Profile session check failed:", error);
+    }
+
     const resolvedUserId = await resolveUserId();
     if (!resolvedUserId) {
       if (userIdRetryRef.current < 6) {
@@ -207,7 +262,7 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
       setProfileDataError(message);
       toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
     }
-  }, [resolveUserId, toast, canLoadProfileData]);
+  }, [resolveUserId, toast, canLoadProfileData, sessionUserId]);
 
   useEffect(() => {
     if (effectiveProfile) {
@@ -220,9 +275,35 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   }, [loadProfileData]);
 
   useEffect(() => {
+    if (!effectiveUserId) return;
+
+    if (userRatings.length > 0) {
+      bootstrapRatingsRetryRef.current = 0;
+      if (bootstrapRatingsTimerRef.current) {
+        window.clearTimeout(bootstrapRatingsTimerRef.current);
+        bootstrapRatingsTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (profileDataError || bootstrapRatingsRetryRef.current >= 2) return;
+
+    bootstrapRatingsRetryRef.current += 1;
+    if (bootstrapRatingsTimerRef.current) {
+      window.clearTimeout(bootstrapRatingsTimerRef.current);
+    }
+    bootstrapRatingsTimerRef.current = window.setTimeout(() => {
+      loadRatingsDirect();
+    }, 1200 * bootstrapRatingsRetryRef.current);
+  }, [effectiveUserId, userRatings.length, profileDataError, loadRatingsDirect]);
+
+  useEffect(() => {
     return () => {
       if (emptyRatingsTimerRef.current) {
         window.clearTimeout(emptyRatingsTimerRef.current);
+      }
+      if (bootstrapRatingsTimerRef.current) {
+        window.clearTimeout(bootstrapRatingsTimerRef.current);
       }
       if (userIdTimerRef.current) {
         window.clearTimeout(userIdTimerRef.current);
@@ -261,7 +342,13 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   }, [effectiveProfile, effectiveUserId]);
 
   useEffect(() => {
-    if (effectiveUserId || status === "signedOut") {
+    if (effectiveUserId) {
+      setSessionChecked(true);
+      loadProfileData();
+      return;
+    }
+
+    if (status === "signedOut") {
       setSessionChecked(true);
       return;
     }
@@ -297,7 +384,7 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [effectiveUserId, status]);
+  }, [effectiveUserId, status, loadProfileData]);
 
   useEffect(() => {
     const handleFocus = () => {

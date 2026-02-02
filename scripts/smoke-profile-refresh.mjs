@@ -108,6 +108,7 @@ const main = async () => {
       if (!url.includes("/rest/v1/ratings")) return;
       const method = response.request().method();
       if (method !== "GET") return;
+      writeLog(`ratings response ${response.status()} ${url}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         latestRatingsLength = data.length;
@@ -120,6 +121,21 @@ const main = async () => {
     }
   });
 
+  page.on("requestfailed", (request) => {
+    const url = request.url();
+    if (!url.includes("/rest/v1/ratings")) return;
+    const failure = request.failure();
+    writeLog(`ratings request failed: ${failure?.errorText || "unknown"} ${url}`);
+  });
+
+  const hasRatingsInDom = async () => {
+    const emptyState = page.locator("text=You haven't rated any coffee beans yet.");
+    const emptyVisible = await emptyState.isVisible().catch(() => false);
+    if (emptyVisible) return false;
+    const cardCount = await page.locator("text=View Details").count();
+    return cardCount > 0;
+  };
+
   const waitForRatings = async (label) => {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -127,10 +143,43 @@ const main = async () => {
         writeLog(`${label}: ratings ok (count=${latestRatingsLength})`);
         return;
       }
+      if (await hasRatingsInDom()) {
+        writeLog(`${label}: ratings ok (dom)`);
+        return;
+      }
       await page.waitForTimeout(250);
     }
+    const emptyState = page.locator("text=You haven't rated any coffee beans yet.");
+    const emptyVisible = await emptyState.isVisible().catch(() => false);
+    const cardCount = await page.locator("text=View Details").count().catch(() => 0);
     const detail = latestRatingsLength === null ? "no response" : `count=${latestRatingsLength}`;
-    throw new Error(`${label}: ratings missing (${detail})`);
+    throw new Error(
+      `${label}: ratings missing (${detail}, emptyVisible=${emptyVisible}, cardCount=${cardCount})`,
+    );
+  };
+
+  const logPageState = async (label) => {
+    try {
+      const state = await page.evaluate(() => {
+        const userId = window.__NEXT_DATA__?.props?.pageProps?.userId || "";
+        const initialRatings = window.__NEXT_DATA__?.props?.pageProps?.initialRatings;
+        const initialRatingsLength = Array.isArray(initialRatings)
+          ? initialRatings.length
+          : initialRatings
+            ? 1
+            : 0;
+        const cookieCount = document.cookie
+          .split(";")
+          .map((value) => value.trim())
+          .filter((value) => value.startsWith("sb-")).length;
+        return { userId, cookieCount, initialRatingsLength };
+      });
+      writeLog(
+        `${label}: pageProps.userId=${state.userId || "(empty)"}, sbCookies=${state.cookieCount}, initialRatings=${state.initialRatingsLength}`,
+      );
+    } catch (error) {
+      writeLog(`${label}: failed to read page state (${error?.message || String(error)})`);
+    }
   };
 
   try {
@@ -159,9 +208,9 @@ const main = async () => {
 
     if (!page.url().includes("/profile")) {
       await page.goto(`${baseUrl}/profile`, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      await page.locator("text=Ratings").first().waitFor({ state: "visible", timeout: timeoutMs });
     }
-
-    await page.locator("text=Ratings").first().waitFor({ state: "visible", timeout: timeoutMs });
+    await logPageState("initial");
 
     resetRatingsFlags();
     await waitForRatings("initial");
@@ -171,6 +220,7 @@ const main = async () => {
       writeLog(`refresh ${i + 1}...`);
       await page.reload({ waitUntil: "domcontentloaded", timeout: timeoutMs });
       await page.locator("text=Ratings").first().waitFor({ state: "visible", timeout: timeoutMs });
+      await logPageState(`refresh-${i + 1}`);
       await waitForRatings(`refresh-${i + 1}`);
     }
 

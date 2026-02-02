@@ -169,7 +169,13 @@ export const ratingsService = {
     }
   },
 
-  async getRatingsByUser(userId: string): Promise<RatingWithDetails[]> {
+  async getRatingsByUser(
+    userId: string,
+    options?: { forceDirect?: boolean }
+  ): Promise<RatingWithDetails[]> {
+    if (options?.forceDirect) {
+      return await fetchRatingsByUserDirect(userId);
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), RATINGS_FETCH_TIMEOUT_MS);
 
