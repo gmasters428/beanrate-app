@@ -12,10 +12,11 @@ const rawBaseUrl =
   process.env.NEXT_PUBLIC_VERCEL_URL ||
   process.env.VERCEL_URL ||
   "";
-const bypassToken =
+const rawBypassToken =
   process.env.VERCEL_PROTECTION_BYPASS ||
   process.env.VERCEL_AUTOMATION_BYPASS ||
   "";
+const bypassToken = rawBypassToken.trim();
 
 if (rawEmail !== email || rawPassword !== password) {
   console.warn("Trimmed whitespace from DEV_SMOKE_EMAIL or DEV_SMOKE_PASSWORD.");
@@ -74,6 +75,17 @@ const main = async () => {
     extraHTTPHeaders,
   });
   const page = await context.newPage();
+
+  if (bypassToken) {
+    writeLog("Bypass token present; requesting bypass cookie.");
+    try {
+      await context.request.get(baseUrl, { headers: extraHTTPHeaders });
+    } catch (error) {
+      writeLog(`Bypass cookie request failed: ${error?.message || String(error)}`);
+    }
+  } else {
+    writeLog("Bypass token missing; SSO protection may block automation.");
+  }
 
   page.on("console", (msg) => {
     writeLog(`console.${msg.type()}: ${msg.text()}`);
