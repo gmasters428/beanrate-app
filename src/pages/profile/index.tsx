@@ -122,7 +122,11 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const resolveUserId = useCallback(async () => {
     if (effectiveUserId) return effectiveUserId;
     const { data } = await supabase.auth.getSession();
-    const resolvedId = data?.session?.user?.id ?? "";
+    let resolvedId = data?.session?.user?.id ?? "";
+    if (!resolvedId) {
+      const { data: userData } = await supabase.auth.getUser();
+      resolvedId = userData?.user?.id ?? "";
+    }
     if (resolvedId && resolvedId !== sessionUserId) {
       setSessionUserId(resolvedId);
     }
@@ -132,7 +136,7 @@ const ProfilePage: NextPage<Props> = ({ userId, profile }) => {
   const loadProfileData = useCallback(async () => {
     const resolvedUserId = await resolveUserId();
     if (!resolvedUserId) {
-      if (userIdRetryRef.current < 3) {
+      if (userIdRetryRef.current < 6) {
         userIdRetryRef.current += 1;
         if (userIdTimerRef.current) {
           window.clearTimeout(userIdTimerRef.current);
