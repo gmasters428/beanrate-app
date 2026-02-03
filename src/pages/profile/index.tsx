@@ -407,8 +407,19 @@ const ProfilePage: NextPage<Props> = ({ userId, profile, initialRatings }) => {
   };
 
   const handleLogout = async () => {
-    await signOut();
-    router.push("/");
+    try {
+      if (signOut) {
+        await signOut();
+      } else {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      setSessionUserId("");
+      setProfileFallback(null);
+      router.push("/");
+    }
   };
 
   const handleRetrySession = () => {
@@ -576,8 +587,14 @@ const ProfilePage: NextPage<Props> = ({ userId, profile, initialRatings }) => {
                   )}
                 </div>
                 <div className="flex-1 flex justify-end space-x-2">
-                  <Link href="/profile/settings"><button className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><Settings className="h-5 w-5" /></button></Link>
-                  <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"><LogOut className="h-5 w-5" /></button>
+                  <Link href="/profile/settings">
+                    <button type="button" className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                      <Settings className="h-5 w-5" />
+                    </button>
+                  </Link>
+                  <button type="button" onClick={handleLogout} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100">
+                    <LogOut className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
               <div className="mt-4 flex justify-center gap-8">
