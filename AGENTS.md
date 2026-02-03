@@ -81,6 +81,20 @@ When in doubt: choose a read-only command first (`ls`, `cat` of non-sensitive fi
 
 ---
 
+## Automation (Smoke Tests)
+- Script: `scripts/smoke-profile-refresh.mjs`
+- Runner: `npm run smoke:profile`
+- Artifacts: `debug-artifacts/automation/` (HAR + log per run)
+- Required env vars (do not print values):
+  - `DEV_SMOKE_EMAIL`
+  - `DEV_SMOKE_PASSWORD`
+  - `DEV_SMOKE_BASE_URL` (stable dev URL)
+  - `VERCEL_PROTECTION_BYPASS` (Vercel deployment protection bypass token)
+
+Run the smoke test before asking for manual verification. If it fails, use the latest log + HAR in `debug-artifacts/automation/` to drive the fix.
+
+---
+
 ## Workflow (Bugfix Loop)
 1. Reproduce the bug (use provided steps).
 2. Identify root cause (not just symptoms).
