@@ -1,5 +1,5 @@
 // Admin utility functions
-export const ADMIN_EMAILS = ['gmasters428@gmail.com'];
+export const ADMIN_EMAILS = ["gmasters428@gmail.com", "garrett@gtalkstech.com"];
 
 export function isAdmin(email?: string | null): boolean {
   if (!email) return false;
