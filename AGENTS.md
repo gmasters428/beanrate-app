@@ -90,6 +90,7 @@ When in doubt: choose a read-only command first (`ls`, `cat` of non-sensitive fi
   - `DEV_SMOKE_PASSWORD`
   - `DEV_SMOKE_BASE_URL` (stable dev URL)
   - `VERCEL_PROTECTION_BYPASS` (Vercel deployment protection bypass token)
+  - Smoke scripts auto-load `.env.local` (key=value format) when present. If you add a new smoke script, include the same auto-load logic so local envs are available.
 
 Run the smoke test before asking for manual verification. If it fails, use the latest log + HAR in `debug-artifacts/automation/` to drive the fix.
 

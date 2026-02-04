@@ -1,16 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import Link from "next/link";
 import { coffeeBeansService } from "@/services/coffeeBeansService";
 import { ratingsService, RatingWithDetails } from "@/services/ratingsService";
-import { CoffeeBean, User } from "@/types";
+import { CoffeeBean } from "@/types";
 import RatingCard from "@/components/home/RatingCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Star, Coffee, MapPin, Edit } from "lucide-react";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
-import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { isAdmin } from "@/lib/adminUtils";
 
 interface BeanDetails extends CoffeeBean {
   avg_rating: number;
@@ -20,11 +23,17 @@ interface BeanDetails extends CoffeeBean {
 export default function BeanPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { isAuthenticated } = useAuthGuard();
+  const { isAuthenticated, user } = useAuthGuard();
+  const { toast } = useToast();
+  const isAdminUser = isAdmin(user?.email);
+  const adminFileInputRef = useRef<HTMLInputElement | null>(null);
   
   const [bean, setBean] = useState<BeanDetails | null>(null);
   const [ratings, setRatings] = useState<RatingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminImageFile, setAdminImageFile] = useState<File | null>(null);
+  const [adminImagePreview, setAdminImagePreview] = useState<string | null>(null);
+  const [adminImageSaving, setAdminImageSaving] = useState(false);
 
   useEffect(() => {
     const fetchBeanData = async () => {
@@ -59,6 +68,96 @@ export default function BeanPage() {
 
     fetchBeanData();
   }, [id]);
+
+  useEffect(() => {
+    if (!adminImageFile) {
+      setAdminImagePreview(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(adminImageFile);
+    setAdminImagePreview(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [adminImageFile]);
+
+  const resetAdminImageInput = () => {
+    setAdminImageFile(null);
+    setAdminImagePreview(null);
+    if (adminFileInputRef.current) {
+      adminFileInputRef.current.value = "";
+    }
+  };
+
+  const handleAdminImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) {
+      resetAdminImageInput();
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      resetAdminImageInput();
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Image too large",
+        description: "Please choose an image under 10MB.",
+        variant: "destructive",
+      });
+      resetAdminImageInput();
+      return;
+    }
+
+    setAdminImageFile(file);
+  };
+
+  const handleAdminImageUpload = async () => {
+    if (!bean || !adminImageFile) {
+      toast({
+        title: "Select an image",
+        description: "Choose an image to upload before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setAdminImageSaving(true);
+      const updatedBean = await coffeeBeansService.updateCoffeeBean(bean.id, {}, adminImageFile);
+      setBean((prev) =>
+        prev
+          ? {
+              ...prev,
+              image_url: updatedBean.image_url ?? prev.image_url,
+            }
+          : prev
+      );
+      toast({
+        title: "Image updated",
+        description: "The bean image has been updated successfully.",
+      });
+      resetAdminImageInput();
+    } catch (error) {
+      console.error("Failed to update bean image:", error);
+      toast({
+        title: "Update failed",
+        description: "Could not update the bean image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdminImageSaving(false);
+    }
+  };
 
   const renderStars = (ratingValue: number) => {
     return (
@@ -112,6 +211,50 @@ export default function BeanPage() {
               </div>
             )}
           </div>
+          {isAdminUser && (
+            <div className="mt-4 rounded-lg border bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-900">Admin: Update Bean Image</h3>
+              <p className="text-xs text-gray-600 mt-1">
+                Upload a new photo to replace the current bean image.
+              </p>
+              <div className="mt-3 space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="bean-image-upload" className="text-xs text-gray-700">
+                    New image
+                  </Label>
+                  <Input
+                    id="bean-image-upload"
+                    type="file"
+                    accept="image/*"
+                    ref={adminFileInputRef}
+                    onChange={handleAdminImageChange}
+                    disabled={adminImageSaving}
+                  />
+                </div>
+                {adminImagePreview && (
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src={adminImagePreview}
+                      alt="New bean preview"
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 rounded-md border object-cover"
+                      unoptimized
+                    />
+                    <p className="text-xs text-gray-500">Preview of the new image.</p>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handleAdminImageUpload}
+                  disabled={!adminImageFile || adminImageSaving}
+                >
+                  {adminImageSaving ? "Uploading..." : "Save Image"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="md:w-2/3">
           <h1 className="text-3xl font-bold text-gray-900">{bean.name}</h1>
