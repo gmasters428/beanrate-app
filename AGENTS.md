@@ -85,12 +85,14 @@ When in doubt: choose a read-only command first (`ls`, `cat` of non-sensitive fi
 - Script: `scripts/smoke-profile-refresh.mjs`
 - Runner: `npm run smoke:profile`
 - Artifacts: `debug-artifacts/automation/` (HAR + log per run)
+- Playwright runner: `npm run smoke:pw` (tagged `@smoke` tests in `tests/`)
 - Required env vars (do not print values):
   - `DEV_SMOKE_EMAIL`
   - `DEV_SMOKE_PASSWORD`
   - `DEV_SMOKE_BASE_URL` (stable dev URL)
   - `VERCEL_PROTECTION_BYPASS` (Vercel deployment protection bypass token)
   - Smoke scripts auto-load `.env.local` (key=value format) when present. If you add a new smoke script, include the same auto-load logic so local envs are available.
+  - Playwright config auto-loads `.env.local` for test runs (no secrets printed).
 
 Run the smoke test before asking for manual verification. If it fails, use the latest log + HAR in `debug-artifacts/automation/` to drive the fix.
 
