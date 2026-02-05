@@ -9,7 +9,7 @@
     "lint": "next lint",
     "smoke:dev": "node scripts/smoke-dev.mjs",
     "preflight": "npm run lint && npm run build && npm run smoke:dev",
-    "smoke:profile": "node scripts/smoke-profile-refresh.mjs",
+    "smoke:profile": "playwright test --project=chromium tests/smoke/profile-refresh.spec.ts",
     "smoke:pw": "playwright test --project=chromium --grep @smoke"
   },
   "dependencies": {

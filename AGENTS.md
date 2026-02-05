@@ -82,8 +82,8 @@ When in doubt: choose a read-only command first (`ls`, `cat` of non-sensitive fi
 ---
 
 ## Automation (Smoke Tests)
-- Script: `scripts/smoke-profile-refresh.mjs`
-- Runner: `npm run smoke:profile`
+- Legacy script: `scripts/smoke-profile-refresh.mjs` (deprecated)
+- Runner: `npm run smoke:profile` (Playwright test)
 - Artifacts: `debug-artifacts/automation/` (HAR + log per run)
 - Playwright runner: `npm run smoke:pw` (tagged `@smoke` tests in `tests/`)
 - Required env vars (do not print values):
